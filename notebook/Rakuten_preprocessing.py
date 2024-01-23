@@ -8,36 +8,37 @@ functionalities to import data, clean up text, detect language, tokenize and
 lemmatize text, and perform word count analysis.
 
 Usage:
-    from Rakuten_txt_preprocessing import *
-    - data = Rakuten_txt_import('../Data/')
+    import Rakuten_preprocessing as rkt
+    
+    - data = rkt.Rakuten_txt_import('../Data/')
 
-    - data['designation'] = Rakuten_txt_cleanup(data['designation'])
+    - data['designation'] = rkt.Rakuten_txt_cleanup(data['designation'])
 
-    - data['description'] = Rakuten_txt_cleanup(data['description'])
+    - data['description'] = rkt.Rakuten_txt_cleanup(data['description'])
 
-    - data['language'] = Rakuten_txt_language(
+    - data['language'] = rkt.Rakuten_txt_language(
         data.loc[:, ['designation', 'description']])
 
-    - data['description_tokens'] = Rakuten_txt_tokenize(
+    - data['description_tokens'] = rkt.Rakuten_txt_tokenize(
         data['description'], lang=data['language'])
 
-    - data['designation_tokens'] = Rakuten_txt_tokenize(
+    - data['designation_tokens'] = rkt.Rakuten_txt_tokenize(
         data['designation'], lang=data['language'])
 
     - data['all_tokens'] = data.apply(
-        lambda row: merge_tokens(row['designation_tokens'],
+        lambda row: rkt.merge_tokens(row['designation_tokens'],
                                  row['designation_tokens']), axis=1)
 
-    - wordcount, wordlabels = Rakuten_txt_wordcount(data['designation_tokens'])
+    - wordcount, wordlabels = rkt.Rakuten_txt_wordcount(data['designation_tokens'])
 
-    - data['image_path'] = Rakuten_img_path('../Data/images/image_train/',
+    - data['image_path'] = rkt.Rakuten_img_path('../Data/images/image_train/',
                                             data['imageid'], data['productid'])
     
-    - data = data.join(Rakuten_img_size(data['image_path']), axis=1)
+    - data = data.join(rkt.Rakuten_img_size(data['image_path']), axis=1)
 
     - df_words = pd.DataFrame()
       for c in target['prdtypecode'].unique():
-        cnt, wrd = Rakuten_txt_wordcount(
+        cnt, wrd = rkt.Rakuten_txt_wordcount(
             data.[data['prdtypecode'] == c, 'designation_tokens'])
         df_words = df_words.join(pd.DataFrame(
             cnt, index=wrd, columns=['code_' + str(c)]))
