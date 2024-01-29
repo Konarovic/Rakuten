@@ -17,7 +17,7 @@ Usage:
     - data['description'] = rkt.Rakuten_txt_cleanup(data['description'])
 
     - data['language'] = rkt.Rakuten_txt_language(
-        data.loc[:, ['designation', 'description']])
+        data[['designation', 'description']])
 
     - data['description_tokens'] = rkt.Rakuten_txt_tokenize(
         data['description'], lang=data['language'])
@@ -34,15 +34,25 @@ Usage:
     - data['image_path'] = rkt.Rakuten_img_path('../Data/images/image_train/',
                                             data['imageid'], data['productid'])
     
-    - data = data.join(rkt.Rakuten_img_size(data['image_path']), axis=1)
+    - data = data.join(rkt.Rakuten_img_size(data['image_path']))
 
-    - df_words = pd.DataFrame()
-      for c in target['prdtypecode'].unique():
-        cnt, wrd = rkt.Rakuten_txt_wordcount(
-            data.[data['prdtypecode'] == c, 'designation_tokens'])
-        df_words = df_words.join(pd.DataFrame(
-            cnt, index=wrd, columns=['code_' + str(c)]))
-
+    - #Proportion of each tokens across all product of each category
+    df_words = pd.DataFrame()
+    for code in data['prdtypecode'].unique():
+        cnt, wrd = rkt.Rakuten_txt_wordcount(data.loc[data['prdtypecode'] == code, 'designation_tokens'])
+        cnt = cnt / (data['prdtypecode']==code).sum()
+        df_words = df_words.join(pd.DataFrame(cnt, index=wrd, columns=['code_' + str(code)]), how='outer')
+        df_words = df_words.fillna(0)
+        
+    from scipy.cluster.hierarchy import linkage, leaves_list
+    Z = linkage(df_words.corr(), 'ward')
+    order = leaves_list(Z)
+    px.imshow(df_words.corr().iloc[order, order])
+    
+    #multiplying the word frequency by the relative proportion of each token
+    across categories
+    df_words_rel = df_words * df_words.apply(lambda row: row / row.sum(), axis=1)
+    
 
 Dependencies:
     - pandas: Used for data manipulation and analysis.
@@ -61,6 +71,7 @@ import re
 from collections import Counter
 from bs4 import BeautifulSoup
 import langid
+from spellchecker import SpellChecker
 import spacy
 import nltk
 import os
@@ -144,51 +155,68 @@ def Rakuten_txt_cleanup(data):
     # For a Series
     cleaned_series = Rakuten_txt_cleanup(series_with_text)
     """
+    # All regex to remove
+    subregex = []
+    # url patterns
+    subregex.append(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|\
+                   [!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+    # filename patterns
+    subregex.append(r'\b(?<!\d\.)\w+\.(txt|jpg|png|docx|pdf)\b')
+    # badly formatted html markups
+    subregex.append(r'nbsp|&amp|& nbsp|')
+    # Converting subregex to regex pattern object
+    subregex = re.compile('|'.join(subregex), re.IGNORECASE)
 
-    url_regex = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|\
-                           [!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-    filename_regex = re.compile(r'\b(?<!\d\.)\w+\.(txt|jpg|png|docx|pdf)\b')
+    # All regex to add space around
+    spacearound = []
+    # Add spaces around numbers and punctuations except -, ', / and ¿
+    spacearound.append(r'(\d+|[.,!;:(){}\[\]"@#$%^&*+=|<>~`¬])')
+    # Converting spacearound to regex pattern object
+    spacearound = re.compile('|'.join(spacearound))
+
+    # All regex to add space before
+    spacebefore = []
+    # Add spaces before uppercase letters if they're both preceded and followed
+    # by lowercase letters
+    spacebefore.append(r'(?<=[a-z])([A-Z])(?=[a-z])')
+    # Converting spacebefore to regex pattern object
+    spacebefore = re.compile('|'.join(spacebefore))
 
     if data.ndim == 2:
         # if data if a dataframe
         for col in data.columns:
             data.loc[:, col] = data[col].apply(
-                lambda row: txt_cleanup(row, url_regex, filename_regex))
-
+                lambda row: txt_cleanup(row, subregex, spacearound, spacebefore))
+            # Replacing empty strings with NaNs
             data.loc[data[col].astype(str).str.len() == 0, col] = np.nan
 
     else:
         # if data is a series
         data = data.apply(
-            lambda row: txt_cleanup(row, url_regex, filename_regex))
-
+            lambda row: txt_cleanup(row, subregex, spacearound, spacebefore))
+        # Replacing empty strings with NaNs
         data.loc[data.astype(str).str.len() == 0] = np.nan
 
     return data
 
 
-def txt_cleanup(txt, url_regex, filename_regex):
+def txt_cleanup(txt, subregex, spacearound, spacebefore):
     """
     Remove HTML tags, URLs, and filenames from a given text string.
 
     Parameters:
     txt (str): Text to be cleaned.
-    url_regex (compiled regex): Regex pattern to identify URLs.
-    filename_regex (compiled regex): Regex pattern to identify filenames.
+    subregex (compiled regex): Regex patterns to remove.
+    spacearound (compiled regex): Regex patterns to split.
+    spacebefore (compiled regex): Regex patterns where space should be added before.
 
     Returns:
-    str: Cleaned text with HTML tags, URLs, and filenames removed.
+    str: Cleaned text with HTML tags, URLs, filenames, etc removed.
 
     Usage:
-    cleaned_text = txt_cleanup(some_text, url_regex, filename_regex)
+    cleaned_text = txt_cleanup(some_text, subregex, splitregex)
     """
     if isinstance(txt, str):
-        # Remove URLs
-        txt = url_regex.sub(' ', txt)
-
-        # # remove filenames
-        txt = filename_regex.sub(' ', txt)
-
         # Remove HTML tags
         soup = BeautifulSoup(txt, 'html.parser')
         txt = soup.get_text(separator=' ')
@@ -197,6 +225,18 @@ def txt_cleanup(txt, url_regex, filename_regex):
         soup = BeautifulSoup(txt, 'lxml')
         txt = soup.get_text(separator=' ')
 
+        # Remove according to subregex
+        txt = subregex.sub(' ', txt)
+
+        # Split according to spacearound
+        txt = spacearound.sub(r' \1 ', txt)
+
+        # Add space before according to spacebefore
+        txt = spacebefore.sub(r' \1', txt)
+
+        # cleaning up extra spaces
+        txt = re.sub(r'\s+', ' ', txt).strip()
+
         # removing all text shorter than 4 characters (eg ..., 1), -, etc)
         if len(txt.strip()) < 4:
             txt = ''
@@ -204,7 +244,8 @@ def txt_cleanup(txt, url_regex, filename_regex):
     return txt
 
 
-def Rakuten_txt_language(data):  # ajouter une condition sur le score de fin
+# ajouter une condition sur le score de fin
+def Rakuten_txt_language(data, method='langid'):
     """
     Detect the most likely language of text data in each row of a DataFrame or
     Series.
@@ -226,11 +267,25 @@ def Rakuten_txt_language(data):  # ajouter une condition sur le score de fin
         data = data.apply(
             lambda row: ' '.join([s for s in row.loc[:]
                                   if isinstance(s, str)]), axis=1)
+    # Replacing NaNs with empty string
+    data = data.fillna(' ')
 
     # getting the most likely language for each row of the data series
     # langid.classify(row) returns ('language', score). We only keep the
     # language here
-    lang = data.apply(lambda row: langid.classify(row)[0])
+    if method == 'langid':
+        lang = data.apply(lambda row: langid.classify(row)[0])
+    elif method == 'pyspell':
+        spell_fr = SpellChecker(language='fr', distance=1)
+        spell_en = SpellChecker(language='en', distance=1)
+        spell_de = SpellChecker(language='de', distance=1)
+        err_fr = data.apply(lambda row: len(spell_fr.known(row.split())))
+        err_en = data.apply(lambda row: len(spell_en.known(row.split())))
+        err_de = data.apply(lambda row: len(spell_de.known(row.split())))
+        lang = pd.concat([err_fr.rename('fr'), err_en.rename(
+            'en'), err_de.rename('de')], axis=1)
+        lang = lang.idxmax(axis=1)
+        #lang = np.argmin
 
     return lang
 
@@ -324,8 +379,10 @@ def tokens_from_spacy(txt, lang, nlpdict):
         # Remove stopwords, punctuation, and perform lemmatization
         filtered_tokens = [token.lemma_.lower()
                            for token in tokens
-                           if token.is_alpha and not token.is_stop
-                           and len(token) > 3]
+                           if token.is_alpha
+                           and not token.is_stop
+                           and len(token) > 2
+                           and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
 
         # Keeping a unique list of tokens, in the same order they appeared in
         # the text
@@ -364,8 +421,10 @@ def tokens_from_nltk(txt, lang):
         filtered_tokens = [stemmer.stem(token.lower())
                            for token in tokens
                            if token.isalpha()
-                           and token.lower() not in stop_words
-                           and len(token) > 3]
+                           and token.lower()
+                           not in stop_words
+                           and len(token) > 2
+                           and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
 
         # Keeping a unique list of tokens, in the same order they appeared in
         # the text
