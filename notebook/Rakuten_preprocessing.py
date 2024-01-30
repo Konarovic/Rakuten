@@ -79,6 +79,10 @@ import pandas as pd
 import swifter
 import numpy as np
 
+import unidecode
+from transformers import BertTokenizer
+import torch
+
 from plotly.subplots import make_subplots
 from plotly import graph_objects as go
 import seaborn as sns
@@ -275,17 +279,34 @@ def Rakuten_txt_language(data, method='langid'):
     # language here
     if method == 'langid':
         lang = data.apply(lambda row: langid.classify(row)[0])
+
     elif method == 'pyspell':
         spell_fr = SpellChecker(language='fr', distance=1)
         spell_en = SpellChecker(language='en', distance=1)
         spell_de = SpellChecker(language='de', distance=1)
+
         err_fr = data.apply(lambda row: len(spell_fr.known(row.split())))
         err_en = data.apply(lambda row: len(spell_en.known(row.split())))
         err_de = data.apply(lambda row: len(spell_de.known(row.split())))
         lang = pd.concat([err_fr.rename('fr'), err_en.rename(
             'en'), err_de.rename('de')], axis=1)
         lang = lang.idxmax(axis=1)
-        #lang = np.argmin
+
+    elif method == 'bert':
+        tokenizer_en = BertTokenizer.from_pretrained('bert-base-uncased')
+        tokenizer_fr = BertTokenizer.from_pretrained(
+            'dbmdz/bert-base-french-europeana-cased')
+        tokenizer_de = BertTokenizer.from_pretrained('bert-base-german-cased')
+
+        err_fr = data.apply(lambda row: ' '.join(
+            tokenizer_fr.convert_ids_to_tokens(tokenizer_fr(row)['input_ids'])))
+        err_en = data.apply(lambda row: ' '.join(
+            tokenizer_en.convert_ids_to_tokens(tokenizer_en(row)['input_ids'])))
+        err_de = data.apply(lambda row: ' '.join(
+            tokenizer_de.convert_ids_to_tokens(tokenizer_de(row)['input_ids'])))
+        lang = pd.concat([err_fr.rename('fr'), err_en.rename(
+            'en'), err_de.rename('de')], axis=1)
+        lang = lang.idxmin(axis=1)
 
     return lang
 
@@ -355,6 +376,10 @@ def Rakuten_txt_tokenize(data, lang=None, method='spacy'):
                 row.iloc[0], row.iloc[1]), axis=1)
 
     return data
+
+
+def Rakuten_txt_translate(txt):
+    """  """
 
 
 def tokens_from_spacy(txt, lang, nlpdict):
@@ -582,3 +607,95 @@ def get_img_size(img_path):
         width_actual, height_actual = 0, 0
 
     return [width, height, width_actual, height_actual]
+
+
+def img_resize(folder_path, save_path='./resized/'):
+    """
+    Resize image files in a specified folder to remove extra padding areas and resize the image
+
+    Parameters:
+        folder_path (str): The path to the folder containing the image files to be resized.
+        save_path (str, optional): The path to the folder where the resized images will be saved.
+                                   Default is './resized/'.
+
+    Returns:
+        None
+
+    This function iterates over all image files in the specified folder, resizes each image
+    while removing extra padding areas, and saves the resized images in the 'save_path' folder.
+    The resized images are named with '_resized' suffix and have the same file format as the
+    original images.
+
+    Example:
+        img_resize('/path/to/images_folder', '/path/to/save_resized_images/')
+
+    Note:
+        - The function assumes that the input images are in JPEG format (.jpg).
+        - The 'save_path' folder will be created if it does not exist.
+    """
+
+    # list of all files
+    all_files = os.listdir(folder_path)
+
+    # Image files
+    image_files = [f for f in all_files if f.lower().endswith(('.jpg'))]
+
+    # Making sure save_path exists
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # Iterating over images
+    for img_name in image_files:
+        # Reading the image
+        img = cv2.imread(os.path.join(folder_path, img_name))
+
+        # full size of the image
+        width, height = img.shape[:2]
+
+        # converting to gray scale to threshold white padding
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Padding the gray image with a white rectangle around the full image to
+        # make sure there is at least this contour to find
+        border_size = 1
+        gray = cv2.copyMakeBorder(gray, border_size, border_size, border_size,
+                                  border_size, cv2.BORDER_CONSTANT,
+                                  value=[255, 255, 255])
+
+        # Threshold the image to get binary image (white pixels will be black)
+        _, thresh = cv2.threshold(gray, 254, 255, cv2.THRESH_BINARY_INV)
+
+        # Finding the contours of the non-white area
+        contours, _ = cv2.findContours(
+            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            # Getting the bounding rectangle for the largest contour, if contours
+            # is not empty
+            x, y, width_actual, height_actual = cv2.boundingRect(
+                max(contours, key=cv2.contourArea))
+
+            # Compute scaling factors along x and y depending on the largest dim
+            if width_actual >= height_actual:
+                scale_x = width / width_actual
+                scale_y = scale_x
+            else:
+                scale_y = height / height_actual
+                scale_x = scale_y
+
+            # Cropping and resizing the image
+            img = img[y:y+height_actual, x:x+width_actual]
+            img = cv2.resize(img, (0, 0), fx=scale_x, fy=scale_y)
+
+            # Padding the image with white to reach original dimension
+            # (usually 500 x 500)
+            pad_top = (height - img.shape[0]) // 2
+            pad_bottom = height - img.shape[0] - pad_top
+            pad_left = (width - img.shape[1]) // 2
+            pad_right = width - img.shape[1] - pad_left
+            img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left,
+                                     pad_right, cv2.BORDER_CONSTANT,
+                                     value=[255, 255, 255])
+        # Saving the resized image to the same folder with the suffix "_resized"
+        output_path = os.path.join(
+            save_path, os.path.splitext(img_name)[0] + '_resized.jpg')
+        cv2.imwrite(output_path, img)
