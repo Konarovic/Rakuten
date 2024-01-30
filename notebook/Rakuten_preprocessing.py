@@ -70,13 +70,13 @@ from wordcloud import WordCloud
 import re
 from collections import Counter
 from bs4 import BeautifulSoup
-import langid
+#import langid
+import py3langid as langid
 from spellchecker import SpellChecker
 import spacy
 import nltk
 import os
 import pandas as pd
-import swifter
 import numpy as np
 
 import unidecode
