@@ -1,4 +1,4 @@
-name: Rakuten
+name: Rakuten2
 channels:
   - defaults
 dependencies:
@@ -208,11 +208,8 @@ dependencies:
       - contourpy==1.2.0
       - cycler==0.12.1
       - cymem==2.0.8
-      - de-core-news-sm==3.7.0
-      - en-core-web-sm==3.7.1
       - filelock==3.13.1
       - fonttools==4.47.2
-      - fr-core-news-sm==3.7.0
       - fsspec==2023.12.2
       - huggingface-hub==0.20.3
       - inexactsearch==1.0.2
