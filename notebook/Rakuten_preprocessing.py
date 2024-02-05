@@ -139,6 +139,19 @@ def Rakuten_target_factorize(code):
     return code
 
 
+def Rakuten_txt_preprocessing(data):
+    data[['designation', 'description']] = Rakuten_txt_cleanup(
+        data[['designation', 'description']])
+    data['language'] = Rakuten_txt_language(
+        data[['designation', 'description']], method='langid')
+    data[['designation', 'description']] = Rakuten_txt_fixencoding(
+        data[['designation', 'description']], data['language'])
+    tokens_designation = Rakuten_txt_tokenize(
+        data['designation'], data['language'], method='nltk')
+    tokens_description = Rakuten_txt_tokenize(
+        data['description'], data['language'], method='nltk')
+
+
 def Rakuten_txt_cleanup(data):
     """
     Clean up text data by removing HTML tags, URLs, and filenames.
@@ -180,7 +193,7 @@ def Rakuten_txt_cleanup(data):
     spacearound = []
     # Add spaces around numbers and punctuations except ', / and ¿
     spacearound.append(
-        r'(\d+|[-.,!¡;；:¯…„“\§«»—°•®£❤☆(){}\[\]"@#$%^&*+=|<>~`‘’¬])')
+        r'(\d+|[-.,!¡;；:¯…„“\§«»—°•£❤☆(){}\[\]"@#$%^&*+=|<>~`‘’¬])')
     # Converting spacearound to regex pattern object
     spacearound = re.compile('|'.join(spacearound))
 
@@ -241,13 +254,13 @@ def txt_cleanup(txt, subregex, spacearound, spacebefore):
         txt = subregex.sub(' ', txt)
 
         # Split according to spacearound
-        txt = spacearound.sub(r' \1 ', txt)
+        #txt = spacearound.sub(r' \1 ', txt)
 
         # Add space before according to spacebefore
         txt = spacebefore.sub(r' \1', txt)
 
         # cleaning up extra spaces
-        txt = re.sub(r'\s+', ' ', txt).strip()
+        # txt = re.sub(r'\s+', ' ', txt).strip()
 
         # removing all text shorter than 4 characters (eg ..., 1), -, etc)
         if len(txt.strip()) < 4:
@@ -335,17 +348,21 @@ def txt_fixencoding(txt, lang, spellers):
                     'v¿ux': 'voeux', 's¿ur': 'soeur', '¿il': 'oeil',
                     'man¿uvre': 'manoeuvre',
                     '¿ºtre': 'être', 'à¢me': 'âme',
-                    'm¿ºme': 'même', 'grà¢ce': 'grâce',
+                    'm¿ºme': 'même', 'grà¢ce': 'grâçe',
                     'con¿u': 'conçu', 'don¿t': "don't",
                     'lorsqu¿': "lorsqu'", 'jusqu¿': "jusqu'",
                     'durabilit¿avec': 'durabilité avec',
                     'dâ¿hygiène': "d'hygiène", 'à¿me': 'âme',
                     'durabilit¿': 'durabilité', 'm¿urs': 'moeurs',
                     'd¿coration': 'décoration', 'tiss¿e': 'tissée',
-                    '¿cran': 'écran',
+                    '¿cran': 'écran', '¿Lastique': 'élastique',
+                    '¿Lectronique': 'électronique', 'Capacit¿': 'capacité',
+                    'li¿ge': 'liège', 'Kã?Â¿Rcher': 'karcher',
+                    'Ber¿Ante': 'berçante',
 
                     'durabilitéavec': 'durabilité avec',
-                    'cahiercaract?re': 'cahier caractère',
+                    'cahiercaract¿re': 'cahier caractère',
+                    'Cahierembl¿Me': 'Cahier emblème',
 
                     'c?ur': 'coeur', '?uvre': 'oeuvre', '?uf': 'oeuf',
                     'n?ud': 'noeud', '?illets': 'oeillets',
@@ -359,7 +376,13 @@ def txt_fixencoding(txt, lang, spellers):
                     'dâ?hygiène': "d'hygiène", 'à?me': 'âme',
                     'durabilit?': 'durabilité', 'm?urs': 'moeurs',
                     'd?coration': 'décoration', 'tiss?e': 'tissée',
-                    '?cran': 'écran'}
+                    '?cran': 'écran', '?Lastique': 'élastique',
+                    '?Lectronique': 'électronique', 'Capacit?': 'capacité',
+                    'li?ge': 'liège', 'Ber?Ante': 'berçante',
+                    "Lâ¿¿Incroyable": "l'incroyable", 'Creì¿Ateur': 'créateur',
+
+                    'cahiercaract?re': 'cahier caractère',
+                    'Cahierembl?Me': 'Cahier emblème'}
 
     for badword, correction in replace_dict.items():
         txt = re.sub(re.escape(badword), correction, txt, flags=re.IGNORECASE)
@@ -370,10 +393,12 @@ def txt_fixencoding(txt, lang, spellers):
     txt = re.sub(pattern, 'durabilité avec', txt)
     pattern = re.escape('cahiercaractère')
     txt = re.sub(pattern, 'cahier caractère', txt)
+    pattern = re.escape('Cahieremblème')
+    txt = re.sub(pattern, 'cahier emblème', txt)
 
     # Replacing badly encoded character by apostrophe when following in second
     # position a d, l, c or n.
-    pattern = r'\b([dlcn])[¿?](?=[aeiouy])'
+    pattern = r'\b([dlcn])[¿?](?=[aeiouyh])'
     txt = re.sub(pattern, r"\1'", txt, flags=re.IGNORECASE)
 
     # Replacing badly encoded character by apostrophe when following in third
@@ -438,8 +463,6 @@ def Rakuten_txt_language(data, method='langid'):
     Usage:
     languages = Rakuten_txt_language(dataframe_with_text_columns)
     """
-    # Subsetting possible languages
-    langid.set_languages(['fr', 'en', 'de'])
 
     # concatenating text from multiple columns if necessary to get a series
     if data.ndim == 2:
@@ -453,6 +476,8 @@ def Rakuten_txt_language(data, method='langid'):
     # langid.classify(row) returns ('language', score). We only keep the
     # language here
     if method == 'langid':
+        # Subsetting possible languages
+        langid.set_languages(['fr', 'en', 'de'])
         lang = data.apply(lambda row: langid.classify(row)[0])
 
     elif method == 'pyspell':
@@ -593,7 +618,7 @@ def tokens_from_spacy(txt, lang, nlpdict):
         # returning result as a single string
         return ' '.join(filtered_tokens)
     else:
-        # Return empty lists if the input is not a string
+        # Return nan if the input is not a string
         return np.nan
 
 
@@ -624,7 +649,7 @@ def tokens_from_nltk(txt, lang):
                            and token.lower()
                            not in stop_words
                            and len(token) > 2
-                           and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
+                           and any(vowel in token.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
 
         # Keeping a unique list of tokens, in the same order they appeared in
         # the text
@@ -636,7 +661,7 @@ def tokens_from_nltk(txt, lang):
         return ' '.join(filtered_tokens)
     else:
         # Return empty lists if the input is not a string
-        return ''
+        return np.nan
 
 
 def merge_tokens(*args):
