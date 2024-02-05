@@ -146,10 +146,6 @@ def Rakuten_txt_preprocessing(data):
         data[['designation', 'description']], method='langid')
     data[['designation', 'description']] = Rakuten_txt_fixencoding(
         data[['designation', 'description']], data['language'])
-    tokens_designation = Rakuten_txt_tokenize(
-        data['designation'], data['language'], method='nltk')
-    tokens_description = Rakuten_txt_tokenize(
-        data['description'], data['language'], method='nltk')
 
 
 def Rakuten_txt_cleanup(data):
@@ -605,7 +601,7 @@ def tokens_from_spacy(txt, lang, nlpdict):
         filtered_tokens = [token.lemma_.lower()
                            for token in tokens
                            if token.is_alpha
-                           and not token.is_stop
+                           and not token.is_stop  # is stop is too general: parler is a stopword!!
                            and len(token) > 2
                            and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
 
