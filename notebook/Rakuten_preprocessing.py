@@ -791,7 +791,7 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
     translator = Translator()
 
     # Translating text
-    return data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else row.text_clean, axis=1)
+    return data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else (row.iloc[0] if pd.isna(row.iloc[0]) == False else np.nan), axis=1)
 
 
 def txt_translate(translator, text, target_lang):
@@ -811,8 +811,11 @@ def txt_translate(translator, text, target_lang):
     """
     # Checking if googletrans has been installed
     try:
-        translated = translator.translate(text, dest=target_lang).text
-        return translated
+        if pd.isna(text):
+            return np.nan
+        else:
+            translated = translator.translate(text, dest=target_lang).text
+            return translated
     except ImportError:
         print('translation error for : ' + text)
 
