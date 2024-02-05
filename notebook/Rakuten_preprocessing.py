@@ -9,7 +9,6 @@ lemmatize text, and perform word count analysis.
 
 Usage:
     import Rakuten_preprocessing as rkt
-
     - data = rkt.Rakuten_txt_import('../Data/')
 
     - data['designation'] = rkt.Rakuten_txt_cleanup(data['designation'])
@@ -33,7 +32,6 @@ Usage:
 
     - data['image_path'] = rkt.Rakuten_img_path('../Data/images/image_train/',
                                             data['imageid'], data['productid'])
-
     - data = data.join(rkt.Rakuten_img_size(data['image_path']))
 
     - #Proportion of each tokens across all product of each category
@@ -574,10 +572,6 @@ def Rakuten_txt_tokenize(data, lang=None, method='spacy'):
     return data
 
 
-def Rakuten_txt_translate(txt):
-    """  """
-
-
 def tokens_from_spacy(txt, lang, nlpdict):
     """
     Generate a list of unique word tokens from a text string using spaCy.
@@ -730,6 +724,99 @@ def Rakuten_txt_wordcount(data, nmax_words=None, Normalize=False):
     wordlist = wordlist[idx].tolist()
 
     return countlist, wordlist
+
+
+def Rakuten_txt_wordcloud(data, token_col_name, categories):
+    plt_rows = len(categories)
+    plt_idx = 0
+    fig, axs = plt.subplots(plt_rows, 1, figsize=(12, 6*plt_rows))
+    stopwords = set(STOPWORDS)
+    for code in categories.index:
+        img = Image.open('./wordcloud-masks/console.jpg')
+        mask_coloring = np.array(img)
+        wordcloud = WordCloud(
+                        background_color='white',
+                        mask=mask_coloring,
+                        min_font_size=5,
+                        max_font_size=30,
+                        contour_width=1,
+                        random_state=42,
+                        max_words=4000,
+                        stopwords=stopwords,
+                    ).generate(' '.join(data[data.prdtypecode == code][token_col_name]))
+        # img_colors=ImageColorGenerator(mask_coloring)
+        # axs[plt_idx].imshow(wordcloud.recolor(color_func=img_colors), interpolation="bilinear")
+        wc_img = Image.fromarray(wordcloud.to_array())
+        # back_img= img.resize(wc_img.size)
+        # img_new = Image.alpha_composite(back_img, wc_img)
+        axs[plt_idx].imshow(wc_img)
+        axs[plt_idx].set_title(str(code) + ' ' + categories.loc[code][0])
+        axs[plt_idx].axis("off")
+        plt_idx += 1
+
+    plt.tight_layout()
+    plt.show()
+
+
+def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
+    """
+    Translate text data from German or English to French using Google Translate.
+
+    Parameters:
+    data (DataFrame or Series): Text data to translate.
+
+    Returns:
+    DataFrame or Series: Translated text data.
+
+    Usage:
+    translated_data = Rakuten_txt_translate(data_with_text)
+    """
+    # Checking if googletrans has been installed
+    try:
+        from googletrans import Translator
+    except ImportError:
+        print('googletrans not installed. Please install it using pip.')
+
+    if lang is None:
+        lang = Rakuten_txt_language(data)
+
+    # concatenating text from multiple columns if necessary
+    if data.ndim > 1:
+        data = data.apply(lambda row: ' '.join(
+            [s for s in row if isinstance(s, str)]), axis=1)
+
+    # joining text and language data
+    data = pd.concat([data, lang], axis=1)
+    # Instantiating translator
+    translator = Translator()
+
+    # Translating text
+    return data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else row.text_clean, axis=1)
+
+
+def txt_translate(translator, text, target_lang):
+    """
+    Translate a text string from German or English to French using Google Translate.
+
+    Parameters:
+    translator (googletrans.Translator): Translator object.
+    text (str): Text string to translate.
+    target_lang (str): Target language code.
+
+    Returns:
+    str: Translated text string.
+
+    Usage:
+    translated_text = txt_translate(translator, text_to_translate, 'fr')
+    """
+    # Checking if googletrans has been installed
+    try:
+        translated = translator.translate(text, dest=target_lang).text
+        return translated
+    except ImportError:
+        print('translation error for : ' + text)
+
+    return ''
 
 
 def Rakuten_img_path(img_folder, imageid, productid):
