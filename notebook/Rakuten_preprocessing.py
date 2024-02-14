@@ -66,6 +66,7 @@ Dependencies:
 @author: Julien Fournier
 """
 from functools import lru_cache
+from textwrap import indent
 
 import cv2
 from wordcloud import WordCloud
@@ -492,12 +493,9 @@ def Rakuten_txt_language(data, method='langid'):
             'dbmdz/bert-base-french-europeana-cased')
         tokenizer_de = BertTokenizer.from_pretrained('bert-base-german-cased')
 
-        err_fr = data.apply(lambda row: ' '.join(
-            tokenizer_fr.convert_ids_to_tokens(tokenizer_fr(row)['input_ids'])))
-        err_en = data.apply(lambda row: ' '.join(
-            tokenizer_en.convert_ids_to_tokens(tokenizer_en(row)['input_ids'])))
-        err_de = data.apply(lambda row: ' '.join(
-            tokenizer_de.convert_ids_to_tokens(tokenizer_de(row)['input_ids'])))
+        err_fr = data.apply(lambda row: ' '.join(tokenizer_fr.convert_ids_to_tokens(tokenizer_fr(row)['input_ids'])))
+        err_en = data.apply(lambda row: ' '.join(tokenizer_en.convert_ids_to_tokens(tokenizer_en(row)['input_ids'])))
+        err_de = data.apply(lambda row: ' '.join(tokenizer_de.convert_ids_to_tokens(tokenizer_de(row)['input_ids'])))
         lang = pd.concat([err_fr.rename('fr'), err_en.rename(
             'en'), err_de.rename('de')], axis=1)
         lang = lang.idxmin(axis=1)
@@ -505,7 +503,7 @@ def Rakuten_txt_language(data, method='langid'):
     return lang
 
 
-def Rakuten_txt_tokenize(data, lang=None, method='spacy'):
+def Rakuten_txt_tokenize(data, lang=None, method='nltk'):
     """
     Tokenize and lemmatize text data, returning a list of unique tokens, in the
     same order they appeared.
@@ -521,14 +519,17 @@ def Rakuten_txt_tokenize(data, lang=None, method='spacy'):
     Usage:
     tokenized_data = Rakuten_txt_tokenize(data, language_series)
     """
-
+    #running language detection if language is not provided
     if lang is None:
         lang = Rakuten_txt_language(data)
+    
+    #if lang is passed as a string in stead of a series, convert it to a series
+    if isinstance(lang, str):
+        lang = pd.Series(lang, index=data.index)
 
     # concatenating text from multiple columns if necessary
     if data.ndim > 1:
-        data = data.apply(lambda row: ' '.join(
-            [s for s in row if isinstance(s, str)]), axis=1)
+        data = data.apply(lambda row: ' '.join([s for s in row if isinstance(s, str)]), axis=1)
 
     # joining text and language data
     data = pd.concat([data, lang], axis=1)
@@ -566,8 +567,7 @@ def Rakuten_txt_tokenize(data, lang=None, method='spacy'):
             data.iloc[:, 1] = data.iloc[:, 1].replace(language_mapping)
 
             # Applying tokenisation using spacy
-            data = data.apply(lambda row: tokens_from_nltk(
-                row.iloc[0], row.iloc[1]), axis=1)
+            data = data.apply(lambda row: tokens_from_nltk(row.iloc[0], row.iloc[1]), axis=1)
 
     return data
 
