@@ -139,12 +139,9 @@ def Rakuten_target_factorize(code):
 
 
 def Rakuten_txt_preprocessing(data):
-    data[['designation', 'description']] = Rakuten_txt_cleanup(
-        data[['designation', 'description']])
-    data['language'] = Rakuten_txt_language(
-        data[['designation', 'description']], method='langid')
-    data[['designation', 'description']] = Rakuten_txt_fixencoding(
-        data[['designation', 'description']], data['language'])
+    data[['designation', 'description']] = Rakuten_txt_cleanup(data[['designation', 'description']])
+    data['language'] = Rakuten_txt_language(data[['designation', 'description']], method='langid')
+    data[['designation', 'description']] = Rakuten_txt_fixencoding(data[['designation', 'description']], data['language'])
 
 
 def Rakuten_txt_cleanup(data):
@@ -778,7 +775,7 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
         print('googletrans not installed. Please install it using pip.')
 
     if lang is None:
-        lang = Rakuten_txt_language(data)
+        lang = pd.Series(None, index=data.index)
 
     # concatenating text from multiple columns if necessary
     if data.ndim > 1:
@@ -786,12 +783,16 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
             [s for s in row if isinstance(s, str)]), axis=1)
 
     # joining text and language data
-    data = pd.concat([data, lang], axis=1)
+    data = pd.concat([data, lang], axis=1, keys=['text', 'language'])
+    
     # Instantiating translator
     translator = Translator()
-
+    
     # Translating text
-    return data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else (row.iloc[0] if pd.isna(row.iloc[0]) == False else np.nan), axis=1)
+    #data_trans = data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else (row.iloc[0] if pd.isna(row.iloc[0]) == False else np.nan), axis=1)
+    data.loc[data['language'] != target_lang, 'text'] = data[data['language'] != target_lang].apply(lambda row: txt_translate(translator, row.iloc[0], target_lang), axis=1)
+    
+    return data['text']
 
 
 def txt_translate(translator, text, target_lang):
