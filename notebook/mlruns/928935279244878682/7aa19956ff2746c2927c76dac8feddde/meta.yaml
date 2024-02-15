@@ -1,0 +1,16 @@
+artifact_uri: file:///c:/Users/justj/Documents/GitHub/RakutenTeam/notebook/mlruns/928935279244878682/7aa19956ff2746c2927c76dac8feddde/artifacts
+deleted_time: 1707919980614
+end_time: 1707918625245
+entry_point_name: ''
+experiment_id: '928935279244878682'
+lifecycle_stage: deleted
+run_id: 7aa19956ff2746c2927c76dac8feddde
+run_name: likeable-whale-979
+run_uuid: 7aa19956ff2746c2927c76dac8feddde
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1707918431892
+status: 4
+tags: []
+user_id: justj

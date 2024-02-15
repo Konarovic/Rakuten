@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1707918666085
+current_stage: None
+description: null
+last_updated_timestamp: 1707918666085
+name: svc_txt_test
+run_id: eb3af6005a69494c8998d4ad42fed775
+run_link: null
+source: file:///c:/Users/justj/Documents/GitHub/RakutenTeam/notebook/mlruns/928935279244878682/eb3af6005a69494c8998d4ad42fed775/artifacts/svc_txt_model
+status: READY
+status_message: null
+storage_location: file:///c:/Users/justj/Documents/GitHub/RakutenTeam/notebook/mlruns/928935279244878682/eb3af6005a69494c8998d4ad42fed775/artifacts/svc_txt_model
+user_id: null
+version: 1
