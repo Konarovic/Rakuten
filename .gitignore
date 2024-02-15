@@ -2,5 +2,6 @@ data/images/
 notebook/.ipynb_checkpoints/
 notebook/__pycache__/
 envs/
+env/
 .vscode/
 *.draft
