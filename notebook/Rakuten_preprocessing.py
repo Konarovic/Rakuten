@@ -755,7 +755,7 @@ def Rakuten_txt_wordcloud(data, token_col_name, categories):
     plt.show()
 
 
-def Rakuten_txt_translate(data, lang=None, target_lang='fr', lib='googletrans'):
+def Rakuten_txt_translate(data, lang=None, target_lang='fr', lib='googletrans', batch_size=100, wait_time=1):
     """
     Translate text data from German or English to French using Google Translate.
 
@@ -768,6 +768,8 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr', lib='googletrans'):
     Usage:
     translated_data = Rakuten_txt_translate(data_with_text)
     """
+    import time
+    
     # Checking if googletrans has been installed
     try:
         if lib == 'googletrans':
@@ -797,10 +799,14 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr', lib='googletrans'):
     else:
         translator = GoogleTranslator(source='auto', target=target_lang)
     
-    # Translating text
-    #data_trans = data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else (row.iloc[0] if pd.isna(row.iloc[0]) == False else np.nan), axis=1)
-    idx = (data['language'] != target_lang) & (~data['text'].isna())
-    data.loc[idx, 'text'] = data[idx].apply(lambda row: txt_translate(translator, row.iloc[0], target_lang, lib), axis=1)
+    # Translating text in batch of batch_size, waiting wait_time seconds in between 
+    # to avoid being blocked
+    idx = data.index[(data['language'] != target_lang) & (~data['text'].isna())]
+    n_txt = len(idx)
+    for k in range(n_txt // batch_size + 1):
+        batch_idx = idx[k*batch_size:min([(k+1)*batch_size, n_txt])]
+        data.loc[batch_idx, 'text'] = data.loc[batch_idx, 'text'].apply(lambda row: txt_translate(translator, row, target_lang, lib))
+        time.sleep(wait_time)
     
     return data['text']
 
