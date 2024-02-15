@@ -755,7 +755,7 @@ def Rakuten_txt_wordcloud(data, token_col_name, categories):
     plt.show()
 
 
-def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
+def Rakuten_txt_translate(data, lang=None, target_lang='fr', lib='googletrans'):
     """
     Translate text data from German or English to French using Google Translate.
 
@@ -770,9 +770,15 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
     """
     # Checking if googletrans has been installed
     try:
-        from googletrans import Translator
+        if lib == 'googletrans':
+            from googletrans import Translator
+        else:
+            from deep_translator import GoogleTranslator
     except ImportError:
-        print('googletrans not installed. Please install it using pip.')
+        if lib == 'googletrans':
+            print('googletrans not installed. Please install it using pip.')
+        else:
+            print('deep_translator not installed. Please install it using pip.')
 
     if lang is None:
         lang = pd.Series(None, index=data.index)
@@ -786,16 +792,20 @@ def Rakuten_txt_translate(data, lang=None, target_lang='fr'):
     data = pd.concat([data, lang], axis=1, keys=['text', 'language'])
     
     # Instantiating translator
-    translator = Translator()
+    if lib == 'googletrans':
+        translator = Translator()
+    else:
+        translator = GoogleTranslator(source='auto', target=target_lang)
     
     # Translating text
     #data_trans = data.apply(lambda row: txt_translate(translator, row.iloc[0], target_lang) if row.iloc[1] != target_lang else (row.iloc[0] if pd.isna(row.iloc[0]) == False else np.nan), axis=1)
-    data.loc[data['language'] != target_lang, 'text'] = data[data['language'] != target_lang].apply(lambda row: txt_translate(translator, row.iloc[0], target_lang), axis=1)
+    idx = (data['language'] != target_lang) & (~data['text'].isna())
+    data.loc[idx, 'text'] = data[idx].apply(lambda row: txt_translate(translator, row.iloc[0], target_lang, lib), axis=1)
     
     return data['text']
 
 
-def txt_translate(translator, text, target_lang):
+def txt_translate(translator, text, target_lang, lib='googletrans'):
     """
     Translate a text string from German or English to French using Google Translate.
 
@@ -815,7 +825,10 @@ def txt_translate(translator, text, target_lang):
         if pd.isna(text):
             return np.nan
         else:
-            translated = translator.translate(text, dest=target_lang).text
+            if lib == 'googletrans':
+                translated = translator.translate(text, dest=target_lang).text
+            else:
+                translated = translator.translate(text)
             return translated
     except ImportError:
         print('translation error for : ' + text)
