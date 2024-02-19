@@ -11,8 +11,8 @@ class YearExtractor(BaseEstimator, TransformerMixin):
     
     def transform(self, X):
         year_pattern = r"(1[6-9][0-9]{2}|20[0-1][0-9]|202[0-4])"
-        years = X[self.text_column].str.extract(year_pattern, expand=False).fillna(0).astype("uint16").to_frame("year")
-        years["has_year"] = years["year"] != 0
+        years = X[self.text_column].str.extract(year_pattern, expand=False).fillna(0).astype("uint16").to_frame("year_val")
+        years["has_year"] = (years["year_val"] != 0).astype("int8")
         return years
     
 class NumberExtractor(BaseEstimator, TransformerMixin):
@@ -25,11 +25,11 @@ class NumberExtractor(BaseEstimator, TransformerMixin):
     
     def transform(self, X):
         number_pattern = r"([Nn]\s?°\s?\d+)"
-        numbers = X[self.text_column].str.extract(number_pattern, expand=False).notna().rename("has_number")
+        numbers = X[self.text_column].str.extract(number_pattern, expand=False).notna().rename("has_number").astype("int8")
         return numbers
     
 
-class ExtractHashtagNumber(BaseEstimator, TransformerMixin):
+class HashtagNumberExtractor(BaseEstimator, TransformerMixin):
     """Extracts the number of hashtags from a text column and returns a boolean column indicating if the text contains a hashtag."""
     def __init__(self, text_column):
         self.text_column = text_column
@@ -39,5 +39,5 @@ class ExtractHashtagNumber(BaseEstimator, TransformerMixin):
     
     def transform(self, X):
         hashtag_pattern = r"(#[\d\s\-]+)"
-        hashtags = X[self.text_column].str.extract(hashtag_pattern, expand=False).notna().rename("has_hashtag")
+        hashtags = X[self.text_column].str.extract(hashtag_pattern, expand=False).notna().rename("has_hashtag").astype("int8")
         return hashtags
