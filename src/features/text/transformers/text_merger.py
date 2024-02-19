@@ -1,5 +1,7 @@
 from sklearn.base import BaseEstimator, TransformerMixin
-"""Merges the designation and description columns into a single column."""
+
+class TextMerger(BaseEstimator, TransformerMixin):
+    """Merges the designation and description columns into a single column."""
     def __init__(self, designation_column: str, description_column: str, merged_column: str):
         self.designation_column = designation_column
         self.description_column = description_column
