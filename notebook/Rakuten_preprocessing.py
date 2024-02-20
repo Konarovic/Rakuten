@@ -842,7 +842,7 @@ def txt_translate(translator, text, target_lang, lib='googletrans'):
     return ''
 
 
-def Rakuten_img_path(img_folder, imageid, productid):
+def Rakuten_img_path(img_folder, imageid, productid, suffix=''):
     """ retrurns the path to the image of a given productid and imageid"""
 
     df = pd.DataFrame(pd.concat([imageid, productid], axis=1))
@@ -852,6 +852,7 @@ def Rakuten_img_path(img_folder, imageid, productid):
                                      + str(row['imageid'])
                                      + '_product_'
                                      + str(row['productid'])
+                                     + suffix
                                      + '.jpg'),
                         axis=1)
 
