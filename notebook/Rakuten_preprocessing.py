@@ -916,7 +916,7 @@ def get_img_size(img_path):
     return [width, height, width_actual, height_actual]
 
 
-def img_resize(folder_path, save_path='./resized/'):
+def img_resize(folder_path, save_path='./resized/', bordertype='white', padding=True, suffix='_new'):
     """
     Resize image files in a specified folder to remove extra padding areas and resize the image
 
@@ -970,7 +970,7 @@ def img_resize(folder_path, save_path='./resized/'):
                                   value=[255, 255, 255])
 
         # Threshold the image to get binary image (white pixels will be black)
-        _, thresh = cv2.threshold(gray, 254, 255, cv2.THRESH_BINARY_INV)
+        _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
 
         # Finding the contours of the non-white area
         contours, _ = cv2.findContours(
@@ -990,19 +990,27 @@ def img_resize(folder_path, save_path='./resized/'):
                 scale_x = scale_y
 
             # Cropping and resizing the image
-            img = img[y:y+height_actual, x:x+width_actual]
+            img = img[y+1:y+height_actual-1, x+1:x+width_actual-1] #+/-1 to remove the white border we added earlier
             img = cv2.resize(img, (0, 0), fx=scale_x, fy=scale_y)
-
-            # Padding the image with white to reach original dimension
-            # (usually 500 x 500)
-            pad_top = (height - img.shape[0]) // 2
-            pad_bottom = height - img.shape[0] - pad_top
-            pad_left = (width - img.shape[1]) // 2
-            pad_right = width - img.shape[1] - pad_left
-            img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left,
-                                     pad_right, cv2.BORDER_CONSTANT,
-                                     value=[255, 255, 255])
-        # Saving the resized image to the same folder with the suffix "_resized"
+            
+            if padding:
+                # Padding the image with white to reach original dimension
+                # (usually 500 x 500)
+                pad_top = (height - img.shape[0]) // 2
+                pad_bottom = height - img.shape[0] - pad_top
+                pad_left = (width - img.shape[1]) // 2
+                pad_right = width - img.shape[1] - pad_left
+                if bordertype == 'white':
+                    border = cv2.BORDER_CONSTANT
+                elif bordertype == 'replicate':
+                    border = cv2.BORDER_REPLICATE
+                elif bordertype == 'reflect':
+                    border = cv2.BORDER_REFLECT_101
+                    
+                img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left,
+                                        pad_right, border,
+                                        value=[255, 255, 255])
+        # Saving the resized image to the save folder with a suffix
         output_path = os.path.join(
-            save_path, os.path.splitext(img_name)[0] + '_resized.jpg')
+            save_path, os.path.splitext(img_name)[0] + suffix + '.jpg')
         cv2.imwrite(output_path, img)
