@@ -1,16 +1,19 @@
 from sklearn.pipeline import Pipeline
-from src.features.text.transformers.cleaners import HtmlCleaner, LxmlCleaner, UrlCleaner, FileNameCleaner, BadHTMLCleaner, SpaceBeforeAdder, SpaceAroundAdder
+from src.features.text.transformers.cleaners import HtmlCleaner, LxmlCleaner, UrlCleaner, FileNameCleaner, BadHTMLCleaner, SpaceBeforeAdder, SpaceAroundAdder, ShortTextCleaner, ExtraSpacesCleaner
 
 class CleanTextPipeline(Pipeline):
     def __init__(self):
         super().__init__(
             steps=[
-                ("HTML_Cleaner", HtmlCleaner()),
-                ("LXML_Cleaner", LxmlCleaner()),
-                ("URL_Cleaner", UrlCleaner()),
-                ("File_Name_Cleaner", FileNameCleaner()),
-                ("Bad_HTML_Cleaner", BadHTMLCleaner()),
-                ("Space_Before_Adder", SpaceBeforeAdder())
+                ("Clean HTML", HtmlCleaner()),
+                ("Clean LXML", LxmlCleaner()),
+                ("Clean URLs", UrlCleaner()),
+                ("Clean File names", FileNameCleaner()),
+                ("Clean Bad HTML", BadHTMLCleaner()),
+                ("Add Spaces Before specific patterns", SpaceBeforeAdder()),
+                ("Clean Extra Spaces", ExtraSpacesCleaner()),
+                ("Remove short text", ShortTextCleaner()),
+                
             ]
         )
 
