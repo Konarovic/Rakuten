@@ -94,17 +94,6 @@ def txt_cleanup(txt, subregex, spacearound, spacebefore):
     cleaned_text = txt_cleanup(some_text, subregex, splitregex)
     """
     if isinstance(txt, str):
-        # Convert HTML markups
-        soup = BeautifulSoup(txt, 'html.parser')
-        txt = soup.get_text(separator=' ')
-
-        # Convert lxml markers
-        soup = BeautifulSoup(txt, 'lxml')
-        txt = soup.get_text(separator=' ')
-
-        # Remove according to subregex
-        txt = subregex.sub(' ', txt)
-
         # Split according to spacearound
         #txt = spacearound.sub(r' \1 ', txt)
 
@@ -367,8 +356,31 @@ class FileNameCleaner(TextCleaner):
     """A transformer to clean Filenames from text"""
     def __init__(self) -> None:
         super().__init__(r'\b(?<!\d\.)\w+\.(txt|jpg|png|docx|pdf)\b')
+        
 
 class BadHTMLCleaner(TextCleaner):
     """A transformer to clean Bad HTML from text"""
     def __init__(self) -> None:
         super().__init__(r'nbsp|&amp|& nbsp|')
+
+
+class SpaceAroundAdder(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.pattern = re.compile(r'(\d+|[-.,!¡;；:¯…„“\§«»—°•£❤☆(){}\[\]"@#$%^&*+=|<>~`‘’¬])')
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        return X.str.replace(pat=self.pattern, repl=r" \1 ", regex=True)
+    
+
+class SpaceBeforeAdder(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.pattern = re.compile(r'(?<=[a-zÀ-ÿ]|[.,!;:\§«»°])([A-Z])(?=[a-zÀ-ÿ])')
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        return X.str.replace(pat=self.pattern, repl=r" \1", regex=True)
