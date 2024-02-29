@@ -118,15 +118,6 @@ def Rakuten_target_factorize(code):
     return code
 
 
-def Rakuten_txt_preprocessing(data):
-    data[['designation', 'description']] = Rakuten_txt_cleanup(
-        data[['designation', 'description']])
-    data['language'] = Rakuten_txt_language(
-        data[['designation', 'description']], method='langid')
-    data[['designation', 'description']] = Rakuten_txt_fixencoding(
-        data[['designation', 'description']], data['language'])
-
-
 
 
 def Rakuten_txt_fixencoding(data, lang):
