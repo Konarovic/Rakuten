@@ -8,6 +8,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from vit_keras import vit
 
 import numpy as np
+import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 
@@ -28,6 +29,7 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
     attention_mask = Input(shape=(max_length,), dtype='int32', name='attention_mask')
 
     #Bert transformer model
+    txt_base_model._name = 'bert_layers'
     txt_transformer_layer = txt_base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
     txt_output = txt_transformer_layer[0][:, 0, :]
     # x = Dense(128, activation='relu', name='Dense_txt_1')(x)
@@ -50,7 +52,6 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
     model = Model(inputs=[txt_model.input, img_model.input], outputs=outputs)
     
     if from_trained is not None:
-        script_dir = os.path.dirname(os.path.realpath(__file__))
         if isinstance(from_trained, dict):
             if 'text' in from_trained.keys():
                 txt_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained['text'])
@@ -71,14 +72,12 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
 from keras.utils import Sequence
 
 class MultimodalDataGenerator(Sequence):
-    def __init__(self, img_data_generator, dataframe, text_column, batch_size, img_dir, x_col="filename", y_col="class", target_size = (224, 224), shuffle=True):
+    def __init__(self, img_data_generator, img_path, text_tokenized, labels, batch_size=32, target_size = (224, 224), shuffle=True):
         self.img_data_generator = img_data_generator
-        self.dataframe = dataframe.rename(columns={x_col: 'filename'})#dataframe.copy()
-        self.text_column = text_column
+        self.dataframe = pd.DataFrame({'filename':img_path})#dataframe.copy()
+        self.text_tokenized = text_tokenized
+        self.labels = labels
         self.batch_size = batch_size
-        self.img_dir = img_dir
-        self.x_col = x_col
-        self.y_col = y_col
         self.target_size = target_size
         self.shuffle = shuffle
         self.indexes = np.arange(len(self.dataframe))
@@ -90,18 +89,22 @@ class MultimodalDataGenerator(Sequence):
 
     def __getitem__(self, index):
         batch_indexes = self.indexes[index*self.batch_size:min((index + 1) * self.batch_size, len(self.dataframe))]
+        batch_indexes_tensor = tf.convert_to_tensor(batch_indexes, dtype=tf.int32)
+        
         batch_df = self.dataframe.iloc[batch_indexes]
         
-        img_generator = self.img_data_generator.flow_from_dataframe(dataframe=batch_df, directory=self.img_dir, target_size=self.target_size,
+        img_generator = self.img_data_generator.flow_from_dataframe(dataframe=batch_df, target_size=self.target_size,
                                                                     x_col="filename", y_col=None,class_mode=None,
                                                                     batch_size=len(batch_df), shuffle=False)
         
         images = np.concatenate([img_generator.next() for _ in range(len(img_generator))], axis=0)
         
-        texts = batch_df[self.text_column].values
-        labels = batch_df[self.y_col].values
+        token_ids = tf.gather(self.text_tokenized['input_ids'], batch_indexes_tensor, axis=0)
+        attention_mask = tf.gather(self.text_tokenized['attention_mask'], batch_indexes_tensor, axis=0)
         
-        return [images, texts], labels
+        labels = self.labels[batch_indexes].values
+        
+        return [{"input_ids": token_ids, "attention_mask": attention_mask}, images], labels
 
     def on_epoch_end(self):
         if self.shuffle:
@@ -141,7 +144,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
         img_base_model = getattr(vit, 'vit_' + img_base_name, default_action)\
                                     (image_size = img_size[0:2], pretrained = True, 
-                                    include_top = False, pretrained_top = False)
+                                     include_top = False, pretrained_top = False)
         
         self.model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                        from_trained=from_trained, max_length=max_length, img_size=img_size,
@@ -186,8 +189,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         """
         
         if self.epochs > 0:
-            dataset = self._preprocess(X, y, training=True)
-            dataset = dataset.shuffle(buffer_size=1000, seed=123).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
+            dataset = self._getdataset(X, y, training=True)
             
             optimizer = Adam(learning_rate=self.learning_rate)
             self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
@@ -200,8 +202,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         return self
     
     def predict(self, X):
-        dataset = self._preprocess(X, training=False)
-        dataset = dataset.batch(32)
+        dataset = self._getdataset(X, training=False)
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
     
@@ -210,14 +211,13 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         """
         Predicts class probabilities for each input.
         """
-        dataset = self._preprocess(X, training=False)
-        dataset = dataset.batch(32)
+        dataset = self._getdataset(X, training=False)
         probs = self.model.predict(dataset)
         
         return probs
     
     
-    def _preprocess(self, X, y=None, training=False):
+    def _getdataset(self, X, y=None, training=False):
         """_summary_
 
         Args:
@@ -225,12 +225,33 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             y (_type_, optional): _description_. Defaults to None.
             training (bool, optional): _description_. Defaults to False.
         """
-        X_tokenized = self.tokenizer(X['tokens'].tolist(), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+        if y is None:
+            y = 0
+            
+        df = pd.DataFrame({'labels': y, 'tokens': X['tokens'], 'img_path': X['img_path']})
         
         if training:
-            dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
+            shuffle = True
+            params = self.augmentation_params
         else:
-            dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
+            shuffle = False
+            params = dict(rotation_range=0, width_shift_range=0,
+                          height_shift_range=0, horizontal_flip=False,
+                          fill_mode='constant', cval=255)
+
+        #Data generator for the train and test sets
+        img_generator = ImageDataGenerator(rescale = 1./255, samplewise_center = True, samplewise_std_normalization = True,
+                                            rotation_range=params['rotation_range'], 
+                                            width_shift_range=params['width_shift_range'], 
+                                            height_shift_range=params['height_shift_range'],
+                                            horizontal_flip=params['horizontal_flip'],
+                                            fill_mode=params['fill_mode'],
+                                            cval=params['cval'])
+        
+        X_tokenized = self.tokenizer(df['tokens'].tolist(), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+        
+        dataset = MultimodalDataGenerator(img_generator, df['img_path'], X_tokenized, df['labels'], 
+                                          batch_size=self.batch_size, target_size = self.img_size[:2], shuffle=shuffle)
         
         return dataset
     
@@ -251,5 +272,5 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             os.makedirs(save_path)
             
         #Saving model's weights to that location
-        self.model.save_weights(save_path+'/weights.h5')
+        self.model.save_weights(os.path.join(save_path, 'weights.h5'))
 

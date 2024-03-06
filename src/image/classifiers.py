@@ -16,18 +16,11 @@ import os
 import src.config as config
 
 
-def build_ViT_model(base_name='b16', from_trained = None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax'):
+def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax'):
     
-    default_action = lambda: print("base_name should be one of: b16, b32, L16 or L32")
-
-    #Loading Vision Transformer model from vit_keras
-    vit_model = getattr(vit, 'vit_' + base_name, default_action)\
-                        (image_size = img_size[0:2], pretrained = True, 
-                         include_top = False, pretrained_top = False)
-
-    model = Sequential(name = 'vision_transformer_' + base_name)
+    model = Sequential()
     model.add(Input(shape=img_size, name='inputs'))
-    model.add(vit_model)
+    model.add(base_model)
     model.add(Dense(128, activation = 'relu', name='Dense_top_1'))
     model.add(Dropout(rate=drop_rate, name='Drop_out_top_1'))
     model.add(Dense(num_class, activation = activation, name='classification_layer'))
@@ -60,12 +53,26 @@ class ViTClassifier(BaseEstimator, ClassifierMixin):
             learning_rate (_type_, optional): _description_. Defaults to 5e-5.
             callbacks (_type_, optional): _description_. Defaults to None.
         """
+        if 'vit' in base_name.lower():
+            default_action = lambda: print("base_name should be one of: b16, b32, L16 or L32")
+            base_model = getattr(vit, 'vit_' + base_name, default_action)\
+                            (image_size = img_size[0:2], pretrained = True, 
+                            include_top = False, pretrained_top = False)
+            model_class = None
+        elif 'efficientnet' in base_name.lower():
+            model_class = getattr(tf.keras.applications.efficientnet, base_name)
+        elif 'resnet' in base_name.lower():
+            model_class = getattr(tf.keras.applications.resnet, base_name)
+        elif 'vgg16' in base_name.lower():
+            model_class = getattr(tf.keras.applications.vgg16, base_name.upper())
+        elif 'vgg19' in base_name.lower():
+            model_class = getattr(tf.keras.applications.vgg19, base_name.upper())
         
-        self.model = build_ViT_model(base_name=base_name, from_trained = from_trained, img_size=img_size, num_class=num_class,
+        if model_class is not None:
+            base_model = model_class(weights='imagenet', include_top=False, input_shape=img_size)
+                   
+        self.model = build_Img_model(base_model=base_model, from_trained = from_trained, img_size=img_size, num_class=num_class,
                                      drop_rate=drop_rate, activation='softmax')
-        
-        optimizer = Adam(learning_rate=learning_rate)
-        self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         
         self.img_size = img_size
         self.base_name = base_name
@@ -104,7 +111,9 @@ class ViTClassifier(BaseEstimator, ClassifierMixin):
         """
         
         if self.epochs > 0:
-            dataset = self._preprocess(X, y, training=True)
+            dataset = self._getdataset(X, y, training=True)
+            optimizer = Adam(learning_rate=self.learning_rate)
+            self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=self.callbacks)
         else:
             self.history = []
@@ -114,7 +123,7 @@ class ViTClassifier(BaseEstimator, ClassifierMixin):
         return self
     
     def predict(self, X):
-        dataset = self._preprocess(X, training=False)
+        dataset = self._getdataset(X, training=False)
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
     
@@ -123,12 +132,12 @@ class ViTClassifier(BaseEstimator, ClassifierMixin):
         """
         Predicts class probabilities for each input.
         """
-        dataset = self._preprocess(X, training=False)
+        dataset = self._getdataset(X, training=False)
         probs = self.model.predict(dataset)
         return probs
     
     
-    def _preprocess(self, X, y=None, training=False):
+    def _getdataset(self, X, y=None, training=False):
         """_summary_
 
         Args:

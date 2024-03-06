@@ -78,9 +78,6 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.model = build_bert_model(base_model=base_model, from_trained = from_trained, max_length=max_length, num_class=num_class,
                                       drop_rate=drop_rate, activation='softmax')
         
-        optimizer = Adam(learning_rate=learning_rate)
-        self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                   
         self.max_length = max_length
         self.base_name = base_name
         self.from_trained = from_trained
@@ -112,8 +109,10 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         """
         
         if self.epochs > 0:
-            dataset = self._preprocess(X, y, training=True)
+            dataset = self._getdataset(X, y, training=True)
             dataset = dataset.shuffle(buffer_size=1000).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
+            optimizer = Adam(learning_rate=self.learning_rate)
+            self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=self.callbacks)
         else:
             self.history = []
@@ -123,7 +122,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         return self
     
     def predict(self, X):
-        dataset = self._preprocess(X, training=False)
+        dataset = self._getdataset(X, training=False)
         dataset = dataset.batch(self.batch_size)
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
@@ -133,14 +132,14 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         """
         Predicts class probabilities for each input.
         """
-        dataset = self._preprocess(X, training=False)
+        dataset = self._getdataset(X, training=False)
         dataset = dataset.batch(self.batch_size)
         probs = self.model.predict(dataset)
         
         return probs
     
     
-    def _preprocess(self, X, y=None, training=False):
+    def _getdataset(self, X, y=None, training=False):
         """_summary_
 
         Args:
