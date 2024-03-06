@@ -84,8 +84,7 @@ import pandas as pd
 import numpy as np
 
 import unidecode
-from transformers import BertTokenizer
-import torch
+# from transformers import BertTokenizer
 
 from plotly.subplots import make_subplots
 from plotly import graph_objects as go
