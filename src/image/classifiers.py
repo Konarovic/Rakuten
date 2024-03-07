@@ -1,3 +1,50 @@
+"""
+Class implementation for constructing and utilizing deep learning models for image classification. 
+Below is a summary documentation of the ImgClassifier class and its methods
+
+* ImgClassifier Class
+    A wrapper class that allows using various deep learning architectures like ViT, EfficientNet, etc., 
+    for image classification within a scikit-learn-like interface.
+
+    Constructor Parameters:
+        * base_name: Name of the base architecture.
+        * from_trained: Path to a previously saved model.
+        * img_size: Tuple representing the input image size.
+        * num_class: Number of output classes for classification.
+        * drop_rate: Dropout rate for regularization.
+        * epochs: Number of epochs to train the model.
+        * batch_size: Batch size for training.
+        * learning_rate: Learning rate for the optimizer.
+        * augmentation_params: Parameters for data augmentation.
+        * validation_split: Fraction of data to be used for validation.
+        * callbacks: Callbacks to use during training.
+        * parallel_gpu: Whether to use parallel GPU support.
+
+    Methods:
+        * fit(X, y): Trains the model on the provided dataset.
+        * predict(X): Predicts class labels for the input samples.
+        * predict_proba(X): Predicts class probabilities for the input samples.
+        * classification_score(X, y): Calculates weighted F1-score for the predictions.
+        * save(name): Saves the model and its configuration.
+        * load(name, parallel_gpu=False): Loads a saved model and its configuration.
+        
+    Example Usage:
+        # Initialize the classifier with VGG16 as the base model
+        img_classifier = ImgClassifier(base_name='vgg16', num_class=10, epochs=5, batch_size=32)
+        # Fit the model
+        img_classifier.fit(train_images, train_labels)
+        # Predict on new data
+        predictions = img_classifier.predict(test_images)
+        # Evaluate the model
+        f1score = img_classifier.classification_score(test_images, test_labels)
+        # Save the trained model
+        img_classifier.save('vgg16_trained_model')
+        # Load a model
+        img_classifier.load('vgg16_trained_model')
+"""
+
+
+
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout, GlobalAveragePooling2D
 from tensorflow.keras.models import Sequential
@@ -81,6 +128,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     * batch_size: Batch size for training. Default is 32.
     * learning_rate: Learning rate for the optimizer. Default is 5e-5.
     * augmentation_params: Dictionary specifying parameters for data augmentation. Default is None, which applies a standard set of augmentations.
+    * validation_split: fraction of the data to use for validation during training. Default is 0.0.
     * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
       parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
       Default is None.

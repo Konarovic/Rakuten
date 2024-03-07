@@ -1,3 +1,71 @@
+""" 
+Class implementations for building and utilizing multimodal and ensemble models, adeptly combining text and 
+image data for comprehensive classification tasks. This documentation provides a summary of the 
+TFmultiClassifier and MetaClassifier classes with their main paremeters and methods
+
+* TFmultiClassifier Class
+    A TensorFlow-based classifier for multimodal (text and image) data.
+
+    Constructor Parameters:
+        * txt_base_name: Identifier for the base text model.
+        * img_base_name: Identifier for the base image model.
+        * from_trained: Optional, specifies pre-trained model weights.
+        * max_length: Maximum sequence length for text inputs.
+        * img_size: The size of the input images.
+        * augmentation_params: Data augmentation parameters.
+        * num_class: The number of output classes.
+        * drop_rate: Dropout rate for regularization.
+        * epochs: Number of epochs to train the model.
+        * batch_size: Batch size for training.
+        * learning_rate: Learning rate for the optimizer.
+        * validation_split: Fraction of data used for validation.
+        * callbacks: Callbacks for training.
+        * parallel_gpu: Whether to use parallel GPU support.
+
+    Methods:
+        * fit(X, y): Trains the model.
+        * predict(X): Predicts class labels for input data.
+        * predict_proba(X): Predicts class probabilities.
+        * classification_score(X, y): Calculates classification metrics.
+        * save(name): Saves the model.
+        * load(name, parallel_gpu): Loads a saved model.
+
+    Example Usage:
+        X = pd.DataFrame({'text': txt_data, 'img_path': img_data})
+        y = labels
+        classifier = TFmultiClassifier(txt_base_name='bert-base-uncased', img_base_name='vit_b16', epochs=5, batch_size=2)
+        classifier.fit(X, y)
+        f1score = classifier.classification_score(X_test, y_test)
+        classifier.save('multimodal_model')
+        
+* MetaClassifier Class
+    A wrapper class for various ensemble methods, enabling the combination of multiple classifier models for improved prediction accuracy.
+
+    Constructor Parameters:
+        * base_estimators: List of tuples with base estimators and their names.
+        * method: The ensemble method to use, such as 'voting', 'stacking', 'bagging', or 'boosting'.
+        * from_trained: Optional; path to a previously saved ensemble model.
+        * **kwargs: Additional arguments specific to the chosen ensemble method.
+    
+    Methods:
+        * fit(X, y): Trains the ensemble model on the given dataset.
+        * predict(X): Predicts class labels for the input data.
+        * predict_proba(X): Predicts class probabilities for the input data (if supported by the base models).
+        * classification_score(X, y): Calculates the weighted F1-score for the predictions.
+        * save(name): Saves the ensemble model and its base models.
+        * load(name): Loads the ensemble model and its base models.
+        
+    Example Usage:
+        base_estimators = [('clf1', TFbertClassifier()), ('clf2', MLClassifier())]
+        meta_classifier = MetaClassifier(base_estimators=base_estimators, method='voting')
+        meta_classifier.fit(X, y)
+        predictions = meta_classifier.predict(X_test)
+        f1score = classifier.classification_score(X_test, y_test)
+        meta_classifier.save('my_ensemble_model')
+        meta_classifier.load('my_ensemble_model')
+"""
+
+
 from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate, BatchNormalization
@@ -195,7 +263,6 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     * load: Loads the model's weights and tokenizer from the specified directory.
     
     Example Usage:
-    # Tokenize text data
     X = pd.DataFrame({'text': txt_data, 'img_path': img_data})
     y = labels
     classifier = TFmultiClassifier(txt_base_name='bert-base-uncased', img_base_name='vit_b16', epochs=5, batch_size=2)

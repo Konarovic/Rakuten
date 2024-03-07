@@ -1,3 +1,79 @@
+"""
+Class implementations for constructing and utilizing machine learning models, specifically focusing on BERT models 
+for text classification and traditional ML algorithms. Below is a summary documentation of the classes and 
+functions along with their parameters and available methods.
+
+* TFbertClassifier Class:
+    Implements a TensorFlow-based BERT classifier extending the BaseEstimator and ClassifierMixin from scikit-learn, for seamless integration with scikit-learn utilities.
+
+    Constructor Parameters:
+        * base_name: Identifier for the pre-trained base BERT model.
+        * from_trained (optional): Name of a saved model for weight initialization.
+        * max_length (optional): Maximum input sequence length.
+        * num_class (optional): Number of classes for classification.
+        * drop_rate (optional): Dropout rate in the dense layer.
+        * epochs (optional): Number of training epochs.
+        * batch_size (optional): Batch size for training.
+        * learning_rate (optional): Optimizer learning rate.
+        * validation_split (optional): Fraction of data for validation.
+        * callbacks (optional): list of tuples with callbacks parameters.
+        * parallel_gpu (optional): Flag to use parallel GPU training.
+        
+    Methods:
+        * fit(X, y): Train the model with text (X) and labels (y).
+        * predict(X): Predict class labels for the given text (X).
+        * predict_proba(X): Predict class probabilities for the given text (X).
+        * classification_score(X, y): Compute the weighted F1 score for predictions.
+        * save(name): Save the model to the specified path.
+        * load(name, parallel_gpu=False): Load a model from the specified path.
+        
+    Example usage:
+        # Initialize the BERT classifier
+        bert_classifier = TFbertClassifier(base_name='bert-base-uncased', epochs=3, batch_size=32)
+        # Fit the model
+        bert_classifier.fit(train_texts, train_labels)
+        # Predict labels
+        predictions = bert_classifier.predict(test_texts)
+        # Save the model
+        bert_classifier.save('my_bert_model')
+        # Evaluate the model
+        f1_score = bert_classifier.classification_score(test_texts, test_labels)
+        # Load a model
+        bert_classifier.load('my_bert_model')
+        
+* MLClassifier Class
+    A machine learning classifier for text classification using traditional algorithms.
+
+    Constructor Parameters:
+        * base_name: Identifier for the base ML model (e.g., 'linearSVC', 'logisticregression').
+        * from_trained (optional): Path to a pre-trained model to load.
+        * vec_method (optional): Tokenization/Vectorization method ('tfidf', 'skipgram', 'cbow', 'fasttxt').
+        * **kwargs: Additional arguments for the sklearn classifier specified in base_name.
+
+    Methods:
+        * fit(X, y): Train the model on text data (X) and labels (y).
+        * predict(X): Predict class labels for text data (X).
+        * predict_proba(X): Predict class probabilities for text data (X), if supported.
+        * classification_score(X, y): Calculate the weighted F1 score for the given predictions.
+        * save(name): Save the trained model to a file.
+        * load(name): Load a model from a file.
+        
+    Example usage:
+        # Initialize the ML classifier with a logistic regression model
+        ml_classifier = MLClassifier(base_name='logisticregression')
+        # Train the model
+        ml_classifier.fit(train_texts, train_labels)
+        # Make predictions
+        predictions = ml_classifier.predict(test_texts)
+        # Evaluate the model
+        f1_score = ml_classifier.classification_score(test_texts, test_labels)
+        # Save the model
+        ml_classifier.save('my_logistic_regression_model')
+        # Load the model
+        ml_classifier.save('my_logistic_regression_model')
+"""
+
+
 from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout
@@ -13,6 +89,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.dummy import DummyClassifier
 
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import train_test_split
@@ -91,8 +168,9 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     * epochs (int, optional): Number of training epochs. Default is 1.
     * batch_size (int, optional): Batch size for training. Default is 32.
     * learning_rate (float, optional): Learning rate for the optimizer. Default is 5e-5.
+    * validation_split: fraction of the data to use for validation during training. Default is 0.0.
     * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
-      parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
+      parameters. Example: [('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2})].
       Default is None.
     * parallel_gpu (bool, optional): Whether to use parallel GPUs. Default is False.
     
@@ -423,7 +501,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
 
 class MLClassifier(BaseEstimator, ClassifierMixin):
     """
-    MLClassifier(base_name='linearSVC', from_trained=None, tok_method='tfidf', **kwargs)
+    MLClassifier(base_name='linearSVC', from_trained=None, vec_method='tfidf', **kwargs)
     
     A machine learning classifier that supports various traditional ML algorithms for text classification,
     following the scikit-learn estimator interface.
@@ -434,7 +512,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Supported models include 'linearSVC', 'logisticregression', 'multinomialnb', 
         and 'randomforestclassifier'. Default is 'linearSVC'.
     * from_trained (optional): Path to previously saved model. Default is None.
-    * tok_method (str, optional): Vectorization method. One of TFIDF, skipgram, cbow or fasttxt.
+    * vec_method (str, optional): Vectorization method. One of tfidf, skipgram, cbow or fasttxt.
         Default is 'tfidf'.
     * **kwargs: arguments accepted by the chosen sklearn classifier sepcified in
         base_name
@@ -448,16 +526,16 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
     * save(name): Saves the model to the directory specified in config.path_to_models.
     
     Example usage:
-    ml_classifier = MLClassifier(base_name='logisticregression', tok_method = 'tfidf')
+    ml_classifier = MLClassifier(base_name='logisticregression', vec_method = 'tfidf')
     ml_classifier.fit(train_texts, train_labels)
     predictions = ml_classifier.predict(test_texts)
     f1score = ml_classifier.classification_score(test_texts, test_labels)
     ml_classifier.save('my_ml_model')
         
     """
-    def __init__(self, base_name = 'linearSVC', from_trained = None, tok_method = 'TFIDF', **kwargs):
+    def __init__(self, base_name = 'linearSVC', from_trained = None, vec_method = 'tfidf', **kwargs):
         """
-        Constructor: __init__(self, base_name='linearSVC', from_trained=None, tok_method='TFIDF', **kwargs)
+        Constructor: __init__(self, base_name='linearSVC', from_trained=None, vec_method='tfidf', **kwargs)
         Initializes a new instance of the MLClassifier.
 
         Arguments:
@@ -465,7 +543,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
           'linearSVC', 'logisticregression', 'multinomialnb', and 'randomforestclassifier'. Default is 'linearSVC'.
         * from_trained: Optional; name of a model previously saved in config.path_to_models and from which 
           the model state will be loaded.
-        * tok_method: Tokenization/Vectorization method. Supported methods are 'tfidf', 'skipgram', 'cbow', 
+        * vec_method: Tokenization/Vectorization method. Supported methods are 'tfidf', 'skipgram', 'cbow', 
           and 'fasttxt'. Default is 'tfidf'.
         * **kwargs: Additional keyword arguments that will be passed to the underlying sklearn model.
         
@@ -475,7 +553,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         """
         self.base_name = base_name
         self.from_trained = from_trained
-        self.tok_method = tok_method.lower()
+        self.vec_method = vec_method.lower()
         
         if self.from_trained is not None:
             #loading previously saved model if provided
@@ -491,12 +569,15 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
                 self.model = MultinomialNB(**kwargs)
             elif base_name.lower() == 'randomforestclassifier':
                 self.model = RandomForestClassifier(**kwargs)
+            elif base_name.lower() == 'dummyclassifier':
+                self.model = DummyClassifier(**kwargs)
                 
             model_params = self.model.get_params()
             for param, value in model_params.items():
                 setattr(self, param, value)
-                
-            self.vectorizer_ = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
+            
+            if vec_method.lower() == 'tfidf'    
+            self.vectorizer = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
         
         #Only make predict_proba available if self.model 
         # has such method implemented
@@ -578,9 +659,9 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             X_txt = X
         
         if training: 
-            X_vec = self.vectorizer_.fit_transform(X_txt)
+            X_vec = self.vectorizer.fit_transform(X_txt)
         else:
-            X_vec = self.vectorizer_.transform(X_txt)
+            X_vec = self.vectorizer.transform(X_txt)
             
         return X_vec
     
