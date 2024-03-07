@@ -1,6 +1,6 @@
-from transformers import TFAutoModel, AutoTokenizer
+from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate
+from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate, BatchNormalization
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -11,60 +11,75 @@ import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.metrics import classification_report, f1_score
 
+from joblib import load, dump
 import os
 
 import src.config as config
 
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
-                      num_class=27, drop_rate=0.0, activation='softmax'):
+                      num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
     """_summary_
 
     Args:
         base_name (str, optional): _description_. Defaults to 'camembert-base'.
     """
-    #Bert branch    
-    input_ids = Input(shape=(max_length,), dtype='int32', name='input_ids')
-    attention_mask = Input(shape=(max_length,), dtype='int32', name='attention_mask')
+    with strategy.scope():
+        #Bert branch    
+        input_ids = Input(shape=(max_length,), dtype='int32', name='input_ids')
+        attention_mask = Input(shape=(max_length,), dtype='int32', name='attention_mask')
 
-    #Bert transformer model
-    txt_base_model._name = 'bert_layers'
-    txt_transformer_layer = txt_base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
-    txt_output = txt_transformer_layer[0][:, 0, :]
-    # x = Dense(128, activation='relu', name='Dense_txt_1')(x)
-    # x = Dropout(rate=drop_rate, name='Drop_out_top_1')(x)
-    txt_model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=txt_output)
-    
-    #ViT transformer model
-    input_img = Input(shape=img_size, name='inputs')
-    img_output = img_base_model(input_img)
-    img_model = Model(inputs=input_img, outputs=img_output)
-    
-    #Concatenate text and image models
-    x = Concatenate()([txt_model.output, img_model.output])
+        #Bert transformer model
+        txt_base_model._name = 'txt_base_layers'
+        txt_transformer_layer = txt_base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
+        outputs = txt_transformer_layer[0][:, 0, :]
+        # x = Dropout(rate=drop_rate)(x)
+        # outputs = Dense(units=2*num_class, activation=activation, name='text_classification_layer')(x)
+        txt_model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=outputs)
+        
+        #Loading pre-saved weights to the Bert model if provided
+        if from_trained is not None:
+            if isinstance(from_trained, dict):
+                if 'text' in from_trained.keys():
+                    txt_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained['text'])
+                    print("loading weights for BERT from ", from_trained['text'])
+                    txt_model.load_weights(txt_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
+                
+        
+        #ViT transformer model
+        input_img = Input(shape=img_size, name='inputs')
+        img_base_model._name = 'img_base_layers'
+        outputs = img_base_model(input_img)
+        # x = Dropout(rate=drop_rate)(x)
+        # outputs = Dense(units=2*num_class, activation=activation, name='img_classification_layer')(x)
+        img_model = Model(inputs=input_img, outputs=outputs)
+        
+        #Loading pre-saved weights to the Image model if provided
+        if from_trained is not None:
+            if isinstance(from_trained, dict):
+                if 'image' in from_trained.keys():
+                    img_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained['image'])
+                    print("loading weights for ViT from ", from_trained['image'])
+                    img_model.load_weights(img_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
+        
+        #Concatenate text and image models
+        x = Concatenate()([txt_model.output, img_model.output])
 
-    #Dense layers for classification
-    x = Dropout(rate=drop_rate)(x)
-    x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
-    outputs = Dense(units=num_class, activation=activation, name='multi_classification_layer')(x)
+        #Dense layers for classification
+        x = Dropout(rate=drop_rate)(x)
+        x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
+        outputs = Dense(units=num_class, activation=activation, name='multi_classification_layer')(x)
 
-    model = Model(inputs=[txt_model.input, img_model.input], outputs=outputs)
-    
-    if from_trained is not None:
-        if isinstance(from_trained, dict):
-            if 'text' in from_trained.keys():
-                txt_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained['text'])
-                print("loading weights for BERT from ", from_trained['text'])
-                model.load_weights(txt_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
-            if 'image' in from_trained.keys():
-                img_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained['image'])
-                print("loading weights for ViT from ", from_trained['image'])
-                model.load_weights(img_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
-        else:
-            model_path = os.path.join(config.path_to_models, 'trained_models', from_trained)
-            print("loading weights for multimodal model from ", from_trained)
-            model.load_weights(model_path + '/weights.h5', by_name=True, skip_mismatch=True)
+        model = Model(inputs=[txt_model.input, img_model.input], outputs=outputs)
+        
+        #Loading pre-saved weights to the full model if provided
+        if from_trained is not None:
+            if not isinstance(from_trained, dict):
+                model_path = os.path.join(config.path_to_models, 'trained_models', from_trained)
+                print("loading weights for multimodal model from ", from_trained)
+                model.load_weights(model_path + '/weights.h5', by_name=True, skip_mismatch=True)
         
     
     return model
@@ -114,7 +129,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
                  max_length=256, img_size=(224, 224, 3), augmentation_params=None,
                  num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, callbacks=None):
+                 epochs=1, batch_size=32, learning_rate=5e-5, callbacks=None, parallel_gpu=True):
         """_summary_
 
         Args:
@@ -125,30 +140,37 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             drop_rate (int, optional): _description_. Defaults to 0.
             activation (str, optional): _description_. Defaults to 'softmax'.
         """
-        # path to locally saved huggingface Bert model
-        txt_base_model_path = os.path.join(config.path_to_models, 'base_models', txt_base_name)
-        
-        #Loading bert model base
-        if not os.path.isdir(txt_base_model_path):
-            # If the hugginface pretrained Bert model hasn't been yet saved locally, 
-            # we load and save it from HuggingFace
-            txt_base_model = TFAutoModel.from_pretrained(txt_base_name)
-            txt_base_model.save_pretrained(txt_base_model_path)
-            self.tokenizer = AutoTokenizer.from_pretrained(txt_base_name)
-            self.tokenizer.save_pretrained(txt_base_model_path)
+        if parallel_gpu:
+            self.strategy = tf.distribute.MirroredStrategy()
         else:
-            txt_base_model = TFAutoModel.from_pretrained(txt_base_model_path)
-            self.tokenizer = AutoTokenizer.from_pretrained(txt_base_name)
+            self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
-        #Loading ViT model base    
-        default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
-        img_base_model = getattr(vit, 'vit_' + img_base_name, default_action)\
-                                    (image_size = img_size[0:2], pretrained = True, 
-                                     include_top = False, pretrained_top = False)
+        # # path to locally saved huggingface Bert model
+        # txt_base_model_path = os.path.join(config.path_to_models, 'base_models', txt_base_name)
         
-        self.model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
-                                       from_trained=from_trained, max_length=max_length, img_size=img_size,
-                                       num_class=num_class, drop_rate=drop_rate, activation='softmax')
+        # with self.strategy.scope():
+        #     #Loading bert model base
+        #     if not os.path.isdir(txt_base_model_path):
+        #         # If the hugginface pretrained Bert model hasn't been yet saved locally, 
+        #         # we load and save it from HuggingFace
+        #         txt_base_model = TFAutoModel.from_pretrained(txt_base_name)
+        #         txt_base_model.save_pretrained(txt_base_model_path)
+        #         self.tokenizer = CamembertTokenizer.from_pretrained(txt_base_name)
+        #         self.tokenizer.save_pretrained(txt_base_model_path)
+        #     else:
+        #         txt_base_model = TFAutoModel.from_pretrained(txt_base_model_path)
+        #         self.tokenizer = CamembertTokenizer.from_pretrained(txt_base_model_path)
+            
+        #     #Loading ViT model base    
+        #     default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
+        #     img_base_model = getattr(vit, 'vit_' + img_base_name, default_action)\
+        #                                 (image_size = img_size[0:2], pretrained = True, 
+        #                                 include_top = False, pretrained_top = False)
+        
+        # self.model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
+        #                                from_trained=from_trained, max_length=max_length, img_size=img_size,
+        #                                num_class=num_class, drop_rate=drop_rate, activation='softmax',
+        #                                strategy = self.strategy)
         
         self.max_length = max_length
         self.img_size = img_size
@@ -167,11 +189,48 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                                             height_shift_range=0.1, horizontal_flip=True,
                                             fill_mode='constant', cval=255)
         self.callbacks = callbacks
+        self.parallel_gpu = parallel_gpu
+        
+        self.model, self.tokenizer = self._getmodel(from_trained)
         
         if from_trained is not None:
             self.is_fitted_ = True
+            
+            
+    def _getmodel(self, from_trained=None):
+        """_summary_
+
+        Args:
+            from_trained (_type_): _description_
+        """
+        # path to locally saved huggingface Bert model
+        txt_base_model_path = os.path.join(config.path_to_models, 'base_models', self.txt_base_name)
         
+        with self.strategy.scope():
+            #Loading bert model base
+            if not os.path.isdir(txt_base_model_path):
+                # If the hugginface pretrained Bert model hasn't been yet saved locally, 
+                # we load and save it from HuggingFace
+                txt_base_model = TFAutoModel.from_pretrained(self.txt_base_name)
+                txt_base_model.save_pretrained(txt_base_model_path)
+                tokenizer = CamembertTokenizer.from_pretrained(self.txt_base_name)
+                tokenizer.save_pretrained(txt_base_model_path)
+            else:
+                txt_base_model = TFAutoModel.from_pretrained(txt_base_model_path)
+                tokenizer = CamembertTokenizer.from_pretrained(txt_base_model_path)
+            
+            #Loading ViT model base    
+            default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
+            img_base_model = getattr(vit, 'vit_' + self.img_base_name, default_action)\
+                                        (image_size = self.img_size[0:2], pretrained = True, 
+                                        include_top = False, pretrained_top = False)
         
+        model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
+                                       from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,
+                                       num_class=self.num_class, drop_rate=self.drop_rate, activation='softmax',
+                                       strategy = self.strategy)
+        
+        return model, tokenizer
         
         
     def fit(self, X, y):
@@ -190,10 +249,15 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         
         if self.epochs > 0:
             dataset = self._getdataset(X, y, training=True)
-            
-            optimizer = Adam(learning_rate=self.learning_rate)
-            self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-            self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=self.callbacks)
+            with self.strategy.scope():
+                optimizer = Adam(learning_rate=self.learning_rate)
+                callbacks = []
+                if self.callbacks is not None:
+                    for callback in self.callbacks:
+                        callback_api = getattr(tf.keras.callbacks, callback[0])
+                        callbacks.append(callback_api(**callback[1]))
+                self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+                self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=callbacks)
         else:
             self.history = []
             
@@ -255,6 +319,31 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         
         return dataset
     
+    def classification_score(self, X, y):
+        """
+        Computes scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text and image data for which to predict class probabilities.
+          Should be a dataframe with text in column 'tokens' and image paths 
+          in column "img_path"
+        * y: The target labels to predict.
+        
+        Returns:
+        The average weighted f1-score. Also save scores in classification_results
+        and f1score attributes
+        """
+        
+        #predict class labels for the input text X
+        pred = self.predict(X)
+        
+        #Save classification report
+        self.classification_results = classification_report(y, pred)
+        
+        #Save weighted f1-score
+        self.f1score = f1_score(y, pred, average='weighted')
+        
+        return self.f1score    
     
     
     def save(self, name):
@@ -273,4 +362,67 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             
         #Saving model's weights to that location
         self.model.save_weights(os.path.join(save_path, 'weights.h5'))
+        
+        #Saving the model except for keras objects which are not serialized 
+        #by joblib
+        model_backup = self.model
+        tokenizer_backup = self.tokenizer
+        history_backup = self.history
+        strategy_backup = self.strategy
+        
+        self.model = []
+        self.tokenizer = []
+        self.history = []
+        self.strategy = []
+        
+        dump(self, os.path.join(save_path, 'model.joblib'))
+        
+        self.model = model_backup
+        self.tokenizer = tokenizer_backup
+        self.history = history_backup
+        self.strategy = strategy_backup
+        
+    def load(self, name, parallel_gpu=False):
+        """_summary_
+
+        Args:
+            dirpath (_type_): _description_
+            name (_type_): _description_
+        """
+        #path to the directory where the model to load was saved
+        model_path = os.path.join(config.path_to_models, 'trained_models', name)
+        
+        #Loading the model from there
+        self = load(os.path.join(model_path, 'model.joblib'))
+        
+        #tf.distribute.MirroredStrategy is not saved by joblib
+        #so we need to update it here
+        if parallel_gpu:
+            self.strategy = tf.distribute.MirroredStrategy()
+        else:
+            self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+        
+        # path to locally saved huggingface model
+        txt_base_model_path = os.path.join(config.path_to_models, 'base_models', self.base_name)
+        
+        #Re-building the model and loading the weights which has been saved
+        # in model_path        
+        with self.strategy.scope():
+            #Loading bert model base
+            if not os.path.isdir(txt_base_model_path):
+                # If the hugginface pretrained Bert model hasn't been yet saved locally, 
+                # we load and save it from HuggingFace
+                txt_base_model = TFAutoModel.from_pretrained(self.txt_base_name)
+                txt_base_model.save_pretrained(txt_base_model_path)
+                self.tokenizer = CamembertTokenizer.from_pretrained(self.txt_base_name)
+                self.tokenizer.save_pretrained(txt_base_model_path)
+            else:
+                txt_base_model = TFAutoModel.from_pretrained(txt_base_model_path)
+                self.tokenizer = CamembertTokenizer.from_pretrained(txt_base_model_path)
+            
+            #Loading ViT model base    
+            default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
+            img_base_model = getattr(vit, 'vit_' + self.img_base_name, default_action)\
+                                        (image_size = self.img_size[0:2], pretrained = True, 
+                                        include_top = False, pretrained_top = False)
 
