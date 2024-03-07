@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.ensemble import VotingClassifier, StackingClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import train_test_split
 
@@ -529,3 +530,227 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         # in model_path
         self.model, self.tokenizer, self.preprocessing_function = self._getmodel(name)
 
+
+
+
+class MetaClassifier(BaseEstimator, ClassifierMixin):
+    """
+    MetaClassifier(base_estimators, method='voting', from_trained=None, **kwargs)
+    
+    A wrapper that supports various traditional ensemble classifier (voting and stacking for now),
+    following the scikit-learn estimator interface.
+
+    Constructor Arguments:
+    * base_estimators: list of tuples with the base estimators ([('name', classifier),...]). 
+      To exploit the save and load methods, the base estimators should be instances of class 
+      TFbertClassifier, MLClassifier, ImgClassifier or TFmultiClassifier. For boosting and 
+      bagging methods only the first estimator of the list will be considered.
+    * method (str, optional): Ensemble classifier method. Default is 'voting'.
+    * from_trained (optional): Path to previously saved model. Default is None.
+    * **kwargs: arguments accepted by the chosen sklearn ensemble classifier sepcified by
+        method
+    
+    Methods:
+    * fit(X, y): Trains the model on the provided dataset.
+    * predict(X): Predicts the class labels for the given input.
+    * predict_proba(X): Predicts class probabilities for the given input (if predict_proba
+      is available for the chosen classifier).
+    * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
+    * save(name): Saves the model to the directory specified in config.path_to_models.
+    
+    Example usage:
+    meta_classifier = MetaClassifier(base_name='logisticregression', tok_method = 'tfidf')
+    meta_classifier.fit(train_texts, train_labels)
+    predictions = meta_classifier.predict(test_texts)
+    f1score = meta_classifier.classification_score(test_texts, test_labels)
+    meta_classifier.save('my_ensemble_model')
+        
+    """
+    def __init__(self, base_estimators, method='voting', from_trained=None, **kwargs):
+        """
+        Constructor: __init__(self, base_estimators, method='voting', from_trained=None, **kwargs)
+        Initializes a new instance of the MetaClassifier.
+
+        Arguments:
+        * base_estimators: list of tuples with the base estimators ([('name', classifier),...]). 
+          To exploit the save and load methods, the base estimators should be instances of class 
+          TFbertClassifier, MLClassifier, ImgClassifier or TFmultiClassifier
+        * method (str, optional): Ensemble classifier method. Default is 'voting'.
+        * from_trained (optional): Path to previously saved model. Default is None.
+        * **kwargs: arguments accepted by the chosen sklearn ensemble classifier sepcified by
+            method
+        
+        Functionality:
+        Initializes the classifier based on the specified method and base_estimators and prepares the model 
+        for training or inference as specified.
+        """
+        self.method = method
+        self.from_trained = from_trained
+        self.base_estimators = base_estimators
+        
+        if self.from_trained is not None:
+            #loading previously saved model if provided
+            self.load(self.from_trained)
+            self.is_fitted_ = True
+        else:
+            # Initialize the model according to base_name and kwargs
+            if method.lower() == 'voting':
+                self.model = VotingClassifier(base_estimators, **kwargs)
+            elif method.lower() == 'stacking':
+                self.model = StackingClassifier(base_estimators, **kwargs)
+            elif method.lower() == 'bagging':
+                self.model = BaggingClassifier(estimator=base_estimators[0][1], **kwargs)
+            elif method.lower() == 'boosting':
+                self.model = AdaBoostClassifier(estimator=base_estimators[0][1], **kwargs)
+                
+            model_params = self.model.get_params()
+            for param, value in model_params.items():
+                setattr(self, param, value)
+        
+        #Only make predict_proba available if self.model 
+        # has such method implemented
+        if hasattr(self.model, 'predict_proba'):
+            self.predict_proba = self._predict_proba
+        
+        
+        
+    def fit(self, X, y):
+        """
+        Trains the model on the provided dataset.
+
+        Arguments:
+        * X: The input data used for training. Can be an array like a pandas series, 
+          or a dataframe with text in column "tokens" and/or image paths in column
+          "img_path"
+        * y: The target labels for training.
+        
+        Returns:
+        * The instance of MLClassifier after training.
+        """
+        
+        self.model.fit(X, y)
+        self.classes_ = np.unique(y)    
+        self.is_fitted_ = True
+        
+        return self
+    
+    def predict(self, X):
+        """
+        Predicts the class labels for the given input data.
+
+        Arguments:
+       * X: The input data to use for prediction. Can be an array like a pandas series, 
+          or a dataframe with text in column "tokens" and/or image paths in column
+          "img_path"
+        
+        Returns:
+        An array of predicted class labels.
+        """
+        pred = self.model.predict(X)
+        return pred
+    
+    
+    def _predict_proba(self, X):
+        """
+        Predicts class probabilities for the given text data, if the underlying 
+        model supports probability predictions.
+
+        Arguments:
+        * X: The input data to use for prediction. Can be an array like a pandas series, 
+          or a dataframe with text in column "tokens" and/or image paths in column
+          "img_path"
+        
+        Returns:
+        An array of class probabilities for each input instance.
+        """
+        probs = self.model.predict_proba(X)
+        
+        return probs
+    
+    def classification_score(self, X, y):
+        """
+        Computes scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text data for which to predict classes. Can be an array like 
+          a pandas series, or a dataframe with text in column "tokens" and/or 
+          image paths in column "img_path"
+        * y: The target labels to predict.
+        
+        Returns:
+        The average weighted f1-score. Also save scores in classification_results
+        and f1score attributes
+        """
+        
+        #predict class labels for the input text X
+        pred = self.predict(X)
+        
+        #Save classification report
+        self.classification_results = classification_report(y, pred)
+        
+        #Save weighted f1-score
+        self.f1score = f1_score(y, pred, average='weighted')
+        
+        return self.f1score
+    
+    def save(self, name):
+        """
+        Saves the model to the directory specified in src.config file (config.path_to_models).
+
+        Arguments:
+        * name: The name to be used for saving the model in config.path_to_models.
+        """
+        #path to the directory where the model will be saved
+        save_path = os.path.join(config.path_to_models, 'trained_models', name)
+        
+        #Creating it if necessary
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        
+        #First saving all base estimators in subfolders
+        for k, clf in enumerate(self.estimators_):
+            if isinstance(clf, tuple):
+                clf[1].save(name + os.sep + clf[0])
+            else:
+                clf.save(name + os.sep + str(k))
+        
+        #Removing base estimators to save the meta classifier alone (this is 
+        # because joblib does not serialize keras objects)
+        estimators_backup = self.estimators_
+        if isinstance(self.estimators_[0], tuple):
+            for k in range(len(self.estimators_)):
+                self.estimators_[k][1] = None
+        else:
+            self.estimators_ = list(range(len(self.estimators_)))
+        
+        #Saving meta classifier to that location
+        dump(self, os.path.join(save_path, 'model.joblib'))
+        
+        #Restoring back the base estimators
+        self.estimators_ = estimators_backup
+        
+        
+    def load(self, name):
+        """
+        Loads a model from the directory specified in src.config file (config.path_to_models).
+
+        Arguments:
+        * name: The name of the saved model to load.
+        """
+        #path to the directory where the model to load was saved
+        model_path = os.path.join(config.path_to_models, 'trained_models', name)
+        
+        #Loading the full model from there
+        self = load(os.path.join(model_path, 'model.joblib'))
+        
+        #Loading all base estimators from the  subfolders
+        if isinstance(self.estimators_[0], tuple):
+            for k, clf in enumerate(self.estimators_):
+                base_model = load(os.path.join(model_path, clf[0], 'model.joblib'))
+                base_model.load(name + os.sep + clf[0])
+                self.estimators_[k] = (clf[0], base_model)
+        else:
+            for k in range(len(self.estimators_)):
+                base_model = load(os.path.join(model_path, str(k), 'model.joblib'))
+                base_model.load(name + os.sep + str(k))
+                self.estimators_[k] = base_model

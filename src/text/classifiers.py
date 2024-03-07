@@ -50,7 +50,7 @@ def build_bert_model(base_model, from_trained = None, max_length=256, num_class=
         attention_mask = Input(shape=(max_length,), dtype='int32', name='attention_mask')
 
         #Base transformer model
-        base_model._name = 'base_layers'
+        base_model._name = 'txt_base_layers'
         transformer_layer = base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
         x = transformer_layer[0][:, 0, :]
 
@@ -109,6 +109,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     classifier = TFbertClassifier(base_name='bert-base-uncased', epochs=3, batch_size=32)
     classifier.fit(train_data, train_labels)
     predictions = classifier.predict(test_data)
+    f1score = classifier.classification_score(test_data, test_labels)
     classifier.save('my_bert_model')
     
     """
@@ -432,24 +433,25 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
     * base_name (str, optional): Identifier for the base machine learning model. 
         Supported models include 'linearSVC', 'logisticregression', 'multinomialnb', 
         and 'randomforestclassifier'. Default is 'linearSVC'.
-    * from_trained (optional): Path to pre-trained model weights. Default is None.
+    * from_trained (optional): Path to previously saved model. Default is None.
     * tok_method (str, optional): Vectorization method. One of TFIDF, skipgram, cbow or fasttxt.
         Default is 'tfidf'.
     * **kwargs: arguments accepted by the chosen sklearn classifier sepcified in
         base_name
     
     Methods:
-
     * fit(X, y): Trains the model on the provided dataset.
     * predict(X): Predicts the class labels for the given input.
     * predict_proba(X): Predicts class probabilities for the given input (if predict_proba
-        is available for the chosen classifier).
+      is available for the chosen classifier).
+    * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
     * save(name): Saves the model to the directory specified in config.path_to_models.
     
     Example usage:
     ml_classifier = MLClassifier(base_name='logisticregression', tok_method = 'tfidf')
     ml_classifier.fit(train_texts, train_labels)
     predictions = ml_classifier.predict(test_texts)
+    f1score = ml_classifier.classification_score(test_texts, test_labels)
     ml_classifier.save('my_ml_model')
         
     """
@@ -476,9 +478,9 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         self.tok_method = tok_method.lower()
         
         if self.from_trained is not None:
-            #path to the directory where the model will be saved
-            model_path = os.path.join(config.path_to_models, 'trained_models', self.from_trained, 'model.joblib')
-            self = load(model_path)
+            #loading previously saved model if provided
+            self.load(self.from_trained)
+            self.is_fitted_ = True
         else:
             # Initialize the model according to base_name and kwargs
             if base_name.lower() == 'linearscv':
@@ -494,16 +496,12 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             for param, value in model_params.items():
                 setattr(self, param, value)
                 
-        self.vectorizer_ = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
-        
-        if from_trained is not None:
-            self.is_fitted_ = True
+            self.vectorizer_ = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
         
         #Only make predict_proba available if self.model 
         # has such method implemented
         if hasattr(self.model, 'predict_proba'):
             self.predict_proba = self._predict_proba
-        
         
         
         
@@ -533,7 +531,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Predicts the class labels for the given input data.
 
         Arguments:
-        * X: The input text for training. Can be an array like a pandas series, 
+        * X: The input text for prediction. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
         
         Returns:
@@ -550,7 +548,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         model supports probability predictions.
 
         Arguments:
-        * X: The input text for training. Can be an array like a pandas series, 
+        * X: The input text for prediction. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
         
         Returns:
@@ -566,7 +564,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Vectorizes the text data using the chosen vectorizer.
         
         Arguments:
-        * X: The input text for training. Can be an array like a pandas series, 
+        * X: The input text. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
         * training: boolean. Whether or not thw vectorizer will be fitted to the input text first
         
@@ -586,6 +584,32 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             
         return X_vec
     
+    def classification_score(self, X, y):
+        """
+        Computes scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text data for which to predict classes.
+          Can be an array like a pandas series, or a dataframe with 
+          text in column "tokens"
+        * y: The target labels to predict.
+        
+        Returns:
+        The average weighted f1-score. Also save scores in classification_results
+        and f1score attributes
+        """
+        
+        #predict class labels for the input text X
+        pred = self.predict(X)
+        
+        #Save classification report
+        self.classification_results = classification_report(y, pred)
+        
+        #Save weighted f1-score
+        self.f1score = f1_score(y, pred, average='weighted')
+        
+        return self.f1score
+    
     def save(self, name):
         """
         Saves the model to the directory specified in src.config file (config.path_to_models).
@@ -600,7 +624,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         if not os.path.exists(save_path):
             os.makedirs(save_path)
             
-        #Saving model's weights to that location
+        #Saving the model to that location
         dump(self, os.path.join(save_path, 'model.joblib'))
         
     def load(self, name):

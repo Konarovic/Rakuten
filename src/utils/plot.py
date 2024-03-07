@@ -8,7 +8,7 @@ import pandas as pd
 def classification_results(y_true, y_pred, index=None):
     #Print evaluation metrics
     print(classification_report(y_true, y_pred))
-    print(f1_score(y_true, y_pred))
+    print(f1_score(y_true, y_pred, average='weighted'))
     
     #Build confusion matrix
     conf_mat = round(pd.crosstab(y_true, y_pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')*100)
@@ -34,14 +34,16 @@ def classification_results(y_true, y_pred, index=None):
 def plot_training_history(history):
     f, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 8))
     axs[0].plot(history.history['loss'], label='Train')
-    axs[0].plot(history.history['val_loss'], label='Test')
+    if 'val_loss' in history.history.keys():
+        axs[0].plot(history.history['val_loss'], label='Test')
     axs[0].set_xlabel('Epoch')
     axs[0].set_xticks(history.epoch)
     axs[0].legend()
     axs[0].set_title('Loss')
 
     axs[1].plot(history.history['accuracy'], label='Train')
-    axs[1].plot(history.history['val_accuracy'], label='Test')
+    if 'val_accuracy' in history.history.keys():
+        axs[1].plot(history.history['val_accuracy'], label='Test')
     axs[1].set_xticks(history.epoch)
     axs[1].legend()
     axs[1].set_title('Accuracy')

@@ -45,7 +45,7 @@ def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num
     with strategy.scope():
         model = Sequential()
         model.add(Input(shape=img_size, name='inputs'))
-        base_model._name = 'base_layers'
+        base_model._name = 'img_base_layers'
         model.add(base_model)
         #Adding an average pooling if it's a convNet
         if len(base_model.output_shape) == 4:
