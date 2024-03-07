@@ -15,6 +15,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from sklearn.metrics import classification_report, f1_score
+from sklearn.model_selection import train_test_split
 
 from joblib import load, dump
 import sklearn
@@ -113,7 +114,8 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     """
     def __init__(self, base_name='camembert-base', from_trained = None, 
                  max_length=256, num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, callbacks=None, parallel_gpu=False):
+                 epochs=1, batch_size=32, learning_rate=5e-5, 
+                 validation_split=0.0, callbacks=None, parallel_gpu=False):
         
         """
         Constructor: __init__(self, base_name='camembert-base', from_trained=None, max_length=256, 
@@ -133,6 +135,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * epochs: The number of epochs to train the model. Default is 1.
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
+        * validation_split: fraction of the data to use for validation during training. Default is 0.0.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
           parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
           Default is None.
@@ -157,6 +160,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.validation_split = validation_split
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         self.history = []
@@ -219,8 +223,20 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         """
         
         if self.epochs > 0:
-            #Fetching the dataset generator
-            dataset = self._getdataset(X, y, training=True)
+            # Initialize validation data placeholder
+            dataset_val = None
+            
+            if self.validation_split > 0:
+                X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
+                #Fetching the dataset generator
+                dataset_val = self._getdataset(X_val, y_val, training=True)
+            else:
+                # Use all data for training if validation split is 0
+                X_train, y_train = X, y
+                
+            #Fetching the training dataset generator
+            dataset = self._getdataset(X_train, y_train, training=True)
+            
             with self.strategy.scope():
                 #defining the optimizer
                 optimizer = Adam(learning_rate=self.learning_rate)
@@ -232,9 +248,15 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
                         callback_api = getattr(tf.keras.callbacks, callback[0])
                         callbacks.append(callback_api(**callback[1]))
                         
-                #Compiling and fitting the model
+                #Compiling
                 self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=callbacks)
+                
+                #Fitting the model
+                fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
+                if dataset_val is not None:
+                    fit_args['validation_data'] = dataset_val
+                    
+                self.history = self.model.fit(dataset, **fit_args)
         else:
             #if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []

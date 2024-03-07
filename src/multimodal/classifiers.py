@@ -12,6 +12,7 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, f1_score
+from sklearn.model_selection import train_test_split
 
 from joblib import load, dump
 import os
@@ -21,10 +22,30 @@ import src.config as config
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
                       num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
-    """_summary_
+    """
+    Creates a multimodal classification model that combines text and image data for prediction tasks.
 
-    Args:
-        base_name (str, optional): _description_. Defaults to 'camembert-base'.
+    Arguments:
+    * txt_base_model: Pre-initialized text model (such as BERT) to be used for text feature extraction.
+    * img_base_model: Pre-initialized image model (such as Vision Transformer, ViT) for image feature extraction.
+    * from_trained (optional): Path or dictionary specifying the name of pre-trained models for text and/or image models. 
+      If a dictionary, keys should be 'text' and 'image' with names of the models as values. Name of a pret-trained 
+      full model should be passed as a simple string
+    * max_length (int, optional): Maximum sequence length for text inputs. Default is 256.
+    * img_size (tuple, optional): Size of the input images. Default is (224, 224, 3).
+    * num_class (int, optional): Number of classes for the classification task. Default is 27.
+    * drop_rate (float, optional): Dropout rate applied in the final layers of the model. Default is 0.0.
+    * activation (str, optional): Activation function for the output layer. Default is 'softmax'.
+    * strategy: TensorFlow distribution strategy to be used during model construction.
+    
+    Returns:
+    A TensorFlow Model instance representing the constructed multimodal classification model.
+    
+    Example usage:
+    strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+    txt_model = TFAutoModel.from_pretrained('bert-base-uncased')
+    img_model = vit.vit_b16(image_size=(224, 224), pretrained=True, include_top=False, pretrained_top=False)
+    multimodal_model = build_multi_model(txt_base_model=txt_model, img_base_model=img_model, max_length=256, img_size=(224, 224, 3), num_class=10, strategy=strategy)
     """
     with strategy.scope():
         #Bert branch    
@@ -87,6 +108,23 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
 from keras.utils import Sequence
 
 class MultimodalDataGenerator(Sequence):
+    """
+    A custom data generator for batching and preprocessing multimodal data (text and images) for training or prediction with a Keras model.
+
+    Constructor Arguments:
+    * img_data_generator: An instance of Data genrator for real-time data augmentation and preprocessing of image and text data.
+    * img_path: List or Pandas Series containing paths to the images.
+    * text_tokenized: A dictionary containing tokenized text data with keys 'input_ids' and 'attention_mask'.
+    * labels: Numpy array or Pandas Series containing target labels for the dataset.
+    * batch_size (int, optional): Number of samples per batch. Default is 32.
+    * target_size (tuple, optional): The dimensions to which all images found will be resized. Default is (224, 224).
+    * shuffle (bool, optional): Whether to shuffle the data at the beginning of each epoch. Default is True.
+    
+    Methods:
+    * __len__: Returns the number of batches per epoch.
+    * __getitem__: Returns a batch of data (text and images) and corresponding labels.
+    * on_epoch_end: Updates indexes after each epoch if shuffle is True.
+    """
     def __init__(self, img_data_generator, img_path, text_tokenized, labels, batch_size=32, target_size = (224, 224), shuffle=True):
         self.img_data_generator = img_data_generator
         self.dataframe = pd.DataFrame({'filename':img_path})#dataframe.copy()
@@ -124,54 +162,92 @@ class MultimodalDataGenerator(Sequence):
     def on_epoch_end(self):
         if self.shuffle:
             np.random.shuffle(self.indexes)
+            
 
 class TFmultiClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
-                 max_length=256, img_size=(224, 224, 3), augmentation_params=None,
-                 num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, callbacks=None, parallel_gpu=True):
-        """_summary_
+    """
+    A TensorFlow-based classifier for multimodal (text and image) data, implementing the scikit-learn estimator interface.
 
-        Args:
-            base_name (str, optional): _description_. Defaults to 'camembert-base'.
-            from_trained (_type_, optional): _description_. Defaults to None.
-            max_length (int, optional): _description_. Defaults to 256.
-            num_class (int, optional): _description_. Defaults to 27.
-            drop_rate (int, optional): _description_. Defaults to 0.
-            activation (str, optional): _description_. Defaults to 'softmax'.
+    Constructor Arguments:
+    * txt_base_name: Identifier for the base text model (e.g., 'bert-base-uncased').
+    * img_base_name: Identifier for the base image model (e.g., 'vit_b16').
+    * from_trained: Path or dictionary specifying the name of pre-trained models for text and/or image models. 
+      If a dictionary, keys should be 'text' and 'image' with names of the models as values. Name of a pret-trained 
+      full model should be passed as a simple string
+    * max_length (int, optional): Maximum sequence length for text inputs.
+    * img_size (tuple, optional): Size of the input images.
+    * augmentation_params: Parameters for data augmentation.
+    * num_class (int, optional): Number of classes for the classification task.
+    * drop_rate (float, optional): Dropout rate applied in the final layers of the model.
+    * epochs (int, optional): Number of epochs for training.
+    * batch_size (int, optional): Number of samples per batch.
+    * learning_rate (float, optional): Learning rate for the optimizer.
+    * callbacks: List of Keras callbacks to be used during training.
+    * parallel_gpu (bool, optional): Whether to use TensorFlow's parallel GPU training capabilities.
+    
+    Methods:
+    * fit: Trains the multimodal model on a dataset.
+    * predict: Predicts class labels for the given input data.
+    * predict_proba: Predicts class probabilities for the given input data.
+    * classification_score: Computes classification metrics for the given input data and true labels.
+    * save: Saves the model's weights and tokenizer to the specified directory.
+    * load: Loads the model's weights and tokenizer from the specified directory.
+    
+    Example Usage:
+    # Tokenize text data
+    X = pd.DataFrame({'text': txt_data, 'img_path': img_data})
+    y = labels
+    classifier = TFmultiClassifier(txt_base_name='bert-base-uncased', img_base_name='vit_b16', epochs=5, batch_size=2)
+    classifier.fit(X, y)
+    score = classifier.classification_score(X_test, y_test)
+    classifier.save('multimodal_model')
+    """
+    
+    def __init__(self, txt_base_name='camembert-base', img_base_name='vit_b16', from_trained = None, 
+                 max_length=256, img_size=(224, 224, 3), augmentation_params=None,
+                 num_class=27, drop_rate=0.2, epochs=1, batch_size=32, validation_split=0.0,
+                 learning_rate=5e-5, callbacks=None, parallel_gpu=True):
         """
+        Constructor: __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
+                              max_length=256, img_size=(224, 224, 3), augmentation_params=None, num_class=27, drop_rate=0.2,
+                              epochs=1, batch_size=32, learning_rate=5e-5, callbacks=None, parallel_gpu=True)
+                              
+        Initializes a new instance of the TFmultiClassifier.
+
+        Arguments:
+
+        * txt_base_name: The identifier for the base BERT model. Tested base model are 'camembert-base',
+          'camembert/camembert-base-ccnet'. Default is 'camembert-base'.
+        * img_base_name: The identifier for the base vision model architecture (e.g., 'vit_b16', 'vgg16', 'resnet50').
+        * from_trained: Path or dictionary specifying the name of pre-trained models for text and/or image models. 
+          If a dictionary, keys should be 'text' and 'image' with names of the models as values. Name of a pret-trained 
+          full model should be passed as a simple string
+        * max_length: The sequence length that the tokenizer will generate. Default is 256.
+        * img_size: The size of input images.
+        * num_class: The number of classes for the classification task. Default is 27.
+        * augmentation_params: a dictionnary with parameters for data augmentation (see ImageDataGenerator).
+        * drop_rate: Dropout rate for the classification head. Default is 0.2.
+        * epochs: The number of epochs to train the model. Default is 1.
+        * batch_size: Batch size for training. Default is 32.
+        * learning_rate: Learning rate for the optimizer. Default is 5e-5.
+        * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+        * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
+          parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
+          Default is None.
+        * parallel_gpu: Flag to indicate whether to use parallel GPU support. Default is False.
+        
+        Returns:
+
+        An instance of TFmultiClassifier.
+        """
+        
+        #defining the parallelization strategy
         if parallel_gpu:
             self.strategy = tf.distribute.MirroredStrategy()
         else:
             self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
-        # # path to locally saved huggingface Bert model
-        # txt_base_model_path = os.path.join(config.path_to_models, 'base_models', txt_base_name)
-        
-        # with self.strategy.scope():
-        #     #Loading bert model base
-        #     if not os.path.isdir(txt_base_model_path):
-        #         # If the hugginface pretrained Bert model hasn't been yet saved locally, 
-        #         # we load and save it from HuggingFace
-        #         txt_base_model = TFAutoModel.from_pretrained(txt_base_name)
-        #         txt_base_model.save_pretrained(txt_base_model_path)
-        #         self.tokenizer = CamembertTokenizer.from_pretrained(txt_base_name)
-        #         self.tokenizer.save_pretrained(txt_base_model_path)
-        #     else:
-        #         txt_base_model = TFAutoModel.from_pretrained(txt_base_model_path)
-        #         self.tokenizer = CamembertTokenizer.from_pretrained(txt_base_model_path)
-            
-        #     #Loading ViT model base    
-        #     default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
-        #     img_base_model = getattr(vit, 'vit_' + img_base_name, default_action)\
-        #                                 (image_size = img_size[0:2], pretrained = True, 
-        #                                 include_top = False, pretrained_top = False)
-        
-        # self.model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
-        #                                from_trained=from_trained, max_length=max_length, img_size=img_size,
-        #                                num_class=num_class, drop_rate=drop_rate, activation='softmax',
-        #                                strategy = self.strategy)
-        
+        #Defining attributes
         self.max_length = max_length
         self.img_size = img_size
         self.txt_base_name = txt_base_name
@@ -187,21 +263,23 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         else:
             self.augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
                                             height_shift_range=0.1, horizontal_flip=True,
-                                            fill_mode='constant', cval=255)
+                                            fill_mode='constant', cval=255)    
+        self.validation_split = validation_split
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         
-        self.model, self.tokenizer = self._getmodel(from_trained)
+        #Building model and tokenizer
+        self.model, self.tokenizer, self.preprocessing_function = self._getmodel(from_trained)
         
+        #For sklearn, adding attribute finishing with _ to indicate
+        # that the model has already been fitted
         if from_trained is not None:
             self.is_fitted_ = True
             
             
     def _getmodel(self, from_trained=None):
-        """_summary_
-
-        Args:
-            from_trained (_type_): _description_
+        """
+        Internal method to initialize or load the base model and set up preprocessing.
         """
         # path to locally saved huggingface Bert model
         txt_base_model_path = os.path.join(config.path_to_models, 'base_models', self.txt_base_name)
@@ -221,51 +299,90 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             
             #Loading ViT model base    
             default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
-            img_base_model = getattr(vit, 'vit_' + self.img_base_name, default_action)\
+            img_base_model = getattr(vit, 'vit_' + self.img_base_name[-3:], default_action)\
                                         (image_size = self.img_size[0:2], pretrained = True, 
                                         include_top = False, pretrained_top = False)
+            preprocessing_function = None
         
         model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                        from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,
                                        num_class=self.num_class, drop_rate=self.drop_rate, activation='softmax',
                                        strategy = self.strategy)
         
-        return model, tokenizer
+        return model, tokenizer, preprocessing_function
         
         
     def fit(self, X, y):
-        """_summary_
-
-        Args:
-            X (_type_): _description_
-            y (_type_): _description_
-            epochs (int, optional): _description_. Defaults to 1.
-            batch_size (int, optional): _description_. Defaults to 32.
-            learning_rate (_type_, optional): _description_. Defaults to 5e-5.
-
+        """
+        Trains the model on the provided dataset.
+        
+        Parameters:
+        * X: The image and text data for training. Should be a dataframe with columns
+          "tokens" containing the text and column "img_path" containing the full paths 
+          to the images
+        * y: The target labels for training.
+        
         Returns:
-            _type_: _description_
+        The instance of TFmultiClassifier after training.
         """
         
         if self.epochs > 0:
-            dataset = self._getdataset(X, y, training=True)
+            # Initialize validation data placeholder
+            dataset_val = None
+            
+            if self.validation_split > 0:
+                X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
+                #Fetching the dataset generator
+                dataset_val = self._getdataset(X_val, y_val, training=False)
+            else:
+                # Use all data for training if validation split is 0
+                X_train, y_train = X, y
+                
+            #Fetching the training dataset generator
+            dataset = self._getdataset(X_train, y_train, training=True)
+            
             with self.strategy.scope():
+                #defining the optimizer
                 optimizer = Adam(learning_rate=self.learning_rate)
+                
+                #Creating callbacks based on self.callback
                 callbacks = []
                 if self.callbacks is not None:
                     for callback in self.callbacks:
                         callback_api = getattr(tf.keras.callbacks, callback[0])
                         callbacks.append(callback_api(**callback[1]))
+                        
+                #Compiling
                 self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=callbacks)
+                
+                #Fitting the model
+                fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
+                if dataset_val is not None:
+                    fit_args['validation_data'] = dataset_val
+                    
+                self.history = self.model.fit(dataset, **fit_args)
         else:
+            #if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []
-            
+        
+        #For sklearn, adding attribute finishing with _ to indicate
+        # that the model has already been fitted    
         self.is_fitted_ = True
         
         return self
     
     def predict(self, X):
+        """
+        Predicts the class labels for the given input data.
+
+        Arguments:
+        * X: The image and text data for prediction. Should be a dataframe with columns
+          "tokens" containing the text and column "img_path" containing the full paths 
+          to the images
+        
+        Returns:
+        An array of predicted class labels.
+        """
         dataset = self._getdataset(X, training=False)
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
@@ -273,7 +390,15 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     
     def predict_proba(self, X):
         """
-        Predicts class probabilities for each input.
+        Predicts class probabilities for the given input data.
+
+        Arguments:
+        * X: The image and text data for prediction. Should be a dataframe with columns
+          "tokens" containing the text and column "img_path" containing the full paths 
+          to the images
+          
+        Returns:
+        An array of class probabilities for each input instance.
         """
         dataset = self._getdataset(X, training=False)
         probs = self.model.predict(dataset)
@@ -282,12 +407,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     
     
     def _getdataset(self, X, y=None, training=False):
-        """_summary_
-
-        Args:
-            X (_type_): _description_
-            y (_type_, optional): _description_. Defaults to None.
-            training (bool, optional): _description_. Defaults to False.
+        """
+        Internal method to prepare a TensorFlow dataset from the input data.
         """
         if y is None:
             y = 0
@@ -324,9 +445,9 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         Computes scores for the given input X and class labels y
         
         Arguments:
-        * X: The text and image data for which to predict class probabilities.
-          Should be a dataframe with text in column 'tokens' and image paths 
-          in column "img_path"
+        * X: The image and text data for which to predict labels. Should be 
+          a dataframe with columns "tokens" containing the text and column
+          "img_path" containing the full paths to the images
         * y: The target labels to predict.
         
         Returns:
@@ -347,11 +468,11 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     
     
     def save(self, name):
-        """_summary_
+        """
+        Saves the model to the directory specified in src.config file (config.path_to_models).
 
-        Args:
-            dirpath (_type_): _description_
-            name (_type_): _description_
+        Arguments:
+        * name: The name to be used for saving the model.
         """
         #path to the directory where the model will be saved
         save_path = os.path.join(config.path_to_models, 'trained_models', name)
@@ -383,11 +504,13 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.strategy = strategy_backup
         
     def load(self, name, parallel_gpu=False):
-        """_summary_
+        """
+        Loads a model from the directory specified in src.config file (config.path_to_models).
 
-        Args:
-            dirpath (_type_): _description_
-            name (_type_): _description_
+        Arguments:
+        * name: The name of the saved model to load.
+        * parallel_gpu: Flag to indicate whether to initialize the model 
+          for parallel GPU usage.
         """
         #path to the directory where the model to load was saved
         model_path = os.path.join(config.path_to_models, 'trained_models', name)
@@ -402,27 +525,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         else:
             self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
-        # path to locally saved huggingface model
-        txt_base_model_path = os.path.join(config.path_to_models, 'base_models', self.base_name)
-        
         #Re-building the model and loading the weights which has been saved
-        # in model_path        
-        with self.strategy.scope():
-            #Loading bert model base
-            if not os.path.isdir(txt_base_model_path):
-                # If the hugginface pretrained Bert model hasn't been yet saved locally, 
-                # we load and save it from HuggingFace
-                txt_base_model = TFAutoModel.from_pretrained(self.txt_base_name)
-                txt_base_model.save_pretrained(txt_base_model_path)
-                self.tokenizer = CamembertTokenizer.from_pretrained(self.txt_base_name)
-                self.tokenizer.save_pretrained(txt_base_model_path)
-            else:
-                txt_base_model = TFAutoModel.from_pretrained(txt_base_model_path)
-                self.tokenizer = CamembertTokenizer.from_pretrained(txt_base_model_path)
-            
-            #Loading ViT model base    
-            default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
-            img_base_model = getattr(vit, 'vit_' + self.img_base_name, default_action)\
-                                        (image_size = self.img_size[0:2], pretrained = True, 
-                                        include_top = False, pretrained_top = False)
+        # in model_path
+        self.model, self.tokenizer, self.preprocessing_function = self._getmodel(name)
 

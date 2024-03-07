@@ -11,6 +11,7 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, f1_score
+from sklearn.model_selection import train_test_split
 
 from joblib import load, dump
 
@@ -103,7 +104,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     
     def __init__(self, base_name='vit_b16', from_trained = None, 
                  img_size=(224, 224, 3), num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5,
+                 epochs=1, batch_size=32, learning_rate=5e-5, validation_split=0.0,
                  augmentation_params=None, callbacks=None, parallel_gpu=True):
         """
         Constructor: __init__(self, base_name='vit_b16', from_trained=None, img_size=(224, 224, 3), num_class=27, drop_rate=0.2, 
@@ -112,53 +113,28 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         Initializes a new instance of the ImgClassifier.
 
         Arguments:
-        base_name: Identifier for the base model architecture (e.g., 'vit_b16', 'vgg16', 'resnet50').
-        from_trained: Optional Name of a previously saved model in config.path_to_models. Default is None.
-        img_size: The size of input images.
-        num_class: The number of classes for classification.
-        drop_rate: Dropout rate before the final classification layer.
-        epochs: Number of epochs to train for.
-        batch_size: Size of batches for training.
-        learning_rate: Learning rate for the optimizer.
-        augmentation_params: Parameters for data augmentation.
-        callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
-        parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
-        Default is None.
-        parallel_gpu: Whether to use TensorFlow's mirrored strategy for parallel GPU training.
+        * base_name: Identifier for the base model architecture (e.g., 'vit_b16', 'vgg16', 'resnet50').
+        * from_trained: Optional Name of a previously saved model in config.path_to_models. Default is None.
+        * img_size: The size of input images.
+        * num_class: The number of classes for classification.
+        * drop_rate: Dropout rate before the final classification layer.
+        * epochs: Number of epochs to train for.
+        * batch_size: Size of batches for training.
+        * learning_rate: Learning rate for the optimizer.
+        * augmentation_params: a dictionnary with parameters for data augmentation (see ImageDataGenerator).
+        * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+        * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
+        * parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
+          Default is None.
+        * parallel_gpu: Whether to use TensorFlow's mirrored strategy for parallel GPU training.
         """
-        
+        #defining the parallelization strategy
         if parallel_gpu:
             self.strategy = tf.distribute.MirroredStrategy()
         else:
             self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
-        # with self.strategy.scope():
-        #     if 'vit' in base_name.lower():
-        #         default_action = lambda: print("base_name should be one of: b16, b32, L16 or L32")
-        #         base_model = getattr(vit, 'vit_' + base_name[-3:], default_action)\
-        #                         (image_size = img_size[0:2], pretrained = True, 
-        #                         include_top = False, pretrained_top = False)
-        #         self.preprocessing_function = None
-        #         model_class = None
-        #     elif 'efficientnet' in base_name.lower():
-        #         model_class = getattr(tf.keras.applications.efficientnet, base_name)
-        #         self.preprocessing_function = tf.keras.applications.efficientnet.preprocess_input
-        #     elif 'resnet' in base_name.lower():
-        #         model_class = getattr(tf.keras.applications.resnet, base_name)
-        #         self.preprocessing_function = tf.keras.applications.resnet.preprocess_input
-        #     elif 'vgg16' in base_name.lower():
-        #         model_class = getattr(tf.keras.applications.vgg16, base_name.upper())
-        #         self.preprocessing_function = tf.keras.applications.vgg16.preprocess_input
-        #     elif 'vgg19' in base_name.lower():
-        #         model_class = getattr(tf.keras.applications.vgg19, base_name.upper())
-        #         self.preprocessing_function = tf.keras.applications.vgg19.preprocess_input
-            
-        #     if model_class is not None:
-        #         base_model = model_class(weights='imagenet', include_top=False, input_shape=img_size)
-                   
-        # self.model = build_Img_model(base_model=base_model, from_trained = from_trained, img_size=img_size, num_class=num_class,
-        #                              drop_rate=drop_rate, activation='softmax', strategy=self.strategy)
-        
+        #Defining attributes
         self.img_size = img_size
         self.base_name = base_name
         self.from_trained = from_trained
@@ -173,18 +149,22 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
             self.augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
                                             height_shift_range=0.1, horizontal_flip=True,
                                             fill_mode='constant', cval=255)
+        self.validation_split = validation_split
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         self.history = []
         
+        #Building model and tokenizer
         self.model, self.preprocessing_function = self._getmodel(from_trained)
         
+        #For sklearn, adding attribute finishing with _ to indicate
+        # that the model has already been fitted
         if from_trained is not None:
             self.is_fitted_ = True
             
     def _getmodel(self, from_trained=None):
         """
-        Internal method to initialize or load the base model and set up preprocessing.
+        Internal method to initialize or load the base model and set up preprocessing function.
         """
         with self.strategy.scope():
             if 'vit' in self.base_name.lower():
@@ -234,8 +214,20 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         """
         
         if self.epochs > 0:
-            #Fetching the dataset generator
-            dataset = self._getdataset(X, y, training=True)
+            # Initialize validation data placeholder
+            dataset_val = None
+            
+            if self.validation_split > 0:
+                X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
+                #Fetching the dataset generator
+                dataset_val = self._getdataset(X_val, y_val, training=False)
+            else:
+                # Use all data for training if validation split is 0
+                X_train, y_train = X, y
+                
+            #Fetching the training dataset generator
+            dataset = self._getdataset(X_train, y_train, training=True)
+            
             with self.strategy.scope():
                 #defining the optimizer
                 optimizer = Adam(learning_rate=self.learning_rate)
@@ -247,9 +239,15 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                         callback_api = getattr(tf.keras.callbacks, callback[0])
                         callbacks.append(callback_api(**callback[1]))
                         
-                #Compiling and fitting the model
+                #Compiling
                 self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                self.history = self.model.fit(dataset, epochs=self.epochs, callbacks=callbacks)
+                
+                #Fitting the model
+                fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
+                if dataset_val is not None:
+                    fit_args['validation_data'] = dataset_val
+                    
+                self.history = self.model.fit(dataset, **fit_args)
         else:
             #if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []
