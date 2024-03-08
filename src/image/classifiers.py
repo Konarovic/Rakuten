@@ -26,6 +26,7 @@ Below is a summary documentation of the ImgClassifier class and its methods
         * predict(X): Predicts class labels for the input samples.
         * predict_proba(X): Predicts class probabilities for the input samples.
         * classification_score(X, y): Calculates weighted F1-score for the predictions.
+        * cross_validate(X, y, cv=10): Calculate cross-validated scores.
         * save(name): Saves the model and its configuration.
         * load(name, parallel_gpu=False): Loads a saved model and its configuration.
         
@@ -60,6 +61,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 
 from joblib import load, dump
 
@@ -141,6 +143,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     * predict(self, X): Predicts class labels for the input samples.
     * predict_proba(self, X): Predicts class probabilities for the input samples.
     * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
+    * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function.
     * save(self, name): Saves the model weights and configuration.
     * load(self, name, parallel_gpu=False): Loads a previously saved model configuration and weights.
     
@@ -425,6 +428,27 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         self.f1score = f1_score(y, pred, average='weighted')
         
         return self.f1score
+    
+    def cross_validate(self, X, y, cv=10, n_jobs=None):
+        """
+        Computes cross-validated scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The image data for which to cross-validate predictions.
+          Can be an array like a pandas series, or a dataframe with 
+          image path in column "img_path"
+        * y: The target labels to predict.
+        * cv: Number of folds. Default is 10.
+        * n_jobs: number of workers to parallelize on. Default is None.
+        
+        Returns:
+        The cross-validate scores as returned by sklearn cross_validate 
+        function. These scores are saved in the cv_scores attributes
+        """
+        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+        
+        return self.cv_scores
     
         
     def save(self, name):

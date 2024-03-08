@@ -25,6 +25,7 @@ functions along with their parameters and available methods.
         * predict(X): Predict class labels for the given text (X).
         * predict_proba(X): Predict class probabilities for the given text (X).
         * classification_score(X, y): Compute the weighted F1 score for predictions.
+        * cross_validate(X, y, cv=10): Calculate cross-validated scores.
         * save(name): Save the model to the specified path.
         * load(name, parallel_gpu=False): Load a model from the specified path.
         
@@ -56,6 +57,7 @@ functions along with their parameters and available methods.
         * predict(X): Predict class labels for text data (X).
         * predict_proba(X): Predict class probabilities for text data (X), if supported.
         * classification_score(X, y): Calculate the weighted F1 score for the given predictions.
+        * cross_validate(X, y, cv=10): Calculate cross-validated scores.
         * save(name): Save the trained model to a file.
         * load(name): Load a model from a file.
         
@@ -95,7 +97,7 @@ from sklearn.dummy import DummyClassifier
 import xgboost as xgb
 
 from sklearn.metrics import classification_report, f1_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 
 from joblib import load, dump
 import sklearn
@@ -184,6 +186,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     * predict(X): Predicts the class labels for the given input.
     * predict_proba(X): Predicts class probabilities for the given input.
     * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
+    * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function
     * save(name): Saves the model to the directory specified in config.path_to_models.
     * load(name, parallel_gpu=False): Loads a model from the directory specified in config.path_to_models.
     
@@ -447,6 +450,27 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         
         return self.f1score
     
+    def cross_validate(self, X, y, cv=10, n_jobs=None):
+        """
+        Computes cross-validated scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text data for which to cross-validate predictions.
+          Can be an array like a pandas series, or a dataframe with 
+          text in column "tokens"
+        * y: The target labels to predict.
+        * cv: Number of folds. Default is 10.
+        * n_jobs: number of workers to parallelize on. Default is None.
+        
+        Returns:
+        The cross-validate scores as returned by sklearn cross_validate 
+        function. These scores are saved in the cv_scores attributes
+        """
+        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+        
+        return self.cv_scores
+    
     
     
     def save(self, name):
@@ -539,6 +563,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
     * predict_proba(X): Predicts class probabilities for the given input (if predict_proba
       is available for the chosen classifier).
     * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
+    * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function
     * save(name): Saves the model to the directory specified in config.path_to_models.
     
     Example usage:
@@ -711,6 +736,27 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
         
         return self.f1score
+    
+    def cross_validate(self, X, y, cv=10, n_jobs=None):
+        """
+        Computes cross-validated scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text data for which to cross-validate predictions.
+          Can be an array like a pandas series, or a dataframe with 
+          text in column "tokens"
+        * y: The target labels to predict.
+        * cv: Number of folds. Default is 10.
+        * n_jobs: number of workers to parallelize on. Default is None.
+        
+        Returns:
+        The cross-validate scores as returned by sklearn cross_validate 
+        function. These scores are saved in the cv_scores attributes
+        """
+        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+        
+        return self.cv_scores
     
     def save(self, name):
         """

@@ -29,6 +29,7 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
         * predict(X): Predicts class labels for input data.
         * predict_proba(X): Predicts class probabilities.
         * classification_score(X, y): Calculates classification metrics.
+        * cross_validate(X, y, cv=10): Calculate cross-validated scores.
         * save(name): Saves the model.
         * load(name, parallel_gpu): Loads a saved model.
 
@@ -54,6 +55,7 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
         * predict(X): Predicts class labels for the input data.
         * predict_proba(X): Predicts class probabilities for the input data (if supported by the base models).
         * classification_score(X, y): Calculates the weighted F1-score for the predictions.
+        * cross_validate(X, y, cv=10): Calculate cross-validated scores.
         * save(name): Saves the ensemble model and its base models.
         * load(name): Loads the ensemble model and its base models.
         
@@ -74,6 +76,7 @@ from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate, BatchNor
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 
 from vit_keras import vit
 
@@ -283,6 +286,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     * predict: Predicts class labels for the given input data.
     * predict_proba: Predicts class probabilities for the given input data.
     * classification_score: Computes classification metrics for the given input data and true labels.
+    * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function.
     * save: Saves the model's weights and tokenizer to the specified directory.
     * load: Loads the model's weights and tokenizer from the specified directory.
     
@@ -571,7 +575,28 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')
         
-        return self.f1score    
+        return self.f1score 
+    
+    def cross_validate(self, X, y, cv=10, n_jobs=None):
+        """
+        Computes cross-validated scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text and image data for which to cross-validate predictions.
+          Should be a dataframe with  text in column "tokens" and image paths
+          in column "img_path"
+        * y: The target labels to predict.
+        * cv: Number of folds. Default is 10.
+        * n_jobs: number of workers to parallelize on. Default is None.
+        
+        Returns:
+        The cross-validate scores as returned by sklearn cross_validate 
+        function. These scores are saved in the cv_scores attributes
+        """
+        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+        
+        return self.cv_scores   
     
     
     def save(self, name):
@@ -662,6 +687,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
     * predict_proba(X): Predicts class probabilities for the given input (if predict_proba
       is available for the chosen classifier).
     * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
+    * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function.
     * save(name): Saves the model to the directory specified in config.path_to_models.
     
     Example usage:
@@ -801,6 +827,28 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         self.f1score = f1_score(y, pred, average='weighted')
         
         return self.f1score
+    
+    
+    def cross_validate(self, X, y, cv=10, n_jobs=None):
+        """
+        Computes cross-validated scores for the given input X and class labels y
+        
+        Arguments:
+        * X: The text and image data for which to cross-validate predictions.
+          Should be a dataframe with  text in column "tokens" and image paths
+          in column "img_path"
+        * y: The target labels to predict.
+        * cv: Number of folds. Default is 10.
+        * n_jobs: number of workers to parallelize on. Default is None.
+        
+        Returns:
+        The cross-validate scores as returned by sklearn cross_validate 
+        function. These scores are saved in the cv_scores attributes
+        """
+        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+        
+        return self.cv_scores
     
     def save(self, name):
         """
