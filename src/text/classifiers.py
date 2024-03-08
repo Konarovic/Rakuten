@@ -442,7 +442,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.classification_results = classification_report(y, pred)
         
         #Build confusion matrix
-        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
+        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')
@@ -740,7 +740,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         self.classification_results = classification_report(y, pred, zero_division=0)
         
         #Build confusion matrix
-        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
+        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted', zero_division=0)

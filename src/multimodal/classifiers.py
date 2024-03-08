@@ -134,10 +134,11 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         x = txt_transformer_layer[0][:, 0, :]
         x = LayerNormalization(epsilon=1e-6, name='txt_normalization')(x)
         
-        x = Dense(128, activation = 'relu', name='txt_Dense_top_1')(x)
-        x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
-        outputs = Dense(num_class, activation= 'relu', name='txt_classification_layer')(x)
+        # x = Dense(128, activation = 'relu', name='txt_Dense_top_1')(x)
+        # x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
+        # outputs = Dense(num_class, activation= 'relu', name='txt_classification_layer')(x)
         # outputs = Dense(units=2*num_class, activation=activation, name='text_classification_layer')(x)
+        outputs = x
         txt_model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=outputs)
         
         #Loading pre-saved weights to the Bert model if provided
@@ -155,10 +156,11 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         x = img_base_model(input_img)
         x = LayerNormalization(epsilon=1e-6, name='img_normalization')(x)
         
-        x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
-        x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
-        outputs = Dense(num_class, activation='relu', name='img_classification_layer')(x)
+        # x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
+        # x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
+        # outputs = Dense(num_class, activation='relu', name='img_classification_layer')(x)
         # outputs = Dense(units=2*num_class, activation=activation, name='img_classification_layer')(x)
+        outputs = x
         img_model = Model(inputs=input_img, outputs=outputs)
         
         #Loading pre-saved weights to the Image model if provided
@@ -173,14 +175,16 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         if attention_numheads == 0:
             x = Concatenate()([txt_model.output, img_model.output])
         else:
+            img_output = tf.expand_dims(img_model.output, axis=1)
+            txt_output = tf.expand_dims(txt_model.output, axis=1)
             if attention_query == 'image':
-                embed_dim = txt_model.output.shape[-1]
+                embed_dim = txt_output.shape[-1]
                 attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
-                x = attention_layer(query=img_model.output, key=txt_model.output, value=txt_model.output)
+                x = attention_layer(query=img_output, key=txt_output, value=txt_output)
             else:
-                embed_dim = img_model.output.shape[-1]
+                embed_dim = img_output.shape[-1]
                 attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
-                x = attention_layer(query=txt_model.output, key=img_model.output, value=img_model.output)
+                x = attention_layer(query=txt_output, key=img_output, value=img_output)
             
         #Dense layers for classification
         x = Dropout(rate=drop_rate, name='multi_Drop_out_top_1')(x)
@@ -570,7 +574,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.classification_results = classification_report(y, pred)
         
         #Build confusion matrix
-        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
+        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')
@@ -821,7 +825,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         self.classification_results = classification_report(y, pred)
         
         #Build confusion matrix
-        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
+        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')
