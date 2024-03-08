@@ -70,7 +70,7 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
 
 from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate, BatchNormalization
+from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate, BatchNormalization, LayerNormalization, MultiHeadAttention
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -92,7 +92,8 @@ import src.config as config
 
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
-                      num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
+                      num_class=27, drop_rate=0.0, activation='softmax', attention_numheads=0,
+                      attention_query='image', strategy=None):
     """
     Creates a multimodal classification model that combines text and image data for prediction tasks.
 
@@ -107,6 +108,7 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
     * num_class (int, optional): Number of classes for the classification task. Default is 27.
     * drop_rate (float, optional): Dropout rate applied in the final layers of the model. Default is 0.0.
     * activation (str, optional): Activation function for the output layer. Default is 'softmax'.
+    * attention_numheads (int, optional): number of cross-attention head before the classification layer
     * strategy: TensorFlow distribution strategy to be used during model construction.
     
     Returns:
@@ -127,6 +129,8 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         txt_base_model._name = 'txt_base_layers'
         txt_transformer_layer = txt_base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
         x = txt_transformer_layer[0][:, 0, :]
+        x = LayerNormalization(epsilon=1e-6, name='txt_normalization')(x)
+        
         x = Dense(128, activation = 'relu', name='txt_Dense_top_1')(x)
         x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
         outputs = Dense(num_class, activation= 'relu', name='txt_classification_layer')(x)
@@ -146,6 +150,8 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         input_img = Input(shape=img_size, name='inputs')
         img_base_model._name = 'img_base_layers'
         x = img_base_model(input_img)
+        x = LayerNormalization(epsilon=1e-6, name='img_normalization')(x)
+        
         x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
         x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
         outputs = Dense(num_class, activation='relu', name='img_classification_layer')(x)
@@ -161,8 +167,18 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
                     img_model.load_weights(img_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
         
         #Concatenate text and image models
-        x = Concatenate()([txt_model.output, img_model.output])
-
+        if attention_numheads == 0:
+            x = Concatenate()([txt_model.output, img_model.output])
+        else:
+            if attention_query == 'image':
+                embed_dim = txt_model.output.shape[-1]
+                attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
+                x = attention_layer(query=img_model.output, key=txt_model.output, value=txt_model.output)
+            else:
+                embed_dim = img_model.output.shape[-1]
+                attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
+                x = attention_layer(query=txt_model.output, key=img_model.output, value=img_model.output)
+            
         #Dense layers for classification
         x = Dropout(rate=drop_rate, name='multi_Drop_out_top_1')(x)
         # x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
@@ -282,6 +298,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, txt_base_name='camembert-base', img_base_name='vit_b16', from_trained = None, 
                  max_length=256, img_size=(224, 224, 3), augmentation_params=None,
                  num_class=27, drop_rate=0.2, epochs=1, batch_size=32, 
+                 attention_numheads=0, attention_query='image',
                  validation_split=0.0, validation_data=None,
                  learning_rate=5e-5, callbacks=None, parallel_gpu=True):
         """
@@ -333,6 +350,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.from_trained = from_trained
         self.num_class = num_class
         self.drop_rate = drop_rate
+        self.attention_numheads = attention_numheads
+        self.attention_query = attention_query
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -386,6 +405,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                        from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,
                                        num_class=self.num_class, drop_rate=self.drop_rate, activation='softmax',
+                                       attention_numheads=self.attention_numheads, attention_query=self.attention_query,
                                        strategy = self.strategy)
         
         return model, tokenizer, preprocessing_function
