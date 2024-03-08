@@ -417,7 +417,6 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
             dataset = dataset.shuffle(buffer_size=1000).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         else:
             dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
-            dataset = dataset.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         
         return dataset
     
