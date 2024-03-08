@@ -4,3 +4,8 @@ notebook/__pycache__/
 envs/
 .vscode/
 *.draft
+env/
+**.pyc
+**.code-workspace
+model/
+**.h5
