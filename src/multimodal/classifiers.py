@@ -556,7 +556,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         
         Returns:
         The average weighted f1-score. Also save scores in classification_results
-        and f1score attributes
+        and f1score attributes and confusion matrix in confusion_mat
         """
         
         #predict class labels for the input text X
@@ -564,6 +564,9 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         
         #Save classification report
         self.classification_results = classification_report(y, pred)
+        
+        #Build confusion matrix
+        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')
@@ -782,7 +785,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         
         Returns:
         The average weighted f1-score. Also save scores in classification_results
-        and f1score attributes
+        and f1score attributes and confusion matrix in confusion_mat
         """
         
         #predict class labels for the input text X
@@ -790,6 +793,9 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         
         #Save classification report
         self.classification_results = classification_report(y, pred)
+        
+        #Build confusion matrix
+        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')

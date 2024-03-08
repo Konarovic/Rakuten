@@ -92,6 +92,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.dummy import DummyClassifier
 
+import xgboost as xgb
+
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import train_test_split
 
@@ -407,11 +409,11 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         
         #Dataset from tokenized text, with or without labels depending on whether 
         # we use it for training or not
-        dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
         if training:
+            dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
             dataset = dataset.shuffle(buffer_size=1000).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         else:
-            # dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
+            dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
             dataset = dataset.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         
         return dataset
@@ -436,6 +438,9 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         
         #Save classification report
         self.classification_results = classification_report(y, pred)
+        
+        #Build confusion matrix
+        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted')
@@ -572,7 +577,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             self.is_fitted_ = True
         else:
             # Initialize the model according to base_name and kwargs
-            if base_name.lower() == 'linearscv':
+            if base_name.lower() == 'linearsvc':
                 self.model = LinearSVC(**kwargs)
             elif base_name.lower() == 'logisticregression':
                 self.model = LogisticRegression(**kwargs)
@@ -580,6 +585,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
                 self.model = MultinomialNB(**kwargs)
             elif base_name.lower() == 'randomforestclassifier':
                 self.model = RandomForestClassifier(**kwargs)
+            elif base_name.lower() == 'xgboost':
+                self.model = xgb.XGBClassifier(**kwargs)
             elif base_name.lower() == 'dummyclassifier':
                 self.model = DummyClassifier(**kwargs)
                 
@@ -688,17 +695,20 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         
         Returns:
         The average weighted f1-score. Also save scores in classification_results
-        and f1score attributes
+        and f1score attributes and confusion matrix in confusion_mat
         """
         
         #predict class labels for the input text X
         pred = self.predict(X)
         
         #Save classification report
-        self.classification_results = classification_report(y, pred)
+        self.classification_results = classification_report(y, pred, zero_division=0)
+        
+        #Build confusion matrix
+        self.confusion_mat = round(pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns'))
         
         #Save weighted f1-score
-        self.f1score = f1_score(y, pred, average='weighted')
+        self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
         
         return self.f1score
     
