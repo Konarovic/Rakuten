@@ -1,4 +1,9 @@
-
+import re
+import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
+from src.features.text.helpers import ENCODING_REPLACEMENT_DICT, CLASSIC_PATTERNS_DICT
+from src.features.text.transformers.languages import LangIdDetector
+from spellchecker import SpellChecker
 
 def Rakuten_txt_fixencoding(data, lang):
     """
@@ -63,61 +68,6 @@ def txt_fixencoding(txt, lang, spellers):
     corrected_text = txt_fixencoding(example_text, language, spellers)
     """
 
-    # returning the original value if not a str or no special characters
-    if not isinstance(txt, str) or len(re.findall(r'[\?¿º¢©́]', txt)) == 0:
-        return txt
-
-    # replace duplicates of badly encoded markers and some weird combinations
-    # with a single one
-    pattern = r'([?¿º¢©́])\1'
-    txt = re.sub(pattern, r'\1', txt)
-    txt = re.sub(r'\[å¿]', '¿', txt)
-
-    # Replacing words that won't be easily corrected by the spell checker
-    replace_dict = {'c¿ur': 'coeur', '¿uvre': 'oeuvre', '¿uf': 'oeuf',
-                    'n¿ud': 'noeud', '¿illets': 'oeillets',
-                    'v¿ux': 'voeux', 's¿ur': 'soeur', '¿il': 'oeil',
-                    'man¿uvre': 'manoeuvre',
-                    '¿ºtre': 'être', 'à¢me': 'âme',
-                    'm¿ºme': 'même', 'grà¢ce': 'grâçe',
-                    'con¿u': 'conçu', 'don¿t': "don't",
-                    'lorsqu¿': "lorsqu'", 'jusqu¿': "jusqu'",
-                    'durabilit¿avec': 'durabilité avec',
-                    'dâ¿hygiène': "d'hygiène", 'à¿me': 'âme',
-                    'durabilit¿': 'durabilité', 'm¿urs': 'moeurs',
-                    'd¿coration': 'décoration', 'tiss¿e': 'tissée',
-                    '¿cran': 'écran', '¿Lastique': 'élastique',
-                    '¿Lectronique': 'électronique', 'Capacit¿': 'capacité',
-                    'li¿ge': 'liège', 'Kã?Â¿Rcher': 'karcher',
-                    'Ber¿Ante': 'berçante',
-
-                    'durabilitéavec': 'durabilité avec',
-                    'cahiercaract¿re': 'cahier caractère',
-                    'Cahierembl¿Me': 'Cahier emblème',
-
-                    'c?ur': 'coeur', '?uvre': 'oeuvre', '?uf': 'oeuf',
-                    'n?ud': 'noeud', '?illets': 'oeillets',
-                    'v?ux': 'voeux', 's?ur': 'soeur', '?il': 'oeil',
-                    'man?uvre': 'manoeuvre',
-                    '?ºtre': 'être',
-                    'm?ºme': 'même',
-                    'con?u': 'conçu', 'don?t': "don't",
-                    'lorsqu¿': "lorsqu'", 'jusqu¿': "jusqu'",
-                    'durabilit¿avec': 'durabilité avec',
-                    'dâ?hygiène': "d'hygiène", 'à?me': 'âme',
-                    'durabilit?': 'durabilité', 'm?urs': 'moeurs',
-                    'd?coration': 'décoration', 'tiss?e': 'tissée',
-                    '?cran': 'écran', '?Lastique': 'élastique',
-                    '?Lectronique': 'électronique', 'Capacit?': 'capacité',
-                    'li?ge': 'liège', 'Ber?Ante': 'berçante',
-                    "Lâ¿¿Incroyable": "l'incroyable", 'Creì¿Ateur': 'créateur',
-
-                    'cahiercaract?re': 'cahier caractère',
-                    'Cahierembl?Me': 'Cahier emblème'}
-
-    for badword, correction in replace_dict.items():
-        txt = re.sub(re.escape(badword), correction, txt, flags=re.IGNORECASE)
-
     # Not sure why but the following doesn't work at once so we do it again
     # (It is quite common in the data set...)
     pattern = re.escape('durabilitéavec')
@@ -178,3 +128,139 @@ def txt_fixencoding(txt, lang, spellers):
     txt = re.sub(pattern, '? ', txt)
 
     return txt
+
+class EncodingIsolator(BaseEstimator, TransformerMixin):
+    """A text transformer to replace duplicates of badly encoded markers and some weird combinations with a single one"""
+    def __init__(self) -> None:
+        self.pattern = re.compile(r'([?¿º¢©́])\1+')
+        self.special_sequence_pattern = re.compile(r'[å¿]')
+
+    def fit(self, X, y=None):
+        return self    
+
+    def transform(self, X):
+        # Replace duplicates of badly encoded markers
+        X_cleaned = X.str.replace(pat=self.pattern, repl=r'\1', regex=True)
+        X_cleaned = X_cleaned.str.replace(pat=self.special_sequence_pattern, repl='¿', regex=True)
+        return X_cleaned
+    
+
+class ExcessPunctuationRemover(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"[?\s:;\/!¿]{3,}")
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X_cleaned = X.str.replace(pat=self.pattern, repl=" . ", regex=True)
+        return X_cleaned
+    
+
+class HandMadeCorrector(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.replacement_dict = ENCODING_REPLACEMENT_DICT
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X_corrected = X
+        for badword, correction in self.replacement_dict.items():
+            X_corrected = X_corrected.str.replace(pat=badword, repl=correction, case=False)
+        return X_corrected
+    
+class EncodingApostropheCorrector(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.pattern=re.compile(r'\b([dlcn])[¿?](?=[aeiouyhAEIOUYHé])')
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X_corrected = X.str.replace(pat=self.pattern, repl=r"\1'", regex=True)
+        return X_corrected
+
+class PronounsApostropheCorrector(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.pattern=re.compile( r'\bqu[¿?]')
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X_corrected = X.str.replace(pat=self.pattern, repl="qu'", regex=True)
+        return X_corrected
+    
+
+class ClassicPatternsCorrector(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.replacement_dict = CLASSIC_PATTERNS_DICT
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X_corrected = X
+        for pattern, correction in self.replacement_dict.items():
+            X_corrected = X_corrected.str.replace(pat=pattern, repl=correction, case=False)
+        return X_corrected
+    
+class BadWordsDetector(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.pattern = re.compile( r'\w*[å¿]\w*')
+        self.lang_detector = LangIdDetector()
+        
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        bad_words = X.str.findall(pat=self.pattern)
+        languages = self.lang_detector.fit_transform(X)
+        return pd.DataFrame({
+            "text":X, 
+            "badwords": bad_words, 
+            "lang": languages 
+            })
+    
+class BadWordsCorrector(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        print(type(X))
+        print(X.columns)
+        #return [row["text"] for row in X]
+        corrected_words = X.apply(lambda x: x["text"])
+        #corrected_words = X.apply(lambda row: self.correct_text(text=row["text"], badwords=row["badwords"], lang=row["lang"]))
+        return corrected_words
+    
+    @staticmethod
+    def correct_text(text, badwords, lang):
+        speller = SpellChecker(language=lang)
+        for word in badwords:
+            correction = speller.correction(word)
+            text = re.sub(word, correction, text)
+        return text
+
+
+class PySpellCorrector(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        self.lang_detector = LangIdDetector()
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        languages = self.lang_detector.fit_transform(X)
+        text_info = pd.DataFrame({"lang":languages, "text": X})
+        return text_info
+

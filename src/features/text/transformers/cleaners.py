@@ -77,7 +77,7 @@ class FileNameCleaner(TextCleaner):
 class BadHTMLCleaner(TextCleaner):
     """A transformer to clean Bad HTML from text"""
     def __init__(self) -> None:
-        super().__init__(r'nbsp|&amp|& nbsp|')
+        super().__init__(r'nbsp|&amp|& [Nn][Bb][Ss][Pp]|')
 
 
 class SpaceAroundAdder(BaseEstimator, TransformerMixin):
@@ -116,6 +116,7 @@ class ShortTextCleaner(BaseEstimator, TransformerMixin):
         X_cleaned = X.str.replace(pat="...", repl=".")
         X_cleaned = X_cleaned.apply(lambda row: np.nan  if isinstance(row, str) and len(row) < 3 else row)
         return X_cleaned
+    
     
 class ExtraSpacesCleaner(BaseEstimator, TransformerMixin):
     def __init__(self):
