@@ -176,16 +176,9 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         txt_output = tf.expand_dims(txt_model.output, axis=1)
         x = Concatenate(axis=1)([txt_output, img_output])
         if attention_numheads > 0:
-            # img_output = tf.expand_dims(img_model.output, axis=1)
-            # txt_output = tf.expand_dims(txt_model.output, axis=1)
-            if attention_query == 'image':
-                embed_dim = x.shape[-1]
-                attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
-                x = attention_layer(query=x, key=x, value=x)
-            else:
-                embed_dim = x.shape[-1]
-                attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
-                x = attention_layer(query=x, key=x, value=x)
+            embed_dim = x.shape[-1]
+            attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
+            x = attention_layer(query=x, key=x, value=x)
         # else:
         #     x = Concatenate()([txt_model.output, img_model.output])
             
