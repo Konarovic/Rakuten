@@ -17,6 +17,7 @@ Below is a summary documentation of the ImgClassifier class and its methods
         * learning_rate: Learning rate for the optimizer.
         * augmentation_params: Parameters for data augmentation.
         * validation_split: Fraction of data to be used for validation.
+        * validation_data: Data to use for validation during training.
         * callbacks: Callbacks to use during training.
         * parallel_gpu: Whether to use parallel GPU support.
 
@@ -97,15 +98,15 @@ def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num
         #Adding an average pooling if it's a convNet
         if len(base_model.output_shape) == 4:
             model.add(GlobalAveragePooling2D())
-        model.add(Dense(128, activation = 'relu', name='Dense_top_1'))
-        model.add(Dropout(rate=drop_rate, name='Drop_out_top_1'))
-        model.add(Dense(num_class, activation = activation, name='classification_layer'))
+        model.add(Dense(128, activation = 'relu', name='img_Dense_top_1'))
+        model.add(Dropout(rate=drop_rate, name='img_Drop_out_top_1'))
+        model.add(Dense(num_class, activation = activation, name='img_classification_layer'))
         
         if from_trained is not None:
             script_dir = os.path.dirname(os.path.realpath(__file__))
             trained_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained)
             print("loading weights from ", from_trained)
-            model.load_weights(trained_model_path + '/weights.h5')#, by_name=True, skip_mismatch=True)
+            model.load_weights(trained_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
     
     return model
 
@@ -129,6 +130,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     * learning_rate: Learning rate for the optimizer. Default is 5e-5.
     * augmentation_params: Dictionary specifying parameters for data augmentation. Default is None, which applies a standard set of augmentations.
     * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+    * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
     * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
       parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
       Default is None.
@@ -152,7 +154,8 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     
     def __init__(self, base_name='vit_b16', from_trained = None, 
                  img_size=(224, 224, 3), num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, validation_split=0.0,
+                 epochs=1, batch_size=32, learning_rate=5e-5, 
+                 validation_split=0.0, validation_data=None,
                  augmentation_params=None, callbacks=None, parallel_gpu=True):
         """
         Constructor: __init__(self, base_name='vit_b16', from_trained=None, img_size=(224, 224, 3), num_class=27, drop_rate=0.2, 
@@ -171,6 +174,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         * learning_rate: Learning rate for the optimizer.
         * augmentation_params: a dictionnary with parameters for data augmentation (see ImageDataGenerator).
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+        * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
         * parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
           Default is None.
@@ -198,6 +202,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                                             height_shift_range=0.1, horizontal_flip=True,
                                             fill_mode='constant', cval=255)
         self.validation_split = validation_split
+        self.validation_data = validation_data
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         self.history = []
@@ -266,9 +271,14 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
             dataset_val = None
             
             if self.validation_split > 0:
+                #Splitting data for validation as necessary
                 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
-                #Fetching the dataset generator
+                #Fetching the dataset generator for validation
                 dataset_val = self._getdataset(X_val, y_val, training=False)
+            elif self.validation_data is not None:
+                #If validation data are provided in self.validation_data, we fetch those
+                dataset_val = self._getdataset(self.validation_data[0], self.validation_data[1], training=True)
+                X_train, y_train = X, y
             else:
                 # Use all data for training if validation split is 0
                 X_train, y_train = X, y

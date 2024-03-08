@@ -16,6 +16,7 @@ functions along with their parameters and available methods.
         * batch_size (optional): Batch size for training.
         * learning_rate (optional): Optimizer learning rate.
         * validation_split (optional): Fraction of data for validation.
+        * validation_data (optional): Data to use for validation.
         * callbacks (optional): list of tuples with callbacks parameters.
         * parallel_gpu (optional): Flag to use parallel GPU training.
         
@@ -132,9 +133,9 @@ def build_bert_model(base_model, from_trained = None, max_length=256, num_class=
         x = transformer_layer[0][:, 0, :]
 
         #Classification head
-        x = Dense(128, activation='relu', name='Dense_top_1')(x)
-        x = Dropout(rate=drop_rate, name='Drop_out_top_1')(x)
-        output = Dense(num_class, activation=activation, name='classification_layer')(x)
+        # x = Dense(128, activation='relu', name='txt_Dense_top_1')(x)
+        # x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
+        output = Dense(num_class, activation=activation, name='txt_classification_layer')(x)
         
         # Construct the final model
         model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=output)
@@ -169,6 +170,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     * batch_size (int, optional): Batch size for training. Default is 32.
     * learning_rate (float, optional): Learning rate for the optimizer. Default is 5e-5.
     * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+    * validation_data: a tuple with (features, labels) data to use for validation during training. Default is 0.0.
     * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
       parameters. Example: [('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2})].
       Default is None.
@@ -194,7 +196,8 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, base_name='camembert-base', from_trained = None, 
                  max_length=256, num_class=27, drop_rate=0.2,
                  epochs=1, batch_size=32, learning_rate=5e-5, 
-                 validation_split=0.0, callbacks=None, parallel_gpu=False):
+                 validation_split=0.0, validation_data=None,
+                 callbacks=None, parallel_gpu=False):
         
         """
         Constructor: __init__(self, base_name='camembert-base', from_trained=None, max_length=256, 
@@ -215,6 +218,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+        * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
           parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
           Default is None.
@@ -240,6 +244,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.validation_split = validation_split
+        self.validation_data = validation_data
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         self.history = []
@@ -306,9 +311,14 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
             dataset_val = None
             
             if self.validation_split > 0:
+                #Splitting data for validation as necessary
                 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
-                #Fetching the dataset generator
-                dataset_val = self._getdataset(X_val, y_val, training=True)
+                #Fetching the dataset generator for validation
+                dataset_val = self._getdataset(X_val, y_val, training=False)
+            elif self.validation_data is not None:
+                #If validation data are provided in self.validation_data, we fetch those
+                dataset_val = self._getdataset(self.validation_data[0], self.validation_data[1], training=True)
+                X_train, y_train = X, y
             else:
                 # Use all data for training if validation split is 0
                 X_train, y_train = X, y
@@ -397,11 +407,12 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         
         #Dataset from tokenized text, with or without labels depending on whether 
         # we use it for training or not
+        dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
         if training:
-            dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
             dataset = dataset.shuffle(buffer_size=1000).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         else:
-            dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
+            # dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
+            dataset = dataset.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         
         return dataset
     
@@ -576,8 +587,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             for param, value in model_params.items():
                 setattr(self, param, value)
             
-            if vec_method.lower() == 'tfidf'    
-            self.vectorizer = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
+            if vec_method.lower() == 'tfidf':
+                self.vectorizer = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
         
         #Only make predict_proba available if self.model 
         # has such method implemented

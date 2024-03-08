@@ -13,6 +13,8 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
         * max_length: Maximum sequence length for text inputs.
         * img_size: The size of the input images.
         * augmentation_params: Data augmentation parameters.
+        * validation_split: Fraction of data to be used for validation.
+        * validation_data: Data to use for validation during training.
         * num_class: The number of output classes.
         * drop_rate: Dropout rate for regularization.
         * epochs: Number of epochs to train the model.
@@ -124,8 +126,10 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         #Bert transformer model
         txt_base_model._name = 'txt_base_layers'
         txt_transformer_layer = txt_base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
-        outputs = txt_transformer_layer[0][:, 0, :]
-        # x = Dropout(rate=drop_rate)(x)
+        x = txt_transformer_layer[0][:, 0, :]
+        x = Dense(128, activation = 'relu', name='txt_Dense_top_1')(x)
+        x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
+        outputs = Dense(num_class, activation= 'relu', name='txt_classification_layer')(x)
         # outputs = Dense(units=2*num_class, activation=activation, name='text_classification_layer')(x)
         txt_model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=outputs)
         
@@ -141,8 +145,10 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         #ViT transformer model
         input_img = Input(shape=img_size, name='inputs')
         img_base_model._name = 'img_base_layers'
-        outputs = img_base_model(input_img)
-        # x = Dropout(rate=drop_rate)(x)
+        x = img_base_model(input_img)
+        x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
+        x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
+        outputs = Dense(num_class, activation='relu', name='img_classification_layer')(x)
         # outputs = Dense(units=2*num_class, activation=activation, name='img_classification_layer')(x)
         img_model = Model(inputs=input_img, outputs=outputs)
         
@@ -158,8 +164,8 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         x = Concatenate()([txt_model.output, img_model.output])
 
         #Dense layers for classification
-        x = Dropout(rate=drop_rate)(x)
-        x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
+        x = Dropout(rate=drop_rate, name='multi_Drop_out_top_1')(x)
+        # x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
         outputs = Dense(units=num_class, activation=activation, name='multi_classification_layer')(x)
 
         model = Model(inputs=[txt_model.input, img_model.input], outputs=outputs)
@@ -246,6 +252,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     * max_length (int, optional): Maximum sequence length for text inputs.
     * img_size (tuple, optional): Size of the input images.
     * augmentation_params: Parameters for data augmentation.
+    * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+    * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
     * num_class (int, optional): Number of classes for the classification task.
     * drop_rate (float, optional): Dropout rate applied in the final layers of the model.
     * epochs (int, optional): Number of epochs for training.
@@ -273,7 +281,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     
     def __init__(self, txt_base_name='camembert-base', img_base_name='vit_b16', from_trained = None, 
                  max_length=256, img_size=(224, 224, 3), augmentation_params=None,
-                 num_class=27, drop_rate=0.2, epochs=1, batch_size=32, validation_split=0.0,
+                 num_class=27, drop_rate=0.2, epochs=1, batch_size=32, 
+                 validation_split=0.0, validation_data=None,
                  learning_rate=5e-5, callbacks=None, parallel_gpu=True):
         """
         Constructor: __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
@@ -299,6 +308,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
+        * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
           parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
           Default is None.
@@ -333,6 +343,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                                             height_shift_range=0.1, horizontal_flip=True,
                                             fill_mode='constant', cval=255)    
         self.validation_split = validation_split
+        self.validation_data = validation_data
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         
@@ -399,9 +410,14 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             dataset_val = None
             
             if self.validation_split > 0:
+                #Splitting data for validation as necessary
                 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
-                #Fetching the dataset generator
+                #Fetching the dataset generator for validation
                 dataset_val = self._getdataset(X_val, y_val, training=False)
+            elif self.validation_data is not None:
+                #If validation data are provided in self.validation_data, we fetch those
+                dataset_val = self._getdataset(self.validation_data[0], self.validation_data[1], training=True)
+                X_train, y_train = X, y
             else:
                 # Use all data for training if validation split is 0
                 X_train, y_train = X, y
