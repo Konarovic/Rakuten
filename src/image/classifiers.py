@@ -448,7 +448,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
         self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
         
-        return self.cv_scores
+        return self.cv_scores['test_score'].mean()
     
         
     def save(self, name):

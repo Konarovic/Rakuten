@@ -469,7 +469,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
         self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
         
-        return self.cv_scores
+        return self.cv_scores['test_score'].mean()
     
     
     
@@ -594,7 +594,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         """
         self.base_name = base_name
         self.from_trained = from_trained
-        self.vec_method = vec_method.lower()
+        self.vec_method = vec_method
+        self.kwargs = kwargs
         
         if self.from_trained is not None:
             #loading previously saved model if provided
@@ -627,7 +628,17 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         if hasattr(self.model, 'predict_proba'):
             self.predict_proba = self._predict_proba
         
-        
+    def get_params(self, deep=True):
+        # Return all parameters, including kwargs
+        params = super().get_params(deep=deep)
+        params.update(self.kwargs)
+        return params
+
+    def set_params(self, **params):
+        # Set parameters including kwargs
+        for parameter, value in params.items():
+            setattr(self, parameter, value)
+        return self    
         
     def fit(self, X, y):
         """
@@ -756,7 +767,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
         self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
         
-        return self.cv_scores
+        return self.cv_scores['test_score'].mean()
     
     def save(self, name):
         """
