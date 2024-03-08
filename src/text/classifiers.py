@@ -49,7 +49,7 @@ functions along with their parameters and available methods.
     Constructor Parameters:
         * base_name: Identifier for the base ML model (e.g., 'linearSVC', 'logisticregression').
         * from_trained (optional): Path to a pre-trained model to load.
-        * vec_method (optional): Tokenization/Vectorization method ('tfidf', 'skipgram', 'cbow', 'fasttxt').
+        * vec_method (optional): Tokenization/Vectorization method ('tfidf', 'skipgram', 'cbow').
         * **kwargs: Additional arguments for the sklearn classifier specified in base_name.
 
     Methods:
@@ -87,14 +87,15 @@ import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.dummy import DummyClassifier
-
 import xgboost as xgb
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from src.text.vectorizers import CBowVectorizer, SkipGramVectorizer
 
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
@@ -551,7 +552,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Supported models include 'linearSVC', 'logisticregression', 'multinomialnb', 
         and 'randomforestclassifier'. Default is 'linearSVC'.
     * from_trained (optional): Path to previously saved model. Default is None.
-    * vec_method (str, optional): Vectorization method. One of tfidf, skipgram, cbow or fasttxt.
+    * vec_method (str, optional): Vectorization method. One of tfidf, skipgram or cbow.
         Default is 'tfidf'.
     * **kwargs: arguments accepted by the chosen sklearn classifier sepcified in
         base_name
@@ -573,9 +574,9 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
     ml_classifier.save('my_ml_model')
         
     """
-    def __init__(self, base_name = 'linearSVC', from_trained = None, vec_method = 'tfidf', **kwargs):
+    def __init__(self, base_name = 'linearSVC', from_trained = None, vec_method = 'tfidf', vec_params = None, **kwargs):
         """
-        Constructor: __init__(self, base_name='linearSVC', from_trained=None, vec_method='tfidf', **kwargs)
+        Constructor: __init__(self, base_name='linearSVC', from_trained=None, vec_method='tfidf', vec_params = None, **kwargs)
         Initializes a new instance of the MLClassifier.
 
         Arguments:
@@ -583,8 +584,9 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
           'linearSVC', 'logisticregression', 'multinomialnb', and 'randomforestclassifier'. Default is 'linearSVC'.
         * from_trained: Optional; name of a model previously saved in config.path_to_models and from which 
           the model state will be loaded.
-        * vec_method: Tokenization/Vectorization method. Supported methods are 'tfidf', 'skipgram', 'cbow', 
-          and 'fasttxt'. Default is 'tfidf'.
+        * vec_method: Tokenization/Vectorization method. Supported methods are 'tfidf', 'skipgram' and
+          'cbow'. Default is 'tfidf'.
+        * vec_params: dictionnary of parameters for the vectorization method.
         * **kwargs: Additional keyword arguments that will be passed to the underlying sklearn model.
         
         Functionality:
@@ -594,6 +596,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         self.base_name = base_name
         self.from_trained = from_trained
         self.vec_method = vec_method
+        self.vec_params = vec_params
         self.kwargs = kwargs
         
         if self.from_trained is not None:
@@ -604,6 +607,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             # Initialize the model according to base_name and kwargs
             if base_name.lower() == 'linearsvc':
                 self.model = LinearSVC(**kwargs)
+            elif base_name.lower() == 'svc':
+                self.model = SVC(**kwargs)
             elif base_name.lower() == 'logisticregression':
                 self.model = LogisticRegression(**kwargs)
             elif base_name.lower() == 'multinomialnb':
@@ -620,7 +625,11 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
                 setattr(self, param, value)
             
             if vec_method.lower() == 'tfidf':
-                self.vectorizer = TfidfVectorizer(norm='l2') #Check with Thibaut for W2V transformers
+                self.vectorizer = TfidfVectorizer(**(vec_params or {}))
+            elif vec_method.lower() == 'cbow':
+                self.vectorizer = CBowVectorizer(**(vec_params or {}))
+            elif vec_method.lower() == 'skipgram':
+                self.vectorizer = SkipGramVectorizer(**(vec_params or {}))
         
         #Only make predict_proba available if self.model 
         # has such method implemented
