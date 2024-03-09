@@ -98,7 +98,7 @@ def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num
         x = base_model(inputs)
         
         #Adding an average pooling if it's a convNet
-        if len(x.shape) == 4:
+        if len(base_model.output_shape) == 4:
             x = GlobalAveragePooling2D()(x)
         elif len(base_model.output_shape) == 2:
             x = x[0][:, :, :]

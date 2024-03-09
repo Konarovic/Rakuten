@@ -96,8 +96,8 @@ import src.config as config
 
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
-                      num_class=27, drop_rate=0.0, activation='softmax', attention_numheads=0,
-                      attention_query='image', strategy=None):
+                      num_class=27, drop_rate=0.0, activation='softmax', attention_numheads=8,
+                      transfo_numblocks=0, strategy=None):
     """
     Creates a multimodal classification model that combines text and image data for prediction tasks.
 
@@ -136,10 +136,6 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         x = x[:, 0, :]
         x = LayerNormalization(epsilon=1e-6, name='txt_normalization')(x)
         
-        # x = Dense(128, activation = 'relu', name='txt_Dense_top_1')(x)
-        # x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
-        # outputs = Dense(num_class, activation= 'relu', name='txt_classification_layer')(x)
-        # outputs = Dense(units=2*num_class, activation=activation, name='text_classification_layer')(x)
         outputs = x
         txt_model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=outputs)
         
@@ -160,10 +156,6 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         x = x[:, 0, :]
         x = LayerNormalization(epsilon=1e-6, name='img_normalization')(x)
         
-        # x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
-        # x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
-        # outputs = Dense(num_class, activation='relu', name='img_classification_layer')(x)
-        # outputs = Dense(units=2*num_class, activation=activation, name='img_classification_layer')(x)
         outputs = x
         img_model = Model(inputs=input_img, outputs=outputs)
         
@@ -176,22 +168,30 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
                     img_model.load_weights(img_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
         
         #Concatenate text and image models
-        if attention_numheads > 0:
-            img_output = img_model.layers[-3].output
-            txt_output = txt_model.layers[-3].output
-            print(img_output, txt_output)
-            x = Concatenate(axis=1)([txt_output, img_output])
+        if transfo_numblocks > 0 and attention_numheads > 0:
+            #Output of text and image models before slicing
+            img_output = LayerNormalization(epsilon=1e-6, name='img_normalization')(img_model.layers[-3].output)
+            txt_output = LayerNormalization(epsilon=1e-6, name='txt_normalization')(txt_model.layers[-3].output)
+            
+            x = txt_output
             embed_dim = x.shape[-1]
-            transformer_block = TransformerBlock(num_heads=attention_numheads, embed_dim=embed_dim, name='cross-modal_layer')
-            transformer_out = transformer_block(x=x, context=x)
-            x = transformer_out[:, 0, :]
+            
+            #Adding transformer blocks
+            for k in range(transfo_numblocks):
+                transformer_block = TransformerBlock(num_heads=attention_numheads, embed_dim=embed_dim, name='cross-modal_layer')
+                x = transformer_block(x=txt_output, key=img_output, value=img_output)
+                
+            #Keeping the first token only
+            x = x[:, 0, :]
         else:
+            #If no transformer blocks to add, we simply concatenate
+            #along the embedding dimension
             x = Concatenate()([txt_model.output, img_model.output])
             
         #Dense layers for classification
-        x = Flatten()(x)
+        # x = Flatten()(x)
         x = Dropout(rate=drop_rate, name='multi_Drop_out_top_1')(x)
-        # x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
+        x = Dense(units=128, activation='relu', name='Dense_multi_1')(x)
         outputs = Dense(units=num_class, activation=activation, name='multi_classification_layer')(x)
 
         model = Model(inputs=[txt_model.input, img_model.input], outputs=outputs)
@@ -228,9 +228,9 @@ class TransformerBlock(Layer):
         self.dropout1 = Dropout(rate = drop_rate)
         self.dropout2 = Dropout(rate = drop_rate)
 
-    def call(self, x, context, training):
+    def call(self, x, key, value, training):
         # Cross-attention
-        attn_output, attn_scores = self.att(query=x, key=context, value=context, return_attention_scores=True)
+        attn_output, attn_scores = self.att(query=x, key=key, value=value, return_attention_scores=True)
         
         # Caching the attention scores for plotting later.
         self.last_attn_scores = attn_scores
@@ -348,7 +348,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, txt_base_name='camembert-base', img_base_name='vit_b16', from_trained = None, 
                  max_length=256, img_size=(224, 224, 3), augmentation_params=None,
                  num_class=27, drop_rate=0.2, epochs=1, batch_size=32, 
-                 attention_numheads=0, attention_query='image',
+                 transfo_numblocks=1, attention_numheads=8,
                  validation_split=0.0, validation_data=None,
                  learning_rate=5e-5, callbacks=None, parallel_gpu=True):
         """
@@ -401,7 +401,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.num_class = num_class
         self.drop_rate = drop_rate
         self.attention_numheads = attention_numheads
-        self.attention_query = attention_query
+        self.transfo_numblocks = transfo_numblocks
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -457,7 +457,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                        from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,
                                        num_class=self.num_class, drop_rate=self.drop_rate, activation='softmax',
-                                       attention_numheads=self.attention_numheads, attention_query=self.attention_query,
+                                       attention_numheads=self.attention_numheads, transfo_numblocks=self.transfo_numblocks,
                                        strategy = self.strategy)
         
         return model, tokenizer, preprocessing_function
