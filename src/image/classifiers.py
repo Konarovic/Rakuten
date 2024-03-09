@@ -49,7 +49,7 @@ Below is a summary documentation of the ImgClassifier class and its methods
 
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout, GlobalAveragePooling2D
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -93,16 +93,21 @@ def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num
     """
     
     with strategy.scope():
-        model = Sequential()
-        model.add(Input(shape=img_size, name='inputs'))
+        inputs = Input(shape=img_size, name='inputs')
         base_model._name = 'img_base_layers'
-        model.add(base_model)
+        x = base_model(inputs)
+        
         #Adding an average pooling if it's a convNet
-        if len(base_model.output_shape) == 4:
-            model.add(GlobalAveragePooling2D())
-        model.add(Dense(128, activation = 'relu', name='img_Dense_top_1'))
-        model.add(Dropout(rate=drop_rate, name='img_Drop_out_top_1'))
-        model.add(Dense(num_class, activation = activation, name='img_classification_layer'))
+        if len(x.shape) == 4:
+            x = GlobalAveragePooling2D()(x)
+        elif len(base_model.output_shape) == 2:
+            x = x[0][:, :, :]
+            x = x[:, 0, :]
+            
+        x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
+        x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
+        outputs = Dense(num_class, activation = activation, name='img_classification_layer')(x)
+        model = Model(inputs=inputs, outputs=outputs)
         
         if from_trained is not None:
             script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -225,9 +230,10 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         with self.strategy.scope():
             if 'vit' in self.base_name.lower():
                 default_action = lambda: print("base_name should be one of: b16, b32, L16 or L32")
-                base_model = getattr(vit, 'vit_' + self.base_name[-3:], default_action)\
+                vit_model = getattr(vit, 'vit_' + self.base_name[-3:], default_action)\
                                 (image_size = self.img_size[0:2], pretrained = True, 
                                 include_top = False, pretrained_top = False)
+                base_model = Model(inputs=vit_model.input, outputs=vit_model.layers[-3].output)
                 preprocessing_function = None
                 model_class = None
             elif 'efficientnet' in self.base_name.lower():

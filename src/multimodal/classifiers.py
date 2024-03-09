@@ -72,8 +72,9 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
 
 from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Dropout, Concatenate, BatchNormalization, LayerNormalization, MultiHeadAttention, Flatten
-from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Layer, Input, Dense, Dropout, Concatenate, BatchNormalization, LayerNormalization, MultiHeadAttention, Add, Flatten
+from tensorflow.keras.models import Model, Sequential
+from keras.utils import Sequence
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
@@ -131,7 +132,8 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         #Bert transformer model
         txt_base_model._name = 'txt_base_layers'
         txt_transformer_layer = txt_base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
-        x = txt_transformer_layer[0][:, 0, :]
+        x = txt_transformer_layer[0][:, :, :]
+        x = x[:, 0, :]
         x = LayerNormalization(epsilon=1e-6, name='txt_normalization')(x)
         
         # x = Dense(128, activation = 'relu', name='txt_Dense_top_1')(x)
@@ -153,7 +155,9 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
         #ViT transformer model
         input_img = Input(shape=img_size, name='inputs')
         img_base_model._name = 'img_base_layers'
-        x = img_base_model(input_img)
+        img_transformer_layer = img_base_model(input_img)
+        x = img_transformer_layer[0][:,:,:]
+        x = x[:, 0, :]
         x = LayerNormalization(epsilon=1e-6, name='img_normalization')(x)
         
         # x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
@@ -172,15 +176,17 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
                     img_model.load_weights(img_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
         
         #Concatenate text and image models
-        img_output = tf.expand_dims(img_model.output, axis=1)
-        txt_output = tf.expand_dims(txt_model.output, axis=1)
-        x = Concatenate(axis=1)([txt_output, img_output])
         if attention_numheads > 0:
+            img_output = img_model.layers[-3].output
+            txt_output = txt_model.layers[-3].output
+            print(img_output, txt_output)
+            x = Concatenate(axis=1)([txt_output, img_output])
             embed_dim = x.shape[-1]
-            attention_layer = MultiHeadAttention(num_heads=attention_numheads, key_dim=embed_dim, name='multi_multihead_layer')
-            x = attention_layer(query=x, key=x, value=x)
-        # else:
-        #     x = Concatenate()([txt_model.output, img_model.output])
+            transformer_block = TransformerBlock(num_heads=attention_numheads, embed_dim=embed_dim, name='cross-modal_layer')
+            transformer_out = transformer_block(x=x, context=x)
+            x = transformer_out[:, 0, :]
+        else:
+            x = Concatenate()([txt_model.output, img_model.output])
             
         #Dense layers for classification
         x = Flatten()(x)
@@ -200,7 +206,46 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
     
     return model
 
-from keras.utils import Sequence
+class TransformerBlock(Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim=None, drop_rate=0.0, name=None):
+        super(TransformerBlock, self).__init__(name=name)
+        #Default value for ff_dim (dim of intermediate dense layer)
+        #is twice the size of the embedding
+        if ff_dim is None:
+            ff_dim = 2 * embed_dim
+            
+        #Create layers: 
+        #MultiHead attention
+        self.att = MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        
+        #Feed-forward with 2 dense
+        self.ffn = Sequential([Dense(ff_dim, activation="relu"),
+                               Dense(embed_dim)])
+        
+        #Normalization and drop-out
+        self.layernorm1 = LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = LayerNormalization(epsilon=1e-6)
+        self.dropout1 = Dropout(rate = drop_rate)
+        self.dropout2 = Dropout(rate = drop_rate)
+
+    def call(self, x, context, training):
+        # Cross-attention
+        attn_output, attn_scores = self.att(query=x, key=context, value=context, return_attention_scores=True)
+        
+        # Caching the attention scores for plotting later.
+        self.last_attn_scores = attn_scores
+
+        #Summing input and output of attention head
+        attn_output = self.dropout1(attn_output, training=training)
+        attn_output = x + attn_output
+        out1 = self.layernorm1(attn_output)
+        
+        #Passing the output of the Feed-forward module to the 
+        #feed-forward network with residual connection
+        ffn_output = self.ffn(out1)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        ffn_output = ffn_output + out1
+        return self.layernorm2(ffn_output)
 
 class MultimodalDataGenerator(Sequence):
     """
@@ -402,10 +447,12 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
             
             #Loading ViT model base    
             default_action = lambda: print("img_base_name should be one of: b16, b32, L16 or L32")
-            img_base_model = getattr(vit, 'vit_' + self.img_base_name[-3:], default_action)\
+            vit_model = getattr(vit, 'vit_' + self.img_base_name[-3:], default_action)\
                                         (image_size = self.img_size[0:2], pretrained = True, 
                                         include_top = False, pretrained_top = False)
+            img_base_model = Model(inputs=vit_model.input, outputs=vit_model.layers[-3].output)
             preprocessing_function = None
+            
         
         model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                        from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,

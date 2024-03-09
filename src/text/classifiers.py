@@ -134,7 +134,8 @@ def build_bert_model(base_model, from_trained = None, max_length=256, num_class=
         #Base transformer model
         base_model._name = 'txt_base_layers'
         transformer_layer = base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
-        x = transformer_layer[0][:, 0, :]
+        x = transformer_layer[0][:, :, :]
+        x = x[:, 0, :]
 
         #Classification head
         # x = Dense(128, activation='relu', name='txt_Dense_top_1')(x)
