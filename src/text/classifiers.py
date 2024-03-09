@@ -607,7 +607,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         else:
             # Initialize the model according to base_name and kwargs
             if base_name.lower() == 'linearsvc':
-                self.model = LinearSVC(**kwargs)
+                self.model = LinearSVC(dual='auto', **kwargs)
             elif base_name.lower() == 'svc':
                 self.model = SVC(**kwargs)
             elif base_name.lower() == 'logisticregression':
