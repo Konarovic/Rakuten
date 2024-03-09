@@ -405,12 +405,11 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
-        if augmentation_params is not None:
-            self.augmentation_params = augmentation_params
-        else:
-            self.augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
-                                            height_shift_range=0.1, horizontal_flip=True,
-                                            fill_mode='constant', cval=255)    
+        if augmentation_params is None:
+            augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
+                                        height_shift_range=0.1, horizontal_flip=True,
+                                        fill_mode='constant', cval=255)
+        self.augmentation_params = augmentation_params
         self.validation_split = validation_split
         self.validation_data = validation_data
         self.callbacks = callbacks
