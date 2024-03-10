@@ -525,17 +525,19 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         model_path = os.path.join(config.path_to_models, 'trained_models', name)
         
         #Loading the model from there
-        self = load(os.path.join(model_path, 'model.joblib'))
+        loaded_model = load(os.path.join(model_path, 'model.joblib'))
         
         #tf.distribute.MirroredStrategy is not saved by joblib
         #so we need to update it here
         if parallel_gpu:
-            self.strategy = tf.distribute.MirroredStrategy()
+            loaded_model.strategy = tf.distribute.MirroredStrategy()
         else:
-            self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+            loaded_model.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
         #Loading the model and its tokenizer    
-        self.model, self.tokenizer = self._getmodel(name)
+        loaded_model.model, loaded_model.tokenizer = self._getmodel(name)
+        
+        return loaded_model
         
         
 
@@ -601,8 +603,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         
         if self.from_trained is not None:
             #loading previously saved model if provided
-            self.load(self.from_trained)
-            self.is_fitted_ = True
+            self = self.load(self.from_trained)
         else:
             # Initialize the model according to base_name and kwargs
             if base_name.lower() == 'linearsvc':
@@ -804,6 +805,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         #path to the directory where the model to load was saved
         model_path = os.path.join(config.path_to_models, 'trained_models', name)
         
-        #Loading the model from there
-        self = load(os.path.join(model_path, 'model.joblib'))
+        #Returning the model from there
+        loaded_object = load(os.path.join(model_path, 'model.joblib'))
+        
+        return loaded_object
 

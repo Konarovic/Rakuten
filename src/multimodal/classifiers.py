@@ -697,18 +697,20 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         model_path = os.path.join(config.path_to_models, 'trained_models', name)
         
         #Loading the model from there
-        self = load(os.path.join(model_path, 'model.joblib'))
+        loaded_model = load(os.path.join(model_path, 'model.joblib'))
         
         #tf.distribute.MirroredStrategy is not saved by joblib
         #so we need to update it here
         if parallel_gpu:
-            self.strategy = tf.distribute.MirroredStrategy()
+            loaded_model.strategy = tf.distribute.MirroredStrategy()
         else:
-            self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+            loaded_model.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
         #Re-building the model and loading the weights which has been saved
         # in model_path
-        self.model, self.tokenizer, self.preprocessing_function = self._getmodel(name)
+        loaded_model.model, loaded_model.tokenizer, loaded_model.preprocessing_function = loaded_model._getmodel(name)
+        
+        return loaded_model
 
 
 
@@ -771,8 +773,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         
         if self.from_trained is not None:
             #loading previously saved model if provided
-            self.load(self.from_trained)
-            self.is_fitted_ = True
+            self = self.load(self.from_trained)
         else:
             # Initialize the model according to base_name and kwargs
             if method.lower() == 'voting':
@@ -947,16 +948,18 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         model_path = os.path.join(config.path_to_models, 'trained_models', name)
         
         #Loading the full model from there
-        self = load(os.path.join(model_path, 'model.joblib'))
+        loaded_model = load(os.path.join(model_path, 'model.joblib'))
         
         #Loading all base estimators from the  subfolders
-        if isinstance(self.estimators_[0], tuple):
-            for k, clf in enumerate(self.estimators_):
+        if isinstance(loaded_model.estimators_[0], tuple):
+            for k, clf in enumerate(loaded_model.estimators_):
                 base_model = load(os.path.join(model_path, clf[0], 'model.joblib'))
                 base_model.load(name + os.sep + clf[0])
-                self.estimators_[k] = (clf[0], base_model)
+                loaded_model.estimators_[k] = (clf[0], base_model)
         else:
-            for k in range(len(self.estimators_)):
+            for k in range(len(loaded_model.estimators_)):
                 base_model = load(os.path.join(model_path, str(k), 'model.joblib'))
                 base_model.load(name + os.sep + str(k))
-                self.estimators_[k] = base_model
+                loaded_model.estimators_[k] = base_model
+                
+        return loaded_model

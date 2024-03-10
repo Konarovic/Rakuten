@@ -505,15 +505,17 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         model_path = os.path.join(config.path_to_models, 'trained_models', name)
         
         #Loading the model from there
-        self = load(os.path.join(model_path, 'model.joblib'))
+        loaded_model = load(os.path.join(model_path, 'model.joblib'))
         
         #tf.distribute.MirroredStrategy is not saved by joblib
         #so we need to update it here
         if parallel_gpu:
-            self.strategy = tf.distribute.MirroredStrategy()
+            loaded_model.strategy = tf.distribute.MirroredStrategy()
         else:
-            self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+            loaded_model.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
         #Re-building the model and loading the weights which has been saved
         # in model_path
-        self.model, self.preprocessing_function = self._getmodel(name)
+        loaded_model.model, loaded_model.preprocessing_function = loaded_model._getmodel(name)
+        
+        return loaded_model
