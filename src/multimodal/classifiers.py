@@ -175,11 +175,13 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
             
             x = txt_output
             embed_dim = x.shape[-1]
+            transformer_block = TransformerBlock(num_heads=attention_numheads, embed_dim=embed_dim, name='cross-modal_layer')
+            x = transformer_block(x=txt_output, key=img_output, value=img_output)
             
             #Adding transformer blocks
             for k in range(transfo_numblocks):
-                transformer_block = TransformerBlock(num_heads=attention_numheads, embed_dim=embed_dim, name='cross-modal_layer')
-                x = transformer_block(x=txt_output, key=img_output, value=img_output)
+                transformer_block = TransformerBlock(num_heads=attention_numheads, embed_dim=embed_dim, name='transformer_block_' + str(k))
+                x = transformer_block(x=x, key=x, value=x)
                 
             #Keeping the first token only
             x = x[:, 0, :]

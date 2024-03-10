@@ -101,7 +101,6 @@ from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 
 from joblib import load, dump
-import sklearn
 
 import os
 
