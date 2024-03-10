@@ -85,7 +85,13 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         #Checking mandatory fields
         for fname in mandatory_fields:
             if fname not in params.keys():
-                params[fname] = [np.nan]
+                params[fname] = np.nan
+                
+        #Making sure params['params_grid'] dictionnary values
+        # are provided as list (important for GridSearchCV)
+        for key in params['param_grid'].keys():
+            if not isinstance(params['param_grid'][key], list):
+                params['param_grid'][key] = [params['param_grid'][key]]
         
         #Populating results with parameters
         results = {'modality': params['modality'], 'class': params['class'], 'classifier': params['base_name'],
