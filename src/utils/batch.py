@@ -77,8 +77,16 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
     #Concatenating train and text sets for CV scores    
     X = pd.concat([X_train, X_test], axis=0)
     y = pd.concat([y_train, y_test], axis=0)
+    
+    #Mandatory fields in parameters
+    mandatory_fields =  ['modality', 'class', 'base_name', 'vec_method', 'param_grid']
 
     for params in params_list:
+        #Checking mandatory fields
+        for fname in mandatory_fields:
+            if fname not in params.keys():
+                params[fname] = [np.nan]
+        
         #Populating results with parameters
         results = {'modality': params['modality'], 'class': params['class'], 'classifier': params['base_name'],
                    'vectorization': params['vec_method'], 'tested_params': params['param_grid']}

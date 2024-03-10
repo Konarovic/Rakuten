@@ -3,3 +3,4 @@ path_to_data = '/mnt/c/Users/Julien Fournier/Documents/GitHub/RakutenTeam/data/c
 path_to_images = '/home/jul/DST/Rakuten/Data/images/image_train_resized'
 path_to_models = '/mnt/c/Users/Julien Fournier/Documents/DST/RakutenProject/models'
 path_to_results = '/mnt/c/Documents and Settings/justj/Documents/GitHub/RakutenTeam/results'
+path_to_tflogs = '/mnt/c/Documents and Settings/justj/Documents/GitHub/RakutenTeam/tf_logs'
