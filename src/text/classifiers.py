@@ -611,7 +611,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
             elif base_name.lower() == 'svc':
                 self.model = SVC(**kwargs)
             elif base_name.lower() == 'logisticregression':
-                self.model = LogisticRegression(**kwargs)
+                self.model = LogisticRegression(dual=False, **kwargs)
             elif base_name.lower() == 'multinomialnb':
                 self.model = MultinomialNB(**kwargs)
             elif base_name.lower() == 'randomforestclassifier':

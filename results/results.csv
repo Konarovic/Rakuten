@@ -1,2 +1,0 @@
-,modality,vectorization,classifier,tested_params,best_params,score_test,score_cv_test,score_cv_train,fit_cv_time,model_path
-0,text,tfidf,LinearSVC,"{'C': array([0.9, 1. , 1.1]), 'penalty': ['l2'], 'dual': ['auto']}","{'C': 0.9, 'dual': 'auto', 'penalty': 'l2'}",0.8258054209174114,[0.8211819  0.82424724 0.8245079  0.82306479 0.82413738],[0.98150768 0.98217348 0.98224738 0.98188303 0.98251234],[7.7058816  7.7486496  7.92781711 7.51118326 7.73457694],benchmark_txt/w2v_LinearSVC
