@@ -97,9 +97,12 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         
         #Populating results with parameters
         results = {'modality': params['modality'], 'class': params['class'], 'classifier': params['base_name'],
-                   'vectorization': params['vec_method'], 'tested_params': params['param_grid']}
-            
-        #Removing validation_data from best_params dictionnary
+                   'vectorization': params['vec_method']}
+        #copy the dict params['param_grid'], otherwise with = we copy a reference
+        #to the object
+        results['tested_params'] = dict(params['param_grid'])
+          
+        #Removing validation_data from results dictionnary
         results['tested_params'].pop('validation_data', None)
         
         #GridsearCV on one parameter
