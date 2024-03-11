@@ -97,7 +97,7 @@ import xgboost as xgb
 from sklearn.feature_extraction.text import TfidfVectorizer
 from src.text.vectorizers import CBowVectorizer, SkipGramVectorizer
 
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score, confusion_matrix
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 
 from joblib import load, dump
@@ -174,6 +174,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     * epochs (int, optional): Number of training epochs. Default is 1.
     * batch_size (int, optional): Batch size for training. Default is 32.
     * learning_rate (float, optional): Learning rate for the optimizer. Default is 5e-5.
+    * lr_decay_rate: decay rate of the learning rate at every epoch.
     * validation_split: fraction of the data to use for validation during training. Default is 0.0.
     * validation_data: a tuple with (features, labels) data to use for validation during training. Default is 0.0.
     * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
@@ -201,7 +202,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     """
     def __init__(self, base_name='camembert-base', from_trained = None, 
                  max_length=256, num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, 
+                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1,
                  validation_split=0.0, validation_data=None,
                  callbacks=None, parallel_gpu=False):
         
@@ -215,7 +216,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
 
         * base_name: The identifier for the base BERT model. Tested base model are 'camembert-base',
-          'camembert/camembert-base-ccnet'. Default is 'camembert-base'.
+          'camembert-base-ccnet'. Default is 'camembert-base'.
         * from_trained: Optional path to a directory containing a pre-trained model from which weights will be loaded.
         * max_length: The sequence length that the tokenizer will generate. Default is 256.
         * num_class: The number of classes for the classification task. Default is 27.
@@ -223,6 +224,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * epochs: The number of epochs to train the model. Default is 1.
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
+        * lr_decay_rate: factor by which the learning rate is multiplied at the end of every epoch. Default is 1 (no decay).
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
         * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
@@ -249,6 +251,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.lr_decay_rate = lr_decay_rate
         self.validation_split = validation_split
         self.validation_data = validation_data
         self.callbacks = callbacks
@@ -269,20 +272,27 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         """
         base_model_path = os.path.join(config.path_to_models, 'base_models', self.base_name)
         
-        if 'camemberta' in self.base_name.lower() or 'ccnet' in self.base_name.lower():
-            from_pt = True
-        else:
-            from_pt = False
-        
         #Loading the pre-trained bert model and its tokenizer
         with self.strategy.scope():
             # If the hugginface pretrained model hasn't been yet saved locally, 
             # we load and save it from HuggingFace
             if not os.path.isdir(base_model_path):
                 print("loading from Huggingface")
-                base_model = TFAutoModel.from_pretrained(self.base_name, from_pt=from_pt)
+                
+                #Checking if we need to load from pytorch weights
+                frompt_list = ['camembert-base-legacy', 'camembert-base-ccnet']
+                if any(name in self.base_name.lower() for name in frompt_list):
+                    from_pt = True
+                else:
+                    from_pt = False
+                    
+                #We'll load camembert model from there.
+                loadbertfrom = 'almanach/'
+                
+                #Loading model and tokenizer
+                base_model = TFAutoModel.from_pretrained(loadbertfrom + self.base_name, from_pt=from_pt)
                 base_model.save_pretrained(base_model_path)
-                tokenizer = CamembertTokenizer.from_pretrained(self.base_name)
+                tokenizer = CamembertTokenizer.from_pretrained(loadbertfrom + self.base_name)
                 tokenizer.save_pretrained(base_model_path)
             else:
                 print("loading from Local")
@@ -297,7 +307,11 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         
         return model, tokenizer
         
-        
+    def _lrscheduler(self, epoch):
+        """ 
+        Internal method for learning rate scheduler
+        """
+        return self.learning_rate * self.lr_decay_rate**(epoch-1)
         
     def fit(self, X, y):
         """
@@ -337,7 +351,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
                 optimizer = Adam(learning_rate=self.learning_rate)
                 
                 #Creating callbacks based on self.callback
-                callbacks = []
+                callbacks = [tf.keras.callbacks.LearningRateScheduler(schedule=self._lrscheduler)]
                 if self.callbacks is not None:
                     for callback in self.callbacks:
                         callback_api = getattr(tf.keras.callbacks, callback[0])
@@ -359,6 +373,9 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         #For sklearn, adding attribute finishing with _ to indicate
         # that the model has already been fitted    
         self.is_fitted_ = True
+        
+        #For gridsearchCV and other sklearn method we need a classes_ attribute
+        self.classes_ = np.unique(y)
         
         return self
     
@@ -440,13 +457,13 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         pred = self.predict(X)
         
         #Save classification report
-        self.classification_results = classification_report(y, pred)
+        self.classification_results = classification_report(y, pred, zero_division=0)
         
         #Build confusion matrix
-        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
+        self.confusion_mat = confusion_matrix(y, pred, normalize=None)
         
         #Save weighted f1-score
-        self.f1score = f1_score(y, pred, average='weighted')
+        self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
         
         return self.f1score
     
@@ -535,7 +552,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
             loaded_model.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
         #Loading the model and its tokenizer    
-        loaded_model.model, loaded_model.tokenizer = self._getmodel(name)
+        loaded_model.model, loaded_model.tokenizer = loaded_model._getmodel(name)
         
         return loaded_model
         
@@ -750,7 +767,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         self.classification_results = classification_report(y, pred, zero_division=0)
         
         #Build confusion matrix
-        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
+        self.confusion_mat = confusion_matrix(y, pred, normalize=None)
         
         #Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted', zero_division=0)

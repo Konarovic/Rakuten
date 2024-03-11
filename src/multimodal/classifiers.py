@@ -86,7 +86,7 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import VotingClassifier, StackingClassifier, BaggingClassifier, AdaBoostClassifier
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 
 from joblib import load, dump
@@ -326,6 +326,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     * epochs (int, optional): Number of epochs for training.
     * batch_size (int, optional): Number of samples per batch.
     * learning_rate (float, optional): Learning rate for the optimizer.
+    * lr_decay_rate: decay rate of the learning rate at every epoch.
     * callbacks: List of Keras callbacks to be used during training.
     * parallel_gpu (bool, optional): Whether to use TensorFlow's parallel GPU training capabilities.
     
@@ -352,7 +353,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                  num_class=27, drop_rate=0.2, epochs=1, batch_size=32, 
                  transfo_numblocks=1, attention_numheads=8,
                  validation_split=0.0, validation_data=None,
-                 learning_rate=5e-5, callbacks=None, parallel_gpu=True):
+                 learning_rate=5e-5, lr_decay_rate=1, callbacks=None, parallel_gpu=True):
         """
         Constructor: __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
                               max_length=256, img_size=(224, 224, 3), augmentation_params=None, num_class=27, drop_rate=0.2,
@@ -376,6 +377,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         * epochs: The number of epochs to train the model. Default is 1.
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
+        * lr_decay_rate: factor by which the learning rate is multiplied at the end of every epoch. Default is 1 (no decay).
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
         * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
@@ -407,6 +409,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.lr_decay_rate = lr_decay_rate
         if augmentation_params is None:
             augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
                                         height_shift_range=0.1, horizontal_flip=True,
@@ -463,6 +466,13 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         
         return model, tokenizer, preprocessing_function
         
+    
+    def _lrscheduler(self, epoch):
+        """ 
+        Internal method for learning rate scheduler
+        """
+        return self.learning_rate * self.lr_decay_rate**(epoch-1)
+    
         
     def fit(self, X, y):
         """
@@ -503,7 +513,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                 optimizer = Adam(learning_rate=self.learning_rate)
                 
                 #Creating callbacks based on self.callback
-                callbacks = []
+                callbacks = [tf.keras.callbacks.LearningRateScheduler(schedule=self._lrscheduler)]
                 if self.callbacks is not None:
                     for callback in self.callbacks:
                         callback_api = getattr(tf.keras.callbacks, callback[0])
@@ -525,6 +535,9 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         #For sklearn, adding attribute finishing with _ to indicate
         # that the model has already been fitted    
         self.is_fitted_ = True
+        
+        #For gridsearchCV and other sklearn method we need a classes_ attribute
+        self.classes_ = np.unique(y)
         
         return self
     
@@ -616,13 +629,13 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         pred = self.predict(X)
         
         #Save classification report
-        self.classification_results = classification_report(y, pred)
+        self.classification_results = classification_report(y, pred, zero_division=0)
         
         #Build confusion matrix
-        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
+        self.confusion_mat = confusion_matrix(y, pred, normalize=None)
         
         #Save weighted f1-score
-        self.f1score = f1_score(y, pred, average='weighted')
+        self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
         
         return self.f1score 
     
@@ -813,6 +826,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         self.model.fit(X, y)
         self.classes_ = np.unique(y)    
         self.is_fitted_ = True
+        self.classes_ = np.unique(y)
         
         return self
     
@@ -868,13 +882,13 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         pred = self.predict(X)
         
         #Save classification report
-        self.classification_results = classification_report(y, pred)
+        self.classification_results = classification_report(y, pred, zero_division=0)
         
         #Build confusion matrix
-        self.confusion_mat = pd.crosstab(y, pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')
+        self.confusion_mat = confusion_matrix(y, pred, normalize=None)
         
         #Save weighted f1-score
-        self.f1score = f1_score(y, pred, average='weighted')
+        self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
         
         return self.f1score
     

@@ -105,7 +105,6 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         clf_params = {}
         for key in params['param_grid'].keys():
             clf_params[key] = params['param_grid'][key][0]
-        print(clf_params)   
         
         #Instanciating the classifier
         if params['class'] == 'MLClassifier':
@@ -163,7 +162,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             results['fit_cv_time'] = np.nan
         
         #Saving the model (trained on training set only)
-        if np.isnan(params['vec_method']):
+        if not np.isnan(params['vec_method']):
             model_path = params['modality'] + '/' + params['base_name'] + '_' + params['vec_method']
         else:
             model_path = params['modality'] + '/' + params['base_name']
