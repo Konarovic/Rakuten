@@ -136,6 +136,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     * batch_size: Batch size for training. Default is 32.
     * learning_rate: Learning rate for the optimizer. Default is 5e-5.
     * lr_decay_rate: decay rate of the learning rate at every epoch.
+    * lr_min: minimal learning rate if there is a learning rate schedule. Default is None (no minimum).
     * augmentation_params: Dictionary specifying parameters for data augmentation. Default is None, which applies a standard set of augmentations.
     * validation_split: fraction of the data to use for validation during training. Default is 0.0.
     * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
@@ -163,7 +164,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     
     def __init__(self, base_name='vit_b16', from_trained = None, 
                  img_size=(224, 224, 3), num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, 
+                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, lr_min=None, 
                  validation_split=0.0, validation_data=None,
                  augmentation_params=None, callbacks=None, parallel_gpu=True):
         """
@@ -182,6 +183,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         * batch_size: Size of batches for training.
         * learning_rate: Learning rate for the optimizer.
         * lr_decay_rate: factor by which the learning rate is multiplied at the end of every epoch. Default is 1 (no decay).
+        * lr_min: minimal learning rate if there is a learning rate schedule. Default is None (no minimum).
         * augmentation_params: a dictionnary with parameters for data augmentation (see ImageDataGenerator).
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
         * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
@@ -205,6 +207,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.lr_min = lr_min
         self.lr_decay_rate = lr_decay_rate
         if augmentation_params is None:
             augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
@@ -266,7 +269,12 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         """ 
         Internal method for learning rate scheduler
         """
-        return self.learning_rate * self.lr_decay_rate**(epoch-1)    
+        lr = self.learning_rate * self.lr_decay_rate**epoch
+        
+        #the learning is not allowed to be smaller than self.lr_min
+        if self.lr_min is not None:
+            lr = max(self.lr_min, lr)
+        return lr
         
         
     def fit(self, X, y):

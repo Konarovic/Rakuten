@@ -7,6 +7,8 @@ import pandas as pd
 import src.config as config
 from src.text.classifiers import MLClassifier, TFbertClassifier
 from src.image.classifiers import ImgClassifier
+from src.multimodal.classifiers import MetaClassifier, TFmultiClassifier
+from src.utils.saveload import load_classifier
 
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
@@ -79,7 +81,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
     y = pd.concat([y_train, y_test], axis=0)
     
     #Mandatory fields in parameters
-    mandatory_fields =  ['modality', 'class', 'base_name', 'vec_method', 'param_grid']
+    mandatory_fields =  ['modality', 'class', 'base_name', 'vec_method', 'param_grid', 'meta_method']
 
     for params in params_list:
         #Checking mandatory fields
@@ -96,6 +98,9 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         #Populating results with parameters
         results = {'modality': params['modality'], 'class': params['class'], 'classifier': params['base_name'],
                    'vectorization': params['vec_method'], 'tested_params': params['param_grid']}
+            
+        #Removing validation_data from best_params dictionnary
+        results['tested_params'].pop('validation_data', None)
         
         #GridsearCV on one parameter
         print('Fitting: ', params['base_name'], params['vec_method'])
@@ -113,8 +118,17 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             clf = TFbertClassifier(base_name=params['base_name'], **clf_params)
         elif params['class'] == 'ImgClassifier':
             clf = ImgClassifier(base_name=params['base_name'], **clf_params)
-        elif params['class'] == 'TFbertClassifier':
-            clf = TFbertClassifier(base_name=params['base_name'], **clf_params)
+        elif params['class'] == 'MetaClassifier':
+            estimators_name_list = params['base_name'].split()
+            base_estimators = []
+            for estimator_name in estimators_name_list:
+                clf_base = load_classifier(name=estimator_name)
+                if isinstance(clf_base, (TFbertClassifier, ImgClassifier, TFmultiClassifier)):
+                    clf_base.lr_min = 1e-6
+                    clf_base.from_trained = estimator_name
+                    clf_base.epochs = 0
+                base_estimators.append((estimator_name, clf_base))
+            clf = MetaClassifier(base_estimators=base_estimators, meta_method=params['meta_method'], **clf_params)
         
         #paramters to feed into GridSearchCV   
         param_grid = params['param_grid']
@@ -133,6 +147,9 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             
             #saving best params
             results['best_params'] = gridcv.best_params_
+            
+            #Removing validation_data from best_params dictionnary
+            results['best_params'].pop('validation_data', None)
             
             #Keeping the best parameter
             clf = gridcv.best_estimator_

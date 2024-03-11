@@ -174,7 +174,8 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     * epochs (int, optional): Number of training epochs. Default is 1.
     * batch_size (int, optional): Batch size for training. Default is 32.
     * learning_rate (float, optional): Learning rate for the optimizer. Default is 5e-5.
-    * lr_decay_rate: decay rate of the learning rate at every epoch.
+    * lr_min(float, optional): minimal learning rate if there is a learning rate schedule. Default is None.
+    * lr_decay_rate(float, optional): decay rate of the learning rate at every epoch. Default is 1.0.
     * validation_split: fraction of the data to use for validation during training. Default is 0.0.
     * validation_data: a tuple with (features, labels) data to use for validation during training. Default is 0.0.
     * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
@@ -202,7 +203,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     """
     def __init__(self, base_name='camembert-base', from_trained = None, 
                  max_length=256, num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1,
+                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, lr_min=None,
                  validation_split=0.0, validation_data=None,
                  callbacks=None, parallel_gpu=False):
         
@@ -225,6 +226,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
         * lr_decay_rate: factor by which the learning rate is multiplied at the end of every epoch. Default is 1 (no decay).
+        * lr_min: minimal learning rate if there is a learning rate schedule. Default is None (no minimum).
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
         * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
         * callbacks: A list of tuples with the name of a Keras callback and a dictionnary with matching
@@ -251,6 +253,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.lr_min = lr_min
         self.lr_decay_rate = lr_decay_rate
         self.validation_split = validation_split
         self.validation_data = validation_data
@@ -311,7 +314,12 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         """ 
         Internal method for learning rate scheduler
         """
-        return self.learning_rate * self.lr_decay_rate**(epoch-1)
+        lr = self.learning_rate * self.lr_decay_rate**epoch
+        
+        #the learning is not allowed to be smaller than self.lr_min
+        if self.lr_min is not None:
+            lr = max(self.lr_min, lr)
+        return lr
         
     def fit(self, X, y):
         """

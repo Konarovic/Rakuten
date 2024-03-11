@@ -244,6 +244,7 @@ dependencies:
       - fonttools==4.49.0
       - fsspec==2024.2.0
       - gast==0.5.4
+      - gensim==4.3.2
       - google-auth==2.28.1
       - google-auth-oauthlib==1.2.0
       - google-pasta==0.2.0
@@ -314,6 +315,9 @@ dependencies:
       - thinc==8.2.3
       - threadpoolctl==3.3.0
       - tokenizers==0.15.2
+      - torch==2.2.1+cpu
+      - torchaudio==2.2.1+cpu
+      - torchvision==0.17.1+cpu
       - tqdm==4.66.2
       - transformers==4.38.2
       - triton==2.2.0
@@ -326,4 +330,5 @@ dependencies:
       - weasel==0.3.4
       - werkzeug==3.0.1
       - wordcloud==1.9.3
+      - xgboost==2.0.3
 prefix: /home/jul/anaconda3/envs/Rakuten

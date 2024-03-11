@@ -46,9 +46,9 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
 
     Constructor Parameters:
         * base_estimators: List of tuples with base estimators and their names.
-        * method: The ensemble method to use, such as 'voting', 'stacking', 'bagging', or 'boosting'.
+        * meta_method: The ensemble method to use, such as 'voting', 'stacking', 'bagging', or 'boosting'.
         * from_trained: Optional; path to a previously saved ensemble model.
-        * **kwargs: Additional arguments specific to the chosen ensemble method.
+        * **kwargs: Additional arguments specific to the chosen ensemble meta_method.
     
     Methods:
         * fit(X, y): Trains the ensemble model on the given dataset.
@@ -61,7 +61,7 @@ TFmultiClassifier and MetaClassifier classes with their main paremeters and meth
         
     Example Usage:
         base_estimators = [('clf1', TFbertClassifier()), ('clf2', MLClassifier())]
-        meta_classifier = MetaClassifier(base_estimators=base_estimators, method='voting')
+        meta_classifier = MetaClassifier(base_estimators=base_estimators, meta_method='voting')
         meta_classifier.fit(X, y)
         predictions = meta_classifier.predict(X_test)
         f1score = classifier.classification_score(X_test, y_test)
@@ -326,6 +326,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     * epochs (int, optional): Number of epochs for training.
     * batch_size (int, optional): Number of samples per batch.
     * learning_rate (float, optional): Learning rate for the optimizer.
+    * lr_min: minimal learning rate if there is a learning rate schedule. Default is None (no minimum).
     * lr_decay_rate: decay rate of the learning rate at every epoch.
     * callbacks: List of Keras callbacks to be used during training.
     * parallel_gpu (bool, optional): Whether to use TensorFlow's parallel GPU training capabilities.
@@ -353,7 +354,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                  num_class=27, drop_rate=0.2, epochs=1, batch_size=32, 
                  transfo_numblocks=1, attention_numheads=8,
                  validation_split=0.0, validation_data=None,
-                 learning_rate=5e-5, lr_decay_rate=1, callbacks=None, parallel_gpu=True):
+                 learning_rate=5e-5, lr_decay_rate=1, lr_min=None, 
+                 callbacks=None, parallel_gpu=True):
         """
         Constructor: __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
                               max_length=256, img_size=(224, 224, 3), augmentation_params=None, num_class=27, drop_rate=0.2,
@@ -377,6 +379,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         * epochs: The number of epochs to train the model. Default is 1.
         * batch_size: Batch size for training. Default is 32.
         * learning_rate: Learning rate for the optimizer. Default is 5e-5.
+        * lr_min: minimal learning rate if there is a learning rate schedule. Default is None (no minimum).
         * lr_decay_rate: factor by which the learning rate is multiplied at the end of every epoch. Default is 1 (no decay).
         * validation_split: fraction of the data to use for validation during training. Default is 0.0.
         * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
@@ -409,6 +412,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.lr_min = lr_min
         self.lr_decay_rate = lr_decay_rate
         if augmentation_params is None:
             augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
@@ -471,7 +475,12 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         """ 
         Internal method for learning rate scheduler
         """
-        return self.learning_rate * self.lr_decay_rate**(epoch-1)
+        lr = self.learning_rate * self.lr_decay_rate**epoch
+        
+        #the learning is not allowed to be smaller than self.lr_min
+        if self.lr_min is not None:
+            lr = max(self.lr_min, lr)
+        return lr
     
         
     def fit(self, X, y):
@@ -730,7 +739,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
 
 class MetaClassifier(BaseEstimator, ClassifierMixin):
     """
-    MetaClassifier(base_estimators, method='voting', from_trained=None, **kwargs)
+    MetaClassifier(base_estimators, meta_method='voting', from_trained=None, **kwargs)
     
     A wrapper that supports various traditional ensemble classifier (voting and stacking for now),
     following the scikit-learn estimator interface.
@@ -740,10 +749,10 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
       To exploit the save and load methods, the base estimators should be instances of class 
       TFbertClassifier, MLClassifier, ImgClassifier or TFmultiClassifier. For boosting and 
       bagging methods only the first estimator of the list will be considered.
-    * method (str, optional): Ensemble classifier method. Default is 'voting'.
+    * meta_method (str, optional): Ensemble classifier method. Default is 'voting'.
     * from_trained (optional): Path to previously saved model. Default is None.
     * **kwargs: arguments accepted by the chosen sklearn ensemble classifier sepcified by
-        method
+        meta_method
     
     Methods:
     * fit(X, y): Trains the model on the provided dataset.
@@ -755,59 +764,70 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
     * save(name): Saves the model to the directory specified in config.path_to_models.
     
     Example usage:
-    meta_classifier = MetaClassifier(base_name='logisticregression', tok_method = 'tfidf')
+    meta_classifier = MetaClassifier(base_estimators=[(str1, clf1)], meta_method = 'voting', voting='soft', weight=[0.5, 0.5])
     meta_classifier.fit(train_texts, train_labels)
     predictions = meta_classifier.predict(test_texts)
     f1score = meta_classifier.classification_score(test_texts, test_labels)
     meta_classifier.save('my_ensemble_model')
         
     """
-    def __init__(self, base_estimators, method='voting', from_trained=None, **kwargs):
+    def __init__(self, base_estimators, meta_method='voting', from_trained=None, **kwargs):
         """
-        Constructor: __init__(self, base_estimators, method='voting', from_trained=None, **kwargs)
+        Constructor: __init__(self, base_estimators, meta_method='voting', from_trained=None, **kwargs)
         Initializes a new instance of the MetaClassifier.
 
         Arguments:
         * base_estimators: list of tuples with the base estimators ([('name', classifier),...]). 
           To exploit the save and load methods, the base estimators should be instances of class 
           TFbertClassifier, MLClassifier, ImgClassifier or TFmultiClassifier
-        * method (str, optional): Ensemble classifier method. Default is 'voting'.
+        * meta_method (str, optional): Ensemble classifier method. Default is 'voting'.
         * from_trained (optional): Path to previously saved model. Default is None.
         * **kwargs: arguments accepted by the chosen sklearn ensemble classifier sepcified by
-            method
+            meta_method
         
         Functionality:
-        Initializes the classifier based on the specified method and base_estimators and prepares the model 
+        Initializes the classifier based on the specified meta_method and base_estimators and prepares the model 
         for training or inference as specified.
         """
-        self.method = method
+        self.meta_method = meta_method
         self.from_trained = from_trained
         self.base_estimators = base_estimators
+        self.kwargs = kwargs
         
         if self.from_trained is not None:
             #loading previously saved model if provided
             self = self.load(self.from_trained)
         else:
             # Initialize the model according to base_name and kwargs
-            if method.lower() == 'voting':
+            if meta_method.lower() == 'voting':
                 self.model = VotingClassifier(base_estimators, **kwargs)
-            elif method.lower() == 'stacking':
+            elif meta_method.lower() == 'stacking':
                 self.model = StackingClassifier(base_estimators, **kwargs)
-            elif method.lower() == 'bagging':
+            elif meta_method.lower() == 'bagging':
                 self.model = BaggingClassifier(estimator=base_estimators[0][1], **kwargs)
-            elif method.lower() == 'boosting':
+            elif meta_method.lower() == 'boosting':
                 self.model = AdaBoostClassifier(estimator=base_estimators[0][1], **kwargs)
                 
-            model_params = self.model.get_params()
-            for param, value in model_params.items():
-                setattr(self, param, value)
+            # model_params = self.model.get_params()
+            # for param, value in model_params.items():
+            #     setattr(self, param, value)
         
         #Only make predict_proba available if self.model 
         # has such method implemented
         if hasattr(self.model, 'predict_proba'):
             self.predict_proba = self._predict_proba
         
-        
+    def get_params(self, deep=True):
+        # Return all parameters, including kwargs
+        params = super().get_params(deep=deep)
+        params.update(self.kwargs)
+        return params
+
+    def set_params(self, **params):
+        # Set parameters including kwargs
+        for parameter, value in params.items():
+            setattr(self, parameter, value)
+        return self     
         
     def fit(self, X, y):
         """
@@ -929,7 +949,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
             os.makedirs(save_path)
         
         #First saving all base estimators in subfolders
-        for k, clf in enumerate(self.estimators_):
+        for k, clf in enumerate(self.model.estimators_):
             if isinstance(clf, tuple):
                 clf[1].save(name + os.sep + clf[0])
             else:
@@ -937,18 +957,36 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         
         #Removing base estimators to save the meta classifier alone (this is 
         # because joblib does not serialize keras objects)
-        estimators_backup = self.estimators_
-        if isinstance(self.estimators_[0], tuple):
-            for k in range(len(self.estimators_)):
-                self.estimators_[k][1] = None
+        estimators_backup_ = self.model.estimators_
+        if isinstance(self.model.estimators_[0], tuple):
+            for k in range(len(self.model.estimators_)):
+                self.model.estimators_[k] = (self.model.estimators_[k][0], None)
         else:
-            self.estimators_ = list(range(len(self.estimators_)))
+            self.model.estimators_ = list(range(len(self.model.estimators_)))
         
+        estimators_backup = self.model.estimators
+        if isinstance(self.model.estimators[0], tuple):
+            for k in range(len(self.model.estimators)):
+                self.model.estimators[k] = (self.model.estimators[k][0], None)
+        
+        
+        named_estimators_backup_ = self.model.named_estimators_
+        for name in self.model.named_estimators_.keys():
+            self.model.named_estimators_[name] = None    
+        
+        base_estimators_backup = self.base_estimators
+        if isinstance(self.base_estimators[0], tuple):
+            for k in range(len(self.base_estimators)):
+                self.base_estimators[k] = (self.base_estimators[k][0], None)
+       
         #Saving meta classifier to that location
         dump(self, os.path.join(save_path, 'model.joblib'))
         
         #Restoring back the base estimators
-        self.estimators_ = estimators_backup
+        self.model.estimators_ = estimators_backup_
+        self.model.estimators = estimators_backup
+        self.model.named_estimators_ = named_estimators_backup_
+        self.base_estimators = base_estimators_backup
         
         
     def load(self, name):
@@ -965,15 +1003,15 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         loaded_model = load(os.path.join(model_path, 'model.joblib'))
         
         #Loading all base estimators from the  subfolders
-        if isinstance(loaded_model.estimators_[0], tuple):
-            for k, clf in enumerate(loaded_model.estimators_):
+        if isinstance(loaded_model.model.estimators_[0], tuple):
+            for k, clf in enumerate(loaded_model.model.estimators_):
                 base_model = load(os.path.join(model_path, clf[0], 'model.joblib'))
                 base_model.load(name + os.sep + clf[0])
-                loaded_model.estimators_[k] = (clf[0], base_model)
+                loaded_model.model.estimators_[k] = (clf[0], base_model)
         else:
-            for k in range(len(loaded_model.estimators_)):
+            for k in range(len(loaded_model.model.estimators_)):
                 base_model = load(os.path.join(model_path, str(k), 'model.joblib'))
                 base_model.load(name + os.sep + str(k))
-                loaded_model.estimators_[k] = base_model
+                loaded_model.model.estimators_[k] = base_model
                 
         return loaded_model
