@@ -66,8 +66,9 @@ from sklearn.model_selection import train_test_split, cross_validate, Stratified
 from joblib import load, dump
 
 import os
+import time
 
-import src.config as config
+import config
 
 
 def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax', strategy = None):
@@ -328,8 +329,10 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                 fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
                 if dataset_val is not None:
                     fit_args['validation_data'] = dataset_val
-                    
+                
+                start_time = time.time()
                 self.history = self.model.fit(dataset, **fit_args)
+                self.fit_time = time.time() - start_time
         else:
             #if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []

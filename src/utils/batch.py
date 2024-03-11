@@ -4,11 +4,11 @@ import os
 import numpy as np
 import pandas as pd
 
-import src.config as config
+import config
 from src.text.classifiers import MLClassifier, TFbertClassifier
 from src.image.classifiers import ImgClassifier
 from src.multimodal.classifiers import MetaClassifier, TFmultiClassifier
-from src.utils.saveload import load_classifier
+from src.utils.load import load_classifier
 
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
@@ -87,7 +87,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         #Checking mandatory fields
         for fname in mandatory_fields:
             if fname not in params.keys():
-                params[fname] = np.nan
+                params[fname] = None
                 
         #Making sure params['params_grid'] dictionnary values
         # are provided as list (important for GridSearchCV)
@@ -179,8 +179,10 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             results['fit_cv_time'] = np.nan
         
         #Saving the model (trained on training set only)
-        if not np.isnan(params['vec_method']):
+        if params['vec_method'] is not None:
             model_path = params['modality'] + '/' + params['base_name'] + '_' + params['vec_method']
+        elif params['meta_method']  is not None:
+            model_path = params['modality'] + '/' + params['meta_method'] + '_' + params['base_name']
         else:
             model_path = params['modality'] + '/' + params['base_name']
             

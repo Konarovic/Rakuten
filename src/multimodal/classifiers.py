@@ -91,8 +91,9 @@ from sklearn.model_selection import train_test_split
 
 from joblib import load, dump
 import os
+import time
 
-import src.config as config
+import config
 
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
@@ -535,8 +536,10 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                 fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
                 if dataset_val is not None:
                     fit_args['validation_data'] = dataset_val
-                    
+                
+                start_time = time.time()  
                 self.history = self.model.fit(dataset, **fit_args)
+                self.fit_time = time.time() - start_time
         else:
             #if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []
@@ -842,8 +845,10 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         Returns:
         * The instance of MLClassifier after training.
         """
-        
+        start_time = time.time()
         self.model.fit(X, y)
+        self.fit_time = time.time() - start_time
+        
         self.classes_ = np.unique(y)    
         self.is_fitted_ = True
         self.classes_ = np.unique(y)
@@ -951,9 +956,9 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         #First saving all base estimators in subfolders
         for k, clf in enumerate(self.model.estimators_):
             if isinstance(clf, tuple):
-                clf[1].save(name + os.sep + clf[0])
+                clf[1].save(name + os.sep + self.base_estimators[k][0])
             else:
-                clf.save(name + os.sep + str(k))
+                clf.save(name + os.sep + self.base_estimators[k][0])
         
         #Removing base estimators to save the meta classifier alone (this is 
         # because joblib does not serialize keras objects)
@@ -971,8 +976,8 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
         
         
         named_estimators_backup_ = self.model.named_estimators_
-        for name in self.model.named_estimators_.keys():
-            self.model.named_estimators_[name] = None    
+        for kname in self.model.named_estimators_.keys():
+            self.model.named_estimators_[kname] = None    
         
         base_estimators_backup = self.base_estimators
         if isinstance(self.base_estimators[0], tuple):

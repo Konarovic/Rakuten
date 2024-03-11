@@ -77,7 +77,7 @@ functions along with their parameters and available methods.
 """
 
 
-from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer
+from transformers import TFAutoModel, AutoTokenizer, CamembertTokenizer, FlaubertTokenizer
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout
 from tensorflow.keras.models import Model
@@ -103,8 +103,9 @@ from sklearn.model_selection import train_test_split, cross_validate, Stratified
 from joblib import load, dump
 
 import os
+import time
 
-import src.config as config
+import config
 
 
 def build_bert_model(base_model, from_trained = None, max_length=256, num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
@@ -283,24 +284,34 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
                 print("loading from Huggingface")
                 
                 #Checking if we need to load from pytorch weights
-                frompt_list = ['camembert-base-legacy', 'camembert-base-ccnet']
+                frompt_list = ['flaubert', 'camembert-base-ccnet']
                 if any(name in self.base_name.lower() for name in frompt_list):
                     from_pt = True
                 else:
                     from_pt = False
                     
-                #We'll load camembert model from there.
-                loadbertfrom = 'almanach/'
-                
                 #Loading model and tokenizer
-                base_model = TFAutoModel.from_pretrained(loadbertfrom + self.base_name, from_pt=from_pt)
-                base_model.save_pretrained(base_model_path)
-                tokenizer = CamembertTokenizer.from_pretrained(loadbertfrom + self.base_name)
-                tokenizer.save_pretrained(base_model_path)
+                if 'camembert' in self.base_name.lower():    
+                    #We'll load camembert model from there.
+                    loadbertfrom = 'almanach/'
+                    base_model = TFAutoModel.from_pretrained(loadbertfrom + self.base_name, from_pt=from_pt)
+                    base_model.save_pretrained(base_model_path)
+                    tokenizer = CamembertTokenizer.from_pretrained(loadbertfrom + self.base_name)
+                    tokenizer.save_pretrained(base_model_path)
+                elif 'flaubert' in self.base_name.lower():
+                    loadbertfrom = 'flaubert/'
+                    base_model = TFAutoModel.from_pretrained(loadbertfrom + self.base_name, from_pt=from_pt)
+                    base_model.save_pretrained(base_model_path)
+                    tokenizer = FlaubertTokenizer.from_pretrained(loadbertfrom + self.base_name)
+                    tokenizer.save_pretrained(base_model_path)
             else:
                 print("loading from Local")
-                base_model = TFAutoModel.from_pretrained(base_model_path)
-                tokenizer = CamembertTokenizer.from_pretrained(base_model_path)
+                if 'camembert' in self.base_name.lower():
+                    base_model = TFAutoModel.from_pretrained(base_model_path)
+                    tokenizer = CamembertTokenizer.from_pretrained(base_model_path)
+                elif 'flaubert' in self.base_name.lower():
+                    base_model = TFAutoModel.from_pretrained(base_model_path)
+                    tokenizer = FlaubertTokenizer.from_pretrained(base_model_path)
         
         #Building the keras model
         model = build_bert_model(base_model=base_model, from_trained = from_trained, 
@@ -372,8 +383,10 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
                 fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
                 if dataset_val is not None:
                     fit_args['validation_data'] = dataset_val
-                    
+                
+                start_time = time.time()
                 self.history = self.model.fit(dataset, **fit_args)
+                self.fit_time = time.time() - start_time
         else:
             #if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []
@@ -689,7 +702,11 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         
         
         X_vec = self._getdataset(X, training=True)
+        
+        start_time = time.time()
         self.model.fit(X_vec, y)
+        self.fit_time = time.time() - start_time
+        
         self.classes_ = np.unique(y)    
         self.is_fitted_ = True
         

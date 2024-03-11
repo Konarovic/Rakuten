@@ -1,6 +1,6 @@
 from joblib import load, dump
 import os
-import src.config as config
+import config
 
 import tensorflow as tf
 
@@ -41,18 +41,31 @@ def load_classifier(name, parallel_gpu=False):
             loaded_model.model, loaded_model.tokenizer, loaded_model.preprocessing_function = loaded_model._getmodel(name)
             
     if isinstance(loaded_model, MetaClassifier):
-        #Loading all base estimators from the  subfolders
-        if isinstance(loaded_model.estimators_[0], tuple):
-            for k, clf in enumerate(loaded_model.estimators_):
-                base_model = load(os.path.join(model_path, clf[0], 'model.joblib'))
-                base_model.load(name + os.sep + clf[0])
-                loaded_model.estimators_[k] = (clf[0], base_model)
-        else:
-            for k in range(len(loaded_model.estimators_)):
-                base_model = load(os.path.join(model_path, str(k), 'model.joblib'))
-                base_model.load(name + os.sep + str(k))
-                loaded_model.estimators_[k] = base_model
+        #Loading all base estimators from the  subfolders. These should go into
+        #loaded_model.base_estimator, loaded_model.model.estimators_ ,
+        #loaded_model.model.estimators and loaded_model.model.named_estimators_
+        for k, clf in enumerate(loaded_model.base_estimators):
+            #loading the base estimators models
+            base_model = load_classifier(name + os.sep + clf[0])
+            
+            #Casting them into the necessary attributes
+            #in base_estimators
+            loaded_model.base_estimators[k] = (clf[0], base_model)
+            #in model.estimators_
+            if isinstance(loaded_model.model.estimators_[0], tuple):
+                loaded_model.model.estimators_[k] = (loaded_model.model.estimators_[k][0], base_model)
+            else:
+                loaded_model.model.estimators_[k] = base_model
+            #in model.estimators   
+            if isinstance(loaded_model.model.estimators[0], tuple):
+                loaded_model.model.estimators[k] = (loaded_model.model.estimators[k][0], base_model)
+            #in model.named_estimators_    
+            keyname = list(loaded_model.model.named_estimators_.keys())[k]
+            loaded_model.model.named_estimators_[keyname] = base_model
             
     return loaded_model
     
     
+    
+    
+            
