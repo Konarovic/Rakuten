@@ -105,7 +105,7 @@ from joblib import load, dump
 import os
 import time
 
-import config
+import notebook.config as config
 
 
 def build_bert_model(base_model, from_trained = None, max_length=256, num_class=27, drop_rate=0.0, activation='softmax', strategy=None):

@@ -4,7 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 
-import config
+import notebook.config as config
 from src.text.classifiers import MLClassifier, TFbertClassifier
 from src.image.classifiers import ImgClassifier
 from src.multimodal.classifiers import MetaClassifier, TFmultiClassifier

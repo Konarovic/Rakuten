@@ -1,6 +1,6 @@
 from joblib import load, dump
 import os
-import config
+import notebook.config as config
 
 import tensorflow as tf
 
