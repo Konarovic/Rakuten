@@ -9,3 +9,4 @@ env/
 **.code-workspace
 model/
 **.h5
+results/
