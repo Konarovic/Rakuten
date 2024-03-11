@@ -163,7 +163,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     classifier.save('vgg16_trained_model')
     """
     
-    def __init__(self, base_name='vit_b16', from_trained = None, 
+    def __init__(self, base_name='vit_b16', from_trained = None,
                  img_size=(224, 224, 3), num_class=27, drop_rate=0.2,
                  epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, lr_min=None, 
                  validation_split=0.0, validation_data=None,
