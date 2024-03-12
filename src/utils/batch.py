@@ -174,8 +174,9 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         f1score_test = clf.classification_score(X_test, y_test)
         print('Test set, f1score: ', f1score_test)
         
-        #saving f1score_test
+        #saving f1score_test and confusion matrix
         results['score_test'] = f1score_test
+        results['conf_mat_test'] = clf.confusion_mat.flatten()
         
         #Calculating score by k-fold cross-validation
         if params['nfolds_cv'] > 0:
