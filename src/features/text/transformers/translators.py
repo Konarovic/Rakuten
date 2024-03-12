@@ -29,7 +29,6 @@ class TextTranslator(BaseEstimator, TransformerMixin):
     
     def transform(self, X):
         translations = X[self.text_column].rename("translation")
-        print(translations)
         if not self.lang_column:
             self.lang_column = "lang"
             X[self.lang_column] = self.langdetector.fit_transform(X[self.text_column])
