@@ -2,6 +2,10 @@ from joblib import load, dump
 import os
 import notebook.config as config
 
+import ast
+import pandas as pd
+import numpy as np
+
 import tensorflow as tf
 
 from src.text.classifiers import TFbertClassifier, MLClassifier
@@ -64,6 +68,71 @@ def load_classifier(name, parallel_gpu=False):
             loaded_model.model.named_estimators_[keyname] = base_model
             
     return loaded_model
+
+
+def load_batch_results(filename):
+    """ 
+    Load batch results saved in filename in the directory specified in
+    config.path_to_results.
+    
+    Example:
+    df = load_batch_results('results_benchmark_text')
+    """
+    df_results = pd.read_csv(os.path.join(config.path_to_results, filename + '.csv'), index_col=0)
+    
+    col_to_convert = ['conf_mat_test', 'probs_test', 'pred_test', 'y_test']
+    for col in col_to_convert:
+        df_results.loc[~df_results[col].isna(), col] = df_results.loc[~df_results[col].isna(), col].apply(ast.literal_eval).apply(np.array)
+
+    return df_results
+
+
+
+def fix_results(result_filename, X_test, y_test):
+    """ 
+    To be strip later. Just a temporary fix for batch performed before 2024/03/12
+    """
+    df_results = pd.read_csv(os.path.join(config.path_to_results, result_filename + '.csv'), index_col=0)
+
+    col_to_add = ['score_test_cat', 'conf_mat_test', 'score_train', 'fit_time', 'probs_test', 'pred_test', 'y_test']
+    for col in col_to_add:
+        if col not in df_results.columns:
+            df_results[col] = None
+        
+    df_results = df_results[['modality', 'class', 'vectorization', 'classifier', 'tested_params', 'best_params', 'score_test', 'score_test_cat', 'conf_mat_test', 'score_train', 'fit_time', 
+                            'score_cv_test', 'score_cv_train', 'fit_cv_time', 'probs_test', 'pred_test', 'y_test', 'model_path']]
+
+
+    for i in df_results.index:
+        clf = load_classifier(df_results.loc[i, 'model_path'])
+        df_results.loc[i, 'fit_time'] = clf.fit_time
+        
+        if isinstance(clf.confusion_mat, pd.DataFrame):
+            clf.confusion_mat = np.array(clf.confusion_mat)
+            clf.save(df_results.loc[i, 'model_path'])
+            
+        df_results.loc[i, 'conf_mat_test'] = str(clf.confusion_mat.tolist())
+        
+        recall_mat = clf.confusion_mat / clf.confusion_mat.sum(axis=1)
+        precision_mat = clf.confusion_mat / clf.confusion_mat.sum(axis=0)
+        f1score_test_cat = 2 * np.diag(precision_mat * recall_mat) / np.diag(precision_mat + recall_mat)
+        df_results.loc[i, 'score_test_cat'] = str(f1score_test_cat.tolist())
+        
+        if hasattr(clf, 'predict_proba'):
+            probs = clf.predict_proba(X_test)
+            pred = np.argmax(probs, axis=1)
+            df_results.loc[i, 'probs_test'] = str(probs.tolist())
+        else:
+            probs = None
+            pred = clf.predict(X_test)
+            df_results.loc[i, 'probs_test'] = None
+            
+        df_results.loc[i, 'pred_test'] = str(pred.tolist())
+        df_results.loc[i, 'y_test'] = str(y_test.tolist())
+
+    df_results = df_results.sort_values(by='score_test', ascending=False).reset_index(drop=True)
+
+    return df_results
     
     
     

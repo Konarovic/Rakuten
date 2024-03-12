@@ -218,8 +218,6 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         model_name = params['base_name'].replace("/", "-")
         if params['vec_method'] is not None:
             model_path = params['modality'] + '/' + model_name + '_' + params['vec_method']
-        elif params['meta_method']  is not None:
-            model_path = params['modality'] + '/' + model_name + '_' + params['base_name']
         else:
             model_path = params['modality'] + '/' + model_name
             
