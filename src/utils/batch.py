@@ -190,12 +190,13 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             results['fit_cv_time'] = np.nan
         
         #Saving the model (trained on training set only)
+        model_name = params['base_name'].replace("/", "-")
         if params['vec_method'] is not None:
-            model_path = params['modality'] + '/' + params['base_name'] + '_' + params['vec_method']
+            model_path = params['modality'] + '/' + model_name + '_' + params['vec_method']
         elif params['meta_method']  is not None:
-            model_path = params['modality'] + '/' + params['meta_method'] + '_' + params['base_name']
+            model_path = params['modality'] + '/' + model_name + '_' + params['base_name']
         else:
-            model_path = params['modality'] + '/' + params['base_name']
+            model_path = params['modality'] + '/' + model_name
             
         clf.save(model_path)
         
