@@ -98,7 +98,7 @@ import notebook.config as config
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
                       num_class=27, drop_rate=0.0, activation='softmax', attention_numheads=8,
-                      transfo_numblocks=0, strategy=None):
+                      transfo_numblocks=1, strategy=None):
     """
     Creates a multimodal classification model that combines text and image data for prediction tasks.
 
@@ -113,7 +113,8 @@ def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_len
     * num_class (int, optional): Number of classes for the classification task. Default is 27.
     * drop_rate (float, optional): Dropout rate applied in the final layers of the model. Default is 0.0.
     * activation (str, optional): Activation function for the output layer. Default is 'softmax'.
-    * attention_numheads (int, optional): number of cross-attention head before the classification layer
+    * attention_numheads (int, optional): number of heads in multi-attention layers. Default is 8.
+    * transfo_numblocks (int, optional): number of transformer blocks after fusion. Default is 1.
     * strategy: TensorFlow distribution strategy to be used during model construction.
     
     Returns:
@@ -323,6 +324,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
     * validation_split: fraction of the data to use for validation during training. Default is 0.0.
     * validation_data: a tuple with (features, labels) data to use for validation during training. Default is None.
     * num_class (int, optional): Number of classes for the classification task.
+    * attention_numheads (int, optional): number of heads in multi-attention layers. Default is 8.
+    * transfo_numblocks (int, optional): number of transformer blocks after fusion. Default is 1.
     * drop_rate (float, optional): Dropout rate applied in the final layers of the model.
     * epochs (int, optional): Number of epochs for training.
     * batch_size (int, optional): Number of samples per batch.
@@ -360,7 +363,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         """
         Constructor: __init__(self, txt_base_name='camembert-base', img_base_name='b16', from_trained = None, 
                               max_length=256, img_size=(224, 224, 3), augmentation_params=None, num_class=27, drop_rate=0.2,
-                              epochs=1, batch_size=32, learning_rate=5e-5, callbacks=None, parallel_gpu=True)
+                              transfo_numblocks=1, attention_numheads=8, epochs=1, batch_size=32, learning_rate=5e-5, 
+                              callbacks=None, parallel_gpu=True)
                               
         Initializes a new instance of the TFmultiClassifier.
 
@@ -376,6 +380,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         * img_size: The size of input images.
         * num_class: The number of classes for the classification task. Default is 27.
         * augmentation_params: a dictionnary with parameters for data augmentation (see ImageDataGenerator).
+        * attention_numheads (int, optional): number of heads in multi-attention layers. Default is 8.
+        * transfo_numblocks (int, optional): number of transformer blocks after fusion. Default is 1.
         * drop_rate: Dropout rate for the classification head. Default is 0.2.
         * epochs: The number of epochs to train the model. Default is 1.
         * batch_size: Batch size for training. Default is 32.

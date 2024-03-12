@@ -135,6 +135,9 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
                     clf_base.epochs = 0
                 base_estimators.append((estimator_name, clf_base))
             clf = MetaClassifier(base_estimators=base_estimators, meta_method=params['meta_method'], **clf_params)
+        elif params['class'] == 'TFmultiClassifier':
+            estimators_name_list = params['base_name'].split()
+            clf = TFmultiClassifier(txt_base_name=estimators_name_list[0], img_base_name=estimators_name_list[1], **clf_params)
         
         #paramters to feed into GridSearchCV   
         param_grid = params['param_grid']
