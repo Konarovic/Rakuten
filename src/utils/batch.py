@@ -211,7 +211,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         df_results = pd.read_csv(results_path, index_col=0)
         for col in df_results.columns:
             if col not in results.keys():
-                results[col] = np.nan
+                df_results[col] = np.nan
         df_results.loc[len(df_results)] = results
         df_results.to_csv(results_path)
         
