@@ -71,7 +71,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
     
     #If results.csv doesn't exist, we create it
     if not os.path.isfile(results_path):
-        df_results = pd.DataFrame(columns=['modality', 'class', 'vectorization', 'classifier', 'tested_params', 
+        df_results = pd.DataFrame(columns=['modality', 'class', 'vectorization', 'meta_method', 'classifier', 'tested_params', 
                                            'best_params','score_test', 'score_test_cat', 'conf_mat_test',
                                            'score_train', 'fit_time', 'score_cv_test', 'score_cv_train', 
                                            'fit_cv_time', 'probs_test', 'pred_test', 'y_test', 'model_path'])
@@ -82,7 +82,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
     y = pd.concat([y_train, y_test], axis=0)
     
     #Mandatory fields in parameters
-    mandatory_fields =  ['modality', 'class', 'base_name', 'vec_method', 'param_grid', 'meta_method']
+    mandatory_fields =  ['modality', 'class', 'base_name', 'vec_method', 'param_grid', 'meta_method', 'model_suffix']
 
     for params in params_list:
         #Checking mandatory fields
@@ -98,7 +98,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         
         #Populating results with parameters
         results = {'modality': params['modality'], 'class': params['class'], 'classifier': params['base_name'],
-                   'vectorization': params['vec_method']}
+                   'vectorization': params['vec_method'], 'meta_method': params['meta_method']}
         #copy the dict params['param_grid'], otherwise with = we copy a reference
         #to the object
         results['tested_params'] = dict(params['param_grid'])
@@ -216,11 +216,16 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         
         #Saving the model (trained on training set only)
         model_name = params['base_name'].replace("/", "-")
+        model_name = model_name.replace(" ", "-")
+        
         if params['vec_method'] is not None:
-            model_path = params['modality'] + '/' + model_name + '_' + params['vec_method']
-        else:
-            model_path = params['modality'] + '/' + model_name
+            model_name = model_name + '_' + params['vec_method']
+        if params['meta_method'] is not None:
+            model_name = params['meta_method'] + '_' + model_name
+        if params['model_suffix'] is not None:
+            model_name = model_name + '_' + params['model_suffix']
             
+        model_path = params['modality'] + '/' + model_name + '_' + params['vec_method']
         clf.save(model_path)
         
         #saving where the model is saved

@@ -43,6 +43,11 @@ def load_classifier(name, parallel_gpu=False):
             loaded_model.model, loaded_model.preprocessing_function = loaded_model._getmodel(name)
         elif isinstance(loaded_model, TFmultiClassifier):
             loaded_model.model, loaded_model.tokenizer, loaded_model.preprocessing_function = loaded_model._getmodel(name)
+        
+        #For copies of loaded object to also inherit from name (e.g.
+        #for ensemble methods or CV methods), we set from_trained 
+        # to the model loaded here
+        loaded_model.from_trained = name
             
     if isinstance(loaded_model, MetaClassifier):
         #Loading all base estimators from the  subfolders. These should go into
@@ -99,7 +104,7 @@ def fix_results(result_filename, X_test, y_test):
         if col not in df_results.columns:
             df_results[col] = None
         
-    df_results = df_results[['modality', 'class', 'vectorization', 'classifier', 'tested_params', 'best_params', 'score_test', 'score_test_cat', 'conf_mat_test', 'score_train', 'fit_time', 
+    df_results = df_results[['modality', 'class', 'vectorization', 'meta_method', 'classifier', 'tested_params', 'best_params', 'score_test', 'score_test_cat', 'conf_mat_test', 'score_train', 'fit_time', 
                             'score_cv_test', 'score_cv_train', 'fit_cv_time', 'probs_test', 'pred_test', 'y_test', 'model_path']]
 
 
