@@ -74,46 +74,6 @@ def Rakuten_txt_tokenize(data, lang=None, method='spacy'):
     return data
 
 
-def tokens_from_spacy(txt, lang, nlpdict):
-    """
-    Generate a list of unique word tokens from a text string using spaCy.
-
-    Parameters:
-    txt (str): Text string to tokenize.
-    lang (str): Language of the text.
-    nlpdict (dict): Dictionary mapping language codes to spaCy models.
-
-    Returns:
-    str: String of unique, lemmatized tokens.
-
-    Usage:
-    tokens = tokens_from_spacy(text_to_tokenize, 'en', nlp_dictionary)
-    """
-    if isinstance(txt, str):
-        # using the appropriate language
-        tokens = nlpdict[lang](txt)
-
-        # Remove stopwords, punctuation, and perform lemmatization
-        filtered_tokens = [token.lemma_.lower()
-                           for token in tokens
-                           if token.is_alpha
-                           and not token.is_stop  # is stop is too general: parler is a stopword!!
-                           and len(token) > 2
-                           and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
-
-        # Keeping a unique list of tokens, in the same order they appeared in
-        # the text
-        seen = set()
-        filtered_tokens = [seen.add(token) or token
-                           for token in filtered_tokens if token not in seen]
-
-        # returning result as a single string
-        return ' '.join(filtered_tokens)
-    else:
-        # Return nan if the input is not a string
-        return np.nan
-
-
 def tokens_from_nltk(txt, lang):
     """
     Generate a list of unique word tokens from a text string using NLTK.
@@ -218,26 +178,84 @@ class SpacyTokenizer(BaseEstimator, TransformerMixin):
         if isinstance(text, str):
             tokens = self.tokenizers[lang](text)
             if not self.keep_stopwords:
-                selected_tokens = [token.lemma_.lower()
+                filtered_tokens = [token.lemma_.lower()
                             for token in tokens
                             if token.is_alpha
                             and len(token) > 2
                             and not token.is_stop
                             and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
             else:
-                selected_tokens = [token.lemma_.lower()
+                filtered_tokens = [token.lemma_.lower()
                             for token in tokens
                             if token.is_alpha
                             and len(token) > 2
                             and any(vowel in token.text.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
             if self.unique_tokens:
-                selected_tokens = list(set(selected_tokens))
-            return " ".join(selected_tokens)
+                filtered_tokens = list(set(filtered_tokens))
+            return " ".join(filtered_tokens)
         else:
             return np.nan
 
 
 class NLTKTokenizer(BaseEstimator, TransformerMixin):
-    pass
+    def __init__(self, text_column=None, lang_column=None, keep_stopwords=False, unique_tokens=True) -> None:
+        self.langdetector = LangIdDetector()
+        self.unique_tokens = unique_tokens
+        self.keep_stopwords = keep_stopwords
+        self.text_column = text_column
+        self.lang_column = lang_column
+
+        nltk.download('punkt')
+        nltk.download('stopwords')
+        nltk.download('wordnet')
+
+        self.lang_mapper = {
+            'fr': 'french',
+            'en': 'english',
+            'de': 'german'
+            }
+        
+
+
+    def fit(self, X, y=None):
+        if isinstance(X, pd.Series):
+            self.text_column = X.name
+        return self
+    
+    def transform(self, X):
+        if not self.lang_column:
+            self.lang_column = "lang"
+            X[self.lang_column] = self.langdetector.fit_transform(X[self.text_column])
+        X["token_lang"] = X[self.lang_column].map(self.lang_mapper)
+        return X.apply(lambda row: self.tokenize(row[self.text_column], row["token_lang"]), axis=1)
+    
+    def tokenize(self, text, lang):
+        if isinstance(text, str):
+        # tokenization with the appropriate language
+            tokens = nltk.tokenize.word_tokenize(text, lang)
+            # Remove stopwords, punctuation, and perform lemmatization
+            stop_words = set(nltk.corpus.stopwords.words(lang))
+            stemmer = nltk.stem.SnowballStemmer(lang)
+            if not stop_words:
+                filtered_tokens = [stemmer.stem(token.lower())
+                                for token in tokens
+                                if token.isalpha()
+                                and token.lower()
+                                not in stop_words
+                                and len(token) > 2
+                                and any(vowel in token.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
+            else:
+                filtered_tokens = [stemmer.stem(token.lower())
+                                for token in tokens
+                                if token.isalpha()
+                                and token.lower()
+                                and len(token) > 2
+                                and any(vowel in token.lower() for vowel in 'aeiouyáéíóúàèìòùâêîôûäëïöü')]
+            if self.unique_tokens:
+                filtered_tokens = list(set(filtered_tokens))
+            return " ".join(filtered_tokens)
+        else:
+            return np.nan
+
 
     
