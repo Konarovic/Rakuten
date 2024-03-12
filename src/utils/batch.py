@@ -124,11 +124,13 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         elif params['class'] == 'MetaClassifier':
             estimators_name_list = params['base_name'].split()
             base_estimators = []
+            #loading base estimators
             for estimator_name in estimators_name_list:
                 clf_base = load_classifier(name=estimator_name)
                 if isinstance(clf_base, (TFbertClassifier, ImgClassifier, TFmultiClassifier)):
-                    clf_base.lr_min = 1e-6
+                    #To make sure copies of this estimator are instanciated with pre-trained weights
                     clf_base.from_trained = estimator_name
+                    #epoch = 0 so that the deep networks are not re-trained during cv
                     clf_base.epochs = 0
                 base_estimators.append((estimator_name, clf_base))
             clf = MetaClassifier(base_estimators=base_estimators, meta_method=params['meta_method'], **clf_params)
