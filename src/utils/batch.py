@@ -72,8 +72,9 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
     #If results.csv doesn't exist, we create it
     if not os.path.isfile(results_path):
         df_results = pd.DataFrame(columns=['modality', 'class', 'vectorization', 'classifier', 'tested_params', 
-                                           'best_params','score_test', 'score_cv_test', 'score_cv_train', 'fit_cv_time',
-                                           'model_path'])
+                                           'best_params','score_test', 'score_test_cat', 'conf_mat_test',
+                                           'score_train', 'fit_time', 'score_cv_test', 'score_cv_train', 
+                                           'fit_cv_time', 'probs_test', 'pred_test', 'y_test', 'model_path'])
         df_results.to_csv(results_path)
     
     #Concatenating train and text sets for CV scores    
@@ -160,7 +161,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             clf = gridcv.best_estimator_
         else:
             clf.fit(X_train, y_train)
-            results['best_params'] = np.nan
+            results['best_params'] = None
         
         results['fit_time'] = clf.fit_time
         
@@ -174,9 +175,30 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         f1score_test = clf.classification_score(X_test, y_test)
         print('Test set, f1score: ', f1score_test)
         
-        #saving f1score_test and confusion matrix
+        #saving f1score_test
         results['score_test'] = f1score_test
-        results['conf_mat_test'] = clf.confusion_mat.flatten()
+        
+        #Computing f1-score for each category from confusion matrix
+        recall_mat = clf.confusion_mat / clf.confusion_mat.sum(axis=1)
+        precision_mat = clf.confusion_mat / clf.confusion_mat.sum(axis=0)
+        f1score_test_cat = 2 * np.diag(precision_mat * recall_mat) / np.diag(precision_mat + recall_mat)
+        results['score_test_cat'] = f1score_test_cat.tolist()
+        
+        #Saving the confusion matrix
+        results['conf_mat_test'] = clf.confusion_mat.tolist()
+        
+        #Saving logits and predicted labels
+        if hasattr(clf, 'predict_proba'): #not all objects have predict_proba method
+            probs = clf.predict_proba(X_test)
+            pred = np.argmax(probs, axis=1)
+            results['probs_test'] = probs.tolist()
+        else:
+            probs = None
+            pred = clf.predict(X_test)
+            results['probs_test'] = None
+            
+        results['pred_test'] = pred.tolist()
+        results['y_test'] = y_test.tolist()
         
         #Calculating score by k-fold cross-validation
         if params['nfolds_cv'] > 0:
@@ -188,9 +210,9 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             results['score_cv_train'] = clf.cv_scores['train_score']
             results['fit_cv_time'] = clf.cv_scores['fit_time']
         else:
-            results['score_cv_test'] = np.nan
-            results['score_cv_train'] = np.nan
-            results['fit_cv_time'] = np.nan
+            results['score_cv_test'] = None
+            results['score_cv_train'] = None
+            results['fit_cv_time'] = None
         
         #Saving the model (trained on training set only)
         model_name = params['base_name'].replace("/", "-")
@@ -209,9 +231,18 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         #Loading results.csv, adding line and saving it
         #Loading results.csv
         df_results = pd.read_csv(results_path, index_col=0)
+        #Adding fields of df_results not in results dictionnary
         for col in df_results.columns:
             if col not in results.keys():
-                df_results[col] = np.nan
+                results[col] = None
+        #Adding keys of results dictionnary not in df_results columns
+        for col in results.keys():
+            if col not in df_results.columns:
+                df_results[col] = None
+                
+        #Concatenating df_results and results
+        #(can't be done by converting results to DataFrame
+        #because it contains dictionnaries)
         df_results.loc[len(df_results)] = results
         df_results.to_csv(results_path)
         
