@@ -1,13 +1,12 @@
 ENCODING_REPLACEMENT_DICT = {
     'c¿ur': 'coeur',
-    '¿uvre': 'oeuvre',
+    '¿uvr': 'oeuvr',
     '¿uf': 'oeuf',
     'n¿ud': 'noeud',
     '¿illets': 'oeillets',
     'v¿ux': 'voeux',
     's¿ur': 'soeur',
     '¿il': 'oeil',
-    'man¿uvre': 'manoeuvre',
     'protecdtion': 'protection',
     '¿ºtre': 'être',
     'à¢me': 'âme',
@@ -35,7 +34,7 @@ ENCODING_REPLACEMENT_DICT = {
     'cahiercaract¿re': 'cahier caractère',
     'Cahierembl¿Me': 'Cahier emblème',
     'c?ur': 'coeur',
-    '?uvre': 'oeuvre',
+    '?uvr': 'oeuvr',
     '?uf': 'oeuf',
     'n?ud': 'noeud',
     '?illets': 'oeillets',
@@ -83,6 +82,12 @@ ENCODING_REPLACEMENT_DICT = {
     'cr¿maill¿re': "crémaillère",
     "r¿union": "réunion",
     'r¿tro': "rétro",
+    'poly¿thyl¿ne': "polyéthylène",
+    'jeuneou': "jeune ou",
+    'langerL': "langer l",
+    'rag¿narok': "ragnarok",
+    'midg¿rd': "midgard",
+    "¿ø": "diamètre"
     
 }
 
@@ -95,5 +100,16 @@ CLASSIC_PATTERNS_DICT = {
     'lit¿': "lité",
     'min¿e': "minée",
     'iqu¿e': "iquée",
+    '¿lectr': "électr",
+    'p¿riph': "périph",
+    'd¿tect': "détect",
+    'yr¿ne': "yrene",
+    'yl¿ne': "ylene",
+    "¿last": "elast",
+    "r¿frig": "refrig",
+    "stom¿r": "stomer",
+    "pr¿in": "préin",
+     
+    
 
 }

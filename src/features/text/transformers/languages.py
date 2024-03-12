@@ -9,6 +9,9 @@ from transformers import BertTokenizer
 
 
 class LangIdDetector(BaseEstimator, TransformerMixin):
+    """
+    A transformer to extract language from a text
+    """
     def __init__(self) -> None:
         super().__init__()
 

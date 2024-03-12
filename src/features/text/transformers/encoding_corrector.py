@@ -4,6 +4,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from src.features.text.helpers import ENCODING_REPLACEMENT_DICT, CLASSIC_PATTERNS_DICT
 from src.features.text.transformers.languages import LangIdDetector
 from spellchecker import SpellChecker
+from functools import lru_cache
 
 def Rakuten_txt_fixencoding(data, lang):
     """
@@ -77,15 +78,6 @@ def txt_fixencoding(txt, lang, spellers):
     pattern = re.escape('Cahieremblème')
     txt = re.sub(pattern, 'cahier emblème', txt)
 
-    # Replacing badly encoded character by apostrophe when following in second
-    # position a d, l, c or n.
-    pattern = r'\b([dlcn])[¿?](?=[aeiouyh])'
-    txt = re.sub(pattern, r"\1'", txt, flags=re.IGNORECASE)
-
-    # Replacing badly encoded character by apostrophe when following in third
-    # position after qu.
-    pattern = r'\bqu[¿?]'
-    txt = re.sub(pattern, "qu'", txt, flags=re.IGNORECASE)
 
     # Finding all remaining words with special characters at the start, end or
     # within
@@ -132,7 +124,7 @@ def txt_fixencoding(txt, lang, spellers):
 class EncodingIsolator(BaseEstimator, TransformerMixin):
     """A text transformer to replace duplicates of badly encoded markers and some weird combinations with a single one"""
     def __init__(self) -> None:
-        self.pattern = re.compile(r'([?¿º¢©́])\1+')
+        self.pattern = re.compile(r'([?¿º¢©́Ã])\1+')
         self.special_sequence_pattern = re.compile(r'[å¿]')
 
     def fit(self, X, y=None):
@@ -143,6 +135,18 @@ class EncodingIsolator(BaseEstimator, TransformerMixin):
         X_cleaned = X.str.replace(pat=self.pattern, repl=r'\1', regex=True)
         X_cleaned = X_cleaned.str.replace(pat=self.special_sequence_pattern, repl='¿', regex=True)
         return X_cleaned
+    
+class SpecificIsolator(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"[ã¢©́]+")
+
+    def fit(self, X, y=None):
+        return self    
+
+    def transform(self, X):
+        # Replace duplicates of badly encoded markers
+        return X.str.replace(pat=self.pattern,repl='¿', regex=True)
     
 
 class ExcessPunctuationRemover(BaseEstimator, TransformerMixin):
@@ -171,10 +175,11 @@ class HandMadeCorrector(BaseEstimator, TransformerMixin):
             X_corrected = X_corrected.str.replace(pat=badword, repl=correction, case=False)
         return X_corrected
     
+
 class EncodingApostropheCorrector(BaseEstimator, TransformerMixin):
     """"""
     def __init__(self) -> None:
-        self.pattern=re.compile(r'\b([dlcn])[¿?](?=[aeiouyhAEIOUYHé])')
+        self.pattern=re.compile(r'\b([sdlcn])[¿?](?=[aeiouyhAEIOUYHé])')
 
     def fit(self, X, y=None):
         return self
@@ -182,6 +187,7 @@ class EncodingApostropheCorrector(BaseEstimator, TransformerMixin):
     def transform(self, X):
         X_corrected = X.str.replace(pat=self.pattern, repl=r"\1'", regex=True)
         return X_corrected
+
 
 class PronounsApostropheCorrector(BaseEstimator, TransformerMixin):
     """"""
@@ -194,6 +200,17 @@ class PronounsApostropheCorrector(BaseEstimator, TransformerMixin):
     def transform(self, X):
         X_corrected = X.str.replace(pat=self.pattern, repl="qu'", regex=True)
         return X_corrected
+    
+
+class LowerTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        return X.str.lower()
     
 
 class ClassicPatternsCorrector(BaseEstimator, TransformerMixin):
@@ -228,27 +245,59 @@ class BadWordsDetector(BaseEstimator, TransformerMixin):
             "lang": languages 
             })
     
-class BadWordsCorrector(BaseEstimator, TransformerMixin):
+class DoubleEncodingTransformer(BaseEstimator, TransformerMixin):
     def __init__(self) -> None:
-        super().__init__()
+        self.pattern = re.compile( r'â¿')
 
     def fit(self, X, y=None):
         return self
     
     def transform(self, X):
-        print(type(X))
-        print(X.columns)
-        #return [row["text"] for row in X]
-        corrected_words = X.apply(lambda x: x["text"])
-        #corrected_words = X.apply(lambda row: self.correct_text(text=row["text"], badwords=row["badwords"], lang=row["lang"]))
-        return corrected_words
+        return X.str.replace(pat=self.pattern, repl="¿", regex=True)
     
-    @staticmethod
-    def correct_text(text, badwords, lang):
-        speller = SpellChecker(language=lang)
-        for word in badwords:
-            correction = speller.correction(word)
-            text = re.sub(word, correction, text)
+
+class NumberEncodingCorrector(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"¿(\d+)|(\d+)¿")
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        return  X.str.replace(pat=self.pattern, repl=r"\1", regex=True)
+    
+class BadWordsCorrector(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        super().__init__()
+        self.spellers = {
+            "fr": SpellChecker(language="fr"),
+            "en": SpellChecker(language="en"),
+            "de": SpellChecker(language="de"),
+        }
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        rows = [x for x in X.itertuples()]
+        corrected_text = [self.correct_text(row.text, row.badwords, row.lang) for row in rows]
+        corrected_text = pd.Series(corrected_text)
+        return corrected_text
+
+    @lru_cache(maxsize=1000)
+    def correct_word(self, word, lang):
+        correction = self.spellers[lang].correction(word)
+        return correction
+        
+    def correct_text(self, text, badwords, lang):
+        if isinstance(text, str):
+            for word in badwords:
+                try:
+                    correction = self.correct_word(word=word, lang=lang)
+                    text = re.sub(word, correction, text)
+                except(TypeError):
+                    print(f"Badword: {word}\n Text to correct: {text}")
+                    #raise TypeError
         return text
 
 
