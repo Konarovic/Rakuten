@@ -160,6 +160,14 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
             clf.fit(X_train, y_train)
             results['best_params'] = np.nan
         
+        results['fit_time'] = clf.fit_time
+        
+        #Calculating scores on train set
+        f1score_train = clf.classification_score(X_train, y_train)
+        
+        #saving f1score_test
+        results['score_train'] = f1score_train
+        
         #Calculating scores on test set
         f1score_test = clf.classification_score(X_test, y_test)
         print('Test set, f1score: ', f1score_test)
