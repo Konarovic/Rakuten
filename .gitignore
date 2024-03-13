@@ -10,3 +10,5 @@ env/
 model/
 **.h5
 results/
+notebook/config.py
+models/
