@@ -95,25 +95,6 @@ import plotly.io as pio
 pio.renderers.default = 'browser'
 
 
-def Rakuten_txt_import(folder_path):
-    """
-    Import text data from specified folder path.
-
-    Parameters:
-    folder_path (str): The path to the folder containing the X_train.csv and
-    Y_train.csv files.
-
-    Returns:
-    tuple: A tuple containing two pandas DataFrames, the first for the text
-    data and the second for the target data.
-    """
-
-    data = pd.read_csv(os.path.join(folder_path, 'X_train.csv'), index_col=0)
-    target = pd.read_csv(os.path.join(folder_path, 'Y_train.csv'), index_col=0)
-
-    data = target.join(data)
-
-    return data
 
 
 def Rakuten_target_factorize(code):
@@ -821,21 +802,6 @@ def txt_translate(translator, text, target_lang):
 
     return ''
 
-
-def Rakuten_img_path(img_folder, imageid, productid):
-    """ retrurns the path to the image of a given productid and imageid"""
-
-    df = pd.DataFrame(pd.concat([imageid, productid], axis=1))
-
-    img_path = df.apply(lambda row:
-                        os.path.join(img_folder, 'image_'
-                                     + str(row['imageid'])
-                                     + '_product_'
-                                     + str(row['productid'])
-                                     + '.jpg'),
-                        axis=1)
-
-    return img_path
 
 
 def Rakuten_img_size(img_path):
