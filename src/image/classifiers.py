@@ -46,7 +46,6 @@ Below is a summary documentation of the ImgClassifier class and its methods
 """
 
 
-
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
@@ -68,10 +67,10 @@ from joblib import load, dump
 import os
 import time
 
-import notebook.config as config
+import src.config as config
 
 
-def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax', strategy = None):
+def build_Img_model(base_model, from_trained=None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
     """
     Creates an image classification model with optional pre-trained weights.
 
@@ -83,41 +82,43 @@ def build_Img_model(base_model, from_trained = None, img_size=(224, 224, 3), num
     * drop_rate (float, optional): Dropout rate to be applied before the output layer. Default is 0.0.
     * activation (str, optional): Activation function for the output layer. Default is 'softmax'.
     * strategy: The TensorFlow distribution strategy to be used.
-    
+
     Returns:
     A tf.keras.Model instance with the constructed image classification model.
-    
+
     Example usage:
     strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
     base_model = tf.keras.applications.VGG16(include_top=False, input_shape=(224, 224, 3))
     model = build_Img_model(base_model, img_size=(224, 224, 3), num_class=10, strategy=strategy)
     """
-    
+
     with strategy.scope():
         inputs = Input(shape=img_size, name='inputs')
         base_model._name = 'img_base_layers'
         x = base_model(inputs)
-        
-        #Adding an average pooling if it's a convNet
+
+        # Adding an average pooling if it's a convNet
         if len(base_model.output_shape) == 4:
             x = GlobalAveragePooling2D()(x)
         elif len(base_model.output_shape) == 2:
             x = x[0][:, :, :]
             x = x[:, 0, :]
-            
-        x = Dense(128, activation = 'relu', name='img_Dense_top_1')(x)
+
+        x = Dense(128, activation='relu', name='img_Dense_top_1')(x)
         x = Dropout(rate=drop_rate, name='img_Drop_out_top_1')(x)
-        outputs = Dense(num_class, activation = activation, name='img_classification_layer')(x)
+        outputs = Dense(num_class, activation=activation,
+                        name='img_classification_layer')(x)
         model = Model(inputs=inputs, outputs=outputs)
-        
+
         if from_trained is not None:
             script_dir = os.path.dirname(os.path.realpath(__file__))
-            trained_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained)
+            trained_model_path = os.path.join(
+                config.path_to_models, 'trained_models', from_trained)
             print("loading weights from ", from_trained)
-            model.load_weights(trained_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
-    
-    return model
+            model.load_weights(trained_model_path + '/weights.h5',
+                               by_name=True, skip_mismatch=True)
 
+    return model
 
 
 class ImgClassifier(BaseEstimator, ClassifierMixin):
@@ -145,7 +146,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
       parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
       Default is None.
     * parallel_gpu: Whether to use TensorFlow's parallel GPU training capabilities. Default is True.
-    
+
     Methods:
     * fit(self, X, y): Trains the model on a dataset.
     * predict(self, X): Predicts class labels for the input samples.
@@ -154,7 +155,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function.
     * save(self, name): Saves the model weights and configuration.
     * load(self, name, parallel_gpu=False): Loads a previously saved model configuration and weights.
-    
+
     Example usage:
     classifier = ImgClassifier(base_name='vgg16', num_class=27, epochs=10, batch_size=32, parallel_gpu=True)
     classifier.fit(train_images, train_labels)
@@ -162,10 +163,10 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
     classification_score(test_images, test_labels)
     classifier.save('vgg16_trained_model')
     """
-    
-    def __init__(self, base_name='vit_b16', from_trained = None,
+
+    def __init__(self, base_name='vit_b16', from_trained=None,
                  img_size=(224, 224, 3), num_class=27, drop_rate=0.2,
-                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, lr_min=None, 
+                 epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, lr_min=None,
                  validation_split=0.0, validation_data=None,
                  augmentation_params=None, callbacks=None, parallel_gpu=True):
         """
@@ -193,13 +194,13 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
           Default is None.
         * parallel_gpu: Whether to use TensorFlow's mirrored strategy for parallel GPU training.
         """
-        #defining the parallelization strategy
+        # defining the parallelization strategy
         if parallel_gpu:
             self.strategy = tf.distribute.MirroredStrategy()
         else:
             self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-        
-        #Defining attributes
+
+        # Defining attributes
         self.img_size = img_size
         self.base_name = base_name
         self.from_trained = from_trained
@@ -212,140 +213,148 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         self.lr_decay_rate = lr_decay_rate
         if augmentation_params is None:
             augmentation_params = dict(rotation_range=20, width_shift_range=0.1,
-                                        height_shift_range=0.1, horizontal_flip=True,
-                                        fill_mode='constant', cval=255)
+                                       height_shift_range=0.1, horizontal_flip=True,
+                                       fill_mode='constant', cval=255)
         self.augmentation_params = augmentation_params
         self.validation_split = validation_split
         self.validation_data = validation_data
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         self.history = []
-        
-        #Building model and tokenizer
+
+        # Building model and tokenizer
         self.model, self.preprocessing_function = self._getmodel(from_trained)
-        
-        #For sklearn, adding attribute finishing with _ to indicate
+
+        # For sklearn, adding attribute finishing with _ to indicate
         # that the model has already been fitted
         if from_trained is not None:
             self.is_fitted_ = True
-            
+
     def _getmodel(self, from_trained=None):
         """
         Internal method to initialize or load the base model and set up preprocessing function.
         """
         with self.strategy.scope():
             if 'vit' in self.base_name.lower():
-                default_action = lambda: print("base_name should be one of: b16, b32, L16 or L32")
-                vit_model = getattr(vit, 'vit_' + self.base_name[-3:], default_action)\
-                                (image_size = self.img_size[0:2], pretrained = True, 
-                                include_top = False, pretrained_top = False)
-                base_model = Model(inputs=vit_model.input, outputs=vit_model.layers[-3].output)
+                def default_action(): return print(
+                    "base_name should be one of: b16, b32, L16 or L32")
+                vit_model = getattr(vit, 'vit_' + self.base_name[-3:], default_action)(image_size=self.img_size[0:2], pretrained=True,
+                                                                                       include_top=False, pretrained_top=False)
+                base_model = Model(inputs=vit_model.input,
+                                   outputs=vit_model.layers[-3].output)
                 preprocessing_function = None
                 model_class = None
             elif 'efficientnet' in self.base_name.lower():
-                model_class = getattr(tf.keras.applications.efficientnet, self.base_name)
+                model_class = getattr(
+                    tf.keras.applications.efficientnet, self.base_name)
                 preprocessing_function = tf.keras.applications.efficientnet.preprocess_input
             elif 'resnet' in self.base_name.lower():
-                model_class = getattr(tf.keras.applications.resnet, self.base_name)
+                model_class = getattr(
+                    tf.keras.applications.resnet, self.base_name)
                 preprocessing_function = tf.keras.applications.resnet.preprocess_input
             elif 'vgg16' in self.base_name.lower():
-                model_class = getattr(tf.keras.applications.vgg16, self.base_name.upper())
+                model_class = getattr(
+                    tf.keras.applications.vgg16, self.base_name.upper())
                 preprocessing_function = tf.keras.applications.vgg16.preprocess_input
             elif 'vgg19' in self.base_name.lower():
-                model_class = getattr(tf.keras.applications.vgg19, self.base_name.upper())
+                model_class = getattr(
+                    tf.keras.applications.vgg19, self.base_name.upper())
                 preprocessing_function = tf.keras.applications.vgg19.preprocess_input
-            
+
             if model_class is not None:
-                base_model = model_class(weights='imagenet', include_top=False, input_shape=self.img_size)
-                   
-        model = build_Img_model(base_model=base_model, from_trained = from_trained,
+                base_model = model_class(
+                    weights='imagenet', include_top=False, input_shape=self.img_size)
+
+        model = build_Img_model(base_model=base_model, from_trained=from_trained,
                                 img_size=self.img_size, num_class=self.num_class,
                                 drop_rate=self.drop_rate, activation='softmax',
                                 strategy=self.strategy)
-        
+
         return model, preprocessing_function
-    
-        
+
     def _lrscheduler(self, epoch):
         """ 
         Internal method for learning rate scheduler
         """
         lr = self.learning_rate * self.lr_decay_rate**epoch
-        
-        #the learning is not allowed to be smaller than self.lr_min
+
+        # the learning is not allowed to be smaller than self.lr_min
         if self.lr_min is not None:
             lr = max(self.lr_min, lr)
         return lr
-        
-        
+
     def fit(self, X, y):
         """
         Trains the model on the provided dataset.
-        
+
         Parameters:
         * X: The image data for training. Can be an array like a pandas series, 
           or a dataframe with column "img_path" containing the full path to the images
         * y: The target labels for training.
-        
+
         Returns:
         The instance of ImgClassifier after training.
         """
-        
+
         if self.epochs > 0:
             # Initialize validation data placeholder
             dataset_val = None
-            
+
             if self.validation_split > 0:
-                #Splitting data for validation as necessary
-                X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
-                #Fetching the dataset generator for validation
+                # Splitting data for validation as necessary
+                X_train, X_val, y_train, y_val = train_test_split(
+                    X, y, test_size=self.validation_split, random_state=123)
+                # Fetching the dataset generator for validation
                 dataset_val = self._getdataset(X_val, y_val, training=False)
             elif self.validation_data is not None:
-                #If validation data are provided in self.validation_data, we fetch those
-                dataset_val = self._getdataset(self.validation_data[0], self.validation_data[1], training=True)
+                # If validation data are provided in self.validation_data, we fetch those
+                dataset_val = self._getdataset(
+                    self.validation_data[0], self.validation_data[1], training=True)
                 X_train, y_train = X, y
             else:
                 # Use all data for training if validation split is 0
                 X_train, y_train = X, y
-                
-            #Fetching the training dataset generator
+
+            # Fetching the training dataset generator
             dataset = self._getdataset(X_train, y_train, training=True)
-            
+
             with self.strategy.scope():
-                #defining the optimizer
+                # defining the optimizer
                 optimizer = Adam(learning_rate=self.learning_rate)
-                
-                #Creating callbacks based on self.callback
-                callbacks =  [tf.keras.callbacks.LearningRateScheduler(schedule=self._lrscheduler)]
+
+                # Creating callbacks based on self.callback
+                callbacks = [tf.keras.callbacks.LearningRateScheduler(
+                    schedule=self._lrscheduler)]
                 if self.callbacks is not None:
                     for callback in self.callbacks:
                         callback_api = getattr(tf.keras.callbacks, callback[0])
                         callbacks.append(callback_api(**callback[1]))
-                        
-                #Compiling
-                self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                
-                #Fitting the model
+
+                # Compiling
+                self.model.compile(
+                    optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+                # Fitting the model
                 fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
                 if dataset_val is not None:
                     fit_args['validation_data'] = dataset_val
-                
+
                 start_time = time.time()
                 self.history = self.model.fit(dataset, **fit_args)
                 self.fit_time = time.time() - start_time
         else:
-            #if self.epochs = 0, we just pass the model, considering it has already been trained
+            # if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []
-        
-        #For sklearn, adding attribute finishing with _ to indicate
+
+        # For sklearn, adding attribute finishing with _ to indicate
         # that the model has already been fitted
         self.is_fitted_ = True
-        
-        #For gridsearchCV and other sklearn method we need a classes_ attribute
+
+        # For gridsearchCV and other sklearn method we need a classes_ attribute
         self.classes_ = np.unique(y)
-        
+
         return self
-    
+
     def predict(self, X):
         """
         Predicts the class labels for the given input data.
@@ -353,15 +362,14 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * X: The image data for prediction. Can be an array like a pandas series, 
           or a dataframe with column "img_path" containing the full path to the images
-        
+
         Returns:
         An array of predicted class labels.
         """
         dataset = self._getdataset(X, training=False)
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
-    
-    
+
     def predict_proba(self, X):
         """
         Predicts class probabilities for the given input data.
@@ -369,31 +377,29 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * X: The image data for prediction. Can be an array like a pandas series, 
           or a dataframe with column "img_path" containing the full path to the images
-          
+
         Returns:
         An array of class probabilities for each input instance.
         """
         dataset = self._getdataset(X, training=False)
         probs = self.model.predict(dataset)
         return probs
-    
-    
+
     def _getdataset(self, X, y=None, training=False):
         """
         Internal method to prepare a TensorFlow dataset from the input data.
         """
-        #Fetching data if X is a dataframe
+        # Fetching data if X is a dataframe
         if isinstance(X, pd.DataFrame):
             X_img = X['img_path']
         else:
             X_img = X
-            
+
         if y is None:
             y = 0
-            
+
         df = pd.DataFrame({'labels': y, 'img_path': X_img})
 
-        
         if training:
             shuffle = True
             params = self.augmentation_params
@@ -403,19 +409,19 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                           height_shift_range=0, horizontal_flip=False,
                           fill_mode='constant', cval=255)
 
-        #Data generator for the train and test sets
+        # Data generator for the train and test sets
         if 'vit' in self.base_name.lower():
-            data_generator = ImageDataGenerator(rescale = 1./255, samplewise_center = True, samplewise_std_normalization = True,
-                                                rotation_range=params['rotation_range'], 
-                                                width_shift_range=params['width_shift_range'], 
+            data_generator = ImageDataGenerator(rescale=1./255, samplewise_center=True, samplewise_std_normalization=True,
+                                                rotation_range=params['rotation_range'],
+                                                width_shift_range=params['width_shift_range'],
                                                 height_shift_range=params['height_shift_range'],
                                                 horizontal_flip=params['horizontal_flip'],
                                                 fill_mode=params['fill_mode'],
                                                 cval=params['cval'])
         else:
             data_generator = ImageDataGenerator(preprocessing_function=self.preprocessing_function,
-                                                rotation_range=params['rotation_range'], 
-                                                width_shift_range=params['width_shift_range'], 
+                                                rotation_range=params['rotation_range'],
+                                                width_shift_range=params['width_shift_range'],
                                                 height_shift_range=params['height_shift_range'],
                                                 horizontal_flip=params['horizontal_flip'],
                                                 fill_mode=params['fill_mode'],
@@ -424,42 +430,43 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         dataset = data_generator.flow_from_dataframe(dataframe=df, x_col='img_path', y_col='labels',
                                                      class_mode='raw', target_size=self.img_size[:2],
                                                      batch_size=self.batch_size, shuffle=shuffle)
-        
+
         return dataset
-    
+
     def classification_score(self, X, y):
         """
         Computes scores for the given input X and class labels y
-        
+
         Arguments:
         * X: The image data for which to predict class probabilities.
           Can be an array like a pandas series, or a dataframe with 
           with column "img_path" containing the full path to the images
         * y: The target labels to predict.
-        
+
         Returns:
         The average weighted f1-score. Also save scores in classification_results
         and f1score attributes and confusion matrix in confusion_mat
         """
-        
-        #predict class labels for the input text X
+
+        # predict class labels for the input text X
         pred = self.predict(X)
-        
-        #Save classification report
-        self.classification_results = classification_report(y, pred, zero_division=0)
-        
-        #Build confusion matrix
+
+        # Save classification report
+        self.classification_results = classification_report(
+            y, pred, zero_division=0)
+
+        # Build confusion matrix
         self.confusion_mat = confusion_matrix(y, pred, normalize=None)
-        
-        #Save weighted f1-score
+
+        # Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
-        
+
         return self.f1score
-    
+
     def cross_validate(self, X, y, cv=10, n_jobs=None):
         """
         Computes cross-validated scores for the given input X and class labels y
-        
+
         Arguments:
         * X: The image data for which to cross-validate predictions.
           Can be an array like a pandas series, or a dataframe with 
@@ -467,17 +474,18 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         * y: The target labels to predict.
         * cv: Number of folds. Default is 10.
         * n_jobs: number of workers to parallelize on. Default is None.
-        
+
         Returns:
         The cross-validate scores as returned by sklearn cross_validate 
         function. These scores are saved in the cv_scores attributes
         """
-        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
-        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
-        
+        cvsplitter = StratifiedKFold(
+            n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(
+            self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+
         return self.cv_scores['test_score'].mean()
-    
-        
+
     def save(self, name):
         """
         Saves the model to the directory specified in src.config file (config.path_to_models).
@@ -485,35 +493,35 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * name: The name to be used for saving the model.
         """
-        #path to the directory where the model will be saved
+        # path to the directory where the model will be saved
         save_path = os.path.join(config.path_to_models, 'trained_models', name)
-        
-        #Creating it if necessary
+
+        # Creating it if necessary
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-            
-        #Saving model's weights to that location
+
+        # Saving model's weights to that location
         self.model.save_weights(os.path.join(save_path, 'weights.h5'))
-        
-        #Saving the model except for keras objects which are not serialized 
-        #by joblib
+
+        # Saving the model except for keras objects which are not serialized
+        # by joblib
         model_backup = self.model
         preprocessing_function_backup = self.preprocessing_function
         history_backup = self.history
         strategy_backup = self.strategy
-        
+
         self.model = []
         self.preprocessing_function = []
         self.history = []
         self.strategy = []
-        
+
         dump(self, os.path.join(save_path, 'model.joblib'))
-        
+
         self.model = model_backup
         self.preprocessing_function = preprocessing_function_backup
         self.history = history_backup
         self.strategy = strategy_backup
-        
+
     def load(self, name, parallel_gpu=False):
         """
         Loads a model from the directory specified in src.config file (config.path_to_models).
@@ -523,21 +531,24 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         * parallel_gpu: Flag to indicate whether to initialize the model 
           for parallel GPU usage.
         """
-        #path to the directory where the model to load was saved
-        model_path = os.path.join(config.path_to_models, 'trained_models', name)
-        
-        #Loading the model from there
+        # path to the directory where the model to load was saved
+        model_path = os.path.join(
+            config.path_to_models, 'trained_models', name)
+
+        # Loading the model from there
         loaded_model = load(os.path.join(model_path, 'model.joblib'))
-        
-        #tf.distribute.MirroredStrategy is not saved by joblib
-        #so we need to update it here
+
+        # tf.distribute.MirroredStrategy is not saved by joblib
+        # so we need to update it here
         if parallel_gpu:
             loaded_model.strategy = tf.distribute.MirroredStrategy()
         else:
-            loaded_model.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-        
-        #Re-building the model and loading the weights which has been saved
+            loaded_model.strategy = tf.distribute.OneDeviceStrategy(
+                device="/gpu:0")
+
+        # Re-building the model and loading the weights which has been saved
         # in model_path
-        loaded_model.model, loaded_model.preprocessing_function = loaded_model._getmodel(name)
-        
+        loaded_model.model, loaded_model.preprocessing_function = loaded_model._getmodel(
+            name)
+
         return loaded_model

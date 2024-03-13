@@ -4,30 +4,43 @@ import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import linkage, leaves_list
 from sklearn.metrics import f1_score
 import pandas as pd
+import numpy as np
 
-def classification_results(y_true, y_pred, index=None):
-    #Print evaluation metrics
-    print(classification_report(y_true, y_pred))
+
+def classification_results(y_true, y_pred, index=None, title=None):
+    # Print evaluation metrics
+    print(classification_report(y_true, y_pred, target_names=index))
     print(f1_score(y_true, y_pred, average='weighted'))
-    
-    #Build confusion matrix
-    conf_mat = round(pd.crosstab(y_true, y_pred, rownames=['Classes reelles'], colnames=['Classes predites'], normalize='columns')*100)
 
-    #in case labels are encoded, update with the original lables provided
+    # Build confusion matrix
+    conf_mat = round(pd.crosstab(y_true, y_pred, rownames=[
+                     'Classes reelles'], colnames=['Classes predites'], normalize='columns')*100)
+
+    # in case labels are encoded, update with the original lables provided
     if index is not None:
         conf_mat.index = index
         conf_mat.columns = index
-        
-    #hierarchical clustering to find optimal order of labels
+
+    # hierarchical clustering to find optimal order of labels
     Z = linkage(conf_mat, 'ward')
     order = leaves_list(Z)
     conf_mat = conf_mat.iloc[order, order]
 
-    #plot confusion matrix as heatmap
-    plt.figure(figsize=(8,6))
-    sns.heatmap(conf_mat, annot=round(conf_mat,12), center=50, cmap=sns.color_palette('rocket',  as_cmap=True))
+    # plot confusion matrix as heatmap
+    mask_other = np.eye(conf_mat.shape[0], dtype=bool) | conf_mat.apply(
+        lambda x: x == 0).values
+    mask_diag = ~np.eye(conf_mat.shape[0], dtype=bool)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    plt.gca().patch.set_facecolor('#c6bcb6')
+    sns.heatmap(conf_mat, mask=mask_diag, cmap="rocket", alpha=0.5, annot=round(
+        conf_mat, 12), cbar=False, ax=ax)
+    sns.heatmap(conf_mat, mask=mask_other, cmap="rocket_r", alpha=0.5, annot=round(
+        conf_mat, 12), cbar=False, ax=ax)
+    if title is not None:
+        plt.title(title)
     plt.show()
-    
+
     return plt
 
 
@@ -49,5 +62,5 @@ def plot_training_history(history):
     axs[1].set_title('Accuracy')
 
     plt.show()
-    
+
     return plt

@@ -84,7 +84,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
 import numpy as np
-import pandas as pd 
+import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import LinearSVC, SVC
@@ -105,13 +105,13 @@ from joblib import load, dump
 import os
 import time
 
-import notebook.config as config
+import src.config as config
 
 
-def build_bert_model(base_model, from_trained = None, max_length=256, num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
+def build_bert_model(base_model, from_trained=None, max_length=256, num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
     """
     build_bert_model(base_model, from_trained=None, max_length=256, num_class=27, drop_rate=0.0, activation='softmax', strategy=None)
-    
+
     Builds a BERT model for classification tasks.
 
     Arguments:
@@ -123,36 +123,41 @@ def build_bert_model(base_model, from_trained = None, max_length=256, num_class=
     * drop_rate (float, optional): Dropout rate to be applied to the dense layer. Default is 0.0.
     * activation (str, optional): Activation function for the output layer. Default is 'softmax'.
     * strategy: The TensorFlow distribution strategy to be used for model training. This is necessary for leveraging GPU or multi-GPU setups.
-    
+
     Returns:
     The constructed Keras Model object.
     """
     with strategy.scope():
-        #Input layer and tokenizer layer    
+        # Input layer and tokenizer layer
         input_ids = Input(shape=(max_length,), dtype='int32', name='input_ids')
-        attention_mask = Input(shape=(max_length,), dtype='int32', name='attention_mask')
+        attention_mask = Input(shape=(max_length,),
+                               dtype='int32', name='attention_mask')
 
-        #Base transformer model
+        # Base transformer model
         base_model._name = 'txt_base_layers'
-        transformer_layer = base_model({'input_ids': input_ids, 'attention_mask': attention_mask})
+        transformer_layer = base_model(
+            {'input_ids': input_ids, 'attention_mask': attention_mask})
         x = transformer_layer[0][:, :, :]
         x = x[:, 0, :]
 
-        #Classification head
+        # Classification head
         # x = Dense(128, activation='relu', name='txt_Dense_top_1')(x)
         # x = Dropout(rate=drop_rate, name='txt_Drop_out_top_1')(x)
-        output = Dense(num_class, activation=activation, name='txt_classification_layer')(x)
-        
-        # Construct the final model
-        model = Model(inputs={'input_ids': input_ids, 'attention_mask': attention_mask}, outputs=output)
-        
-        if from_trained is not None:
-            trained_model_path = os.path.join(config.path_to_models, 'trained_models', from_trained)
-            print("loading weights from ", from_trained)
-            model.load_weights(trained_model_path + '/weights.h5', by_name=True, skip_mismatch=True)
-    
-    return model
+        output = Dense(num_class, activation=activation,
+                       name='txt_classification_layer')(x)
 
+        # Construct the final model
+        model = Model(inputs={'input_ids': input_ids,
+                      'attention_mask': attention_mask}, outputs=output)
+
+        if from_trained is not None:
+            trained_model_path = os.path.join(
+                config.path_to_models, 'trained_models', from_trained)
+            print("loading weights from ", from_trained)
+            model.load_weights(trained_model_path + '/weights.h5',
+                               by_name=True, skip_mismatch=True)
+
+    return model
 
 
 class TFbertClassifier(BaseEstimator, ClassifierMixin):
@@ -160,7 +165,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     TFbertClassifier(base_name='camembert-base', from_trained=None, max_length=256,
                         num_class=27, drop_rate=0.2, epochs=1, batch_size=32, 
                         learning_rate=5e-5, callbacks=None, parallel_gpu=False)
-    
+
     A TensorFlow BERT classifier that wraps around BERT models for text classification tasks, 
     implementing the scikit-learn estimator interface.
 
@@ -183,7 +188,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
       parameters. Example: [('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2})].
       Default is None.
     * parallel_gpu (bool, optional): Whether to use parallel GPUs. Default is False.
-    
+
     Methods:
 
     * fit(X, y): Trains the model on the provided dataset.
@@ -193,26 +198,26 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
     * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function
     * save(name): Saves the model to the directory specified in config.path_to_models.
     * load(name, parallel_gpu=False): Loads a model from the directory specified in config.path_to_models.
-    
+
     Example sage:
     classifier = TFbertClassifier(base_name='bert-base-uncased', epochs=3, batch_size=32)
     classifier.fit(train_data, train_labels)
     predictions = classifier.predict(test_data)
     f1score = classifier.classification_score(test_data, test_labels)
     classifier.save('my_bert_model')
-    
+
     """
-    def __init__(self, base_name='camembert-base', from_trained = None, 
+
+    def __init__(self, base_name='camembert-base', from_trained=None,
                  max_length=256, num_class=27, drop_rate=0.2,
                  epochs=1, batch_size=32, learning_rate=5e-5, lr_decay_rate=1, lr_min=None,
                  validation_split=0.0, validation_data=None,
                  callbacks=None, parallel_gpu=False):
-        
         """
         Constructor: __init__(self, base_name='camembert-base', from_trained=None, max_length=256, 
                               num_class=27, drop_rate=0.2, epochs=1, batch_size=32, learning_rate=5e-5, 
                               callbacks=None, parallel_gpu=False)
-                              
+
         Initializes a new instance of the TFbertClassifier.
 
         Arguments:
@@ -234,18 +239,18 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
           parameters. Example: ('EarlyStopping', {'monitor':'loss', 'min_delta': 0.001, 'patience':2}).
           Default is None.
         * parallel_gpu: Flag to indicate whether to use parallel GPU support. Default is False.
-        
+
         Returns:
 
         An instance of TFbertClassifier.
         """
-        #defining the parallelization strategy
+        # defining the parallelization strategy
         if parallel_gpu:
             self.strategy = tf.distribute.MirroredStrategy()
         else:
             self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-        
-        #Defining attributes
+
+        # Defining attributes
         self.max_length = max_length
         self.base_name = base_name
         self.from_trained = from_trained
@@ -261,77 +266,84 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         self.callbacks = callbacks
         self.parallel_gpu = parallel_gpu
         self.history = []
-        
-        #Building model and tokenizer
+
+        # Building model and tokenizer
         self.model, self.tokenizer = self._getmodel(from_trained)
-        
-        #For sklearn, adding attribute finishing with _ to indicate
+
+        # For sklearn, adding attribute finishing with _ to indicate
         # that the model has already been fitted
         if from_trained is not None:
             self.is_fitted_ = True
-            
+
     def _getmodel(self, from_trained=None):
         """
         Internal method to load or initialize the model and tokenizer.
         """
-        base_model_path = os.path.join(config.path_to_models, 'base_models', self.base_name)
-        
-        #Loading the pre-trained bert model and its tokenizer
+        base_model_path = os.path.join(
+            config.path_to_models, 'base_models', self.base_name)
+
+        # Loading the pre-trained bert model and its tokenizer
         with self.strategy.scope():
-            # If the hugginface pretrained model hasn't been yet saved locally, 
+            # If the hugginface pretrained model hasn't been yet saved locally,
             # we load and save it from HuggingFace
             if not os.path.isdir(base_model_path):
                 print("loading from Huggingface")
-                
-                #Checking if we need to load from pytorch weights
+
+                # Checking if we need to load from pytorch weights
                 frompt_list = ['flaubert', 'camembert-base-ccnet']
                 if any(name in self.base_name.lower() for name in frompt_list):
                     from_pt = True
                 else:
                     from_pt = False
-                    
-                #Loading model and tokenizer
-                if 'camembert' in self.base_name.lower():    
-                    #We'll load camembert model from there.
+
+                # Loading model and tokenizer
+                if 'camembert' in self.base_name.lower():
+                    # We'll load camembert model from there.
                     loadbertfrom = 'almanach/'
-                    base_model = TFAutoModel.from_pretrained(loadbertfrom + self.base_name, from_pt=from_pt)
+                    base_model = TFAutoModel.from_pretrained(
+                        loadbertfrom + self.base_name, from_pt=from_pt)
                     base_model.save_pretrained(base_model_path)
-                    tokenizer = CamembertTokenizer.from_pretrained(loadbertfrom + self.base_name)
+                    tokenizer = CamembertTokenizer.from_pretrained(
+                        loadbertfrom + self.base_name)
                     tokenizer.save_pretrained(base_model_path)
                 elif 'flaubert' in self.base_name.lower():
                     loadbertfrom = 'flaubert/'
-                    base_model = TFAutoModel.from_pretrained(loadbertfrom + self.base_name, from_pt=from_pt)
+                    base_model = TFAutoModel.from_pretrained(
+                        loadbertfrom + self.base_name, from_pt=from_pt)
                     base_model.save_pretrained(base_model_path)
-                    tokenizer = FlaubertTokenizer.from_pretrained(loadbertfrom + self.base_name)
+                    tokenizer = FlaubertTokenizer.from_pretrained(
+                        loadbertfrom + self.base_name)
                     tokenizer.save_pretrained(base_model_path)
             else:
                 print("loading from Local")
                 if 'camembert' in self.base_name.lower():
                     base_model = TFAutoModel.from_pretrained(base_model_path)
-                    tokenizer = CamembertTokenizer.from_pretrained(base_model_path)
+                    tokenizer = CamembertTokenizer.from_pretrained(
+                        base_model_path)
                 elif 'flaubert' in self.base_name.lower():
                     base_model = TFAutoModel.from_pretrained(base_model_path)
-                    tokenizer = FlaubertTokenizer.from_pretrained(base_model_path)
-        
-        #Building the keras model
-        model = build_bert_model(base_model=base_model, from_trained = from_trained, 
-                                      max_length=self.max_length, num_class=self.num_class,
-                                      drop_rate=self.drop_rate, activation='softmax', 
-                                      strategy=self.strategy)
-        
+                    tokenizer = FlaubertTokenizer.from_pretrained(
+                        base_model_path)
+
+        # Building the keras model
+        model = build_bert_model(base_model=base_model, from_trained=from_trained,
+                                 max_length=self.max_length, num_class=self.num_class,
+                                 drop_rate=self.drop_rate, activation='softmax',
+                                 strategy=self.strategy)
+
         return model, tokenizer
-        
+
     def _lrscheduler(self, epoch):
         """ 
         Internal method for learning rate scheduler
         """
         lr = self.learning_rate * self.lr_decay_rate**epoch
-        
-        #the learning is not allowed to be smaller than self.lr_min
+
+        # the learning is not allowed to be smaller than self.lr_min
         if self.lr_min is not None:
             lr = max(self.lr_min, lr)
         return lr
-        
+
     def fit(self, X, y):
         """
         Trains the model on the provided dataset.
@@ -340,66 +352,70 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * X: The input text for training. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
         * y: The target labels for training.
-        
+
         Returns:
         The instance of TFbertClassifier after training.
         """
-        
+
         if self.epochs > 0:
             # Initialize validation data placeholder
             dataset_val = None
-            
+
             if self.validation_split > 0:
-                #Splitting data for validation as necessary
-                X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.validation_split, random_state=123)
-                #Fetching the dataset generator for validation
+                # Splitting data for validation as necessary
+                X_train, X_val, y_train, y_val = train_test_split(
+                    X, y, test_size=self.validation_split, random_state=123)
+                # Fetching the dataset generator for validation
                 dataset_val = self._getdataset(X_val, y_val, training=False)
             elif self.validation_data is not None:
-                #If validation data are provided in self.validation_data, we fetch those
-                dataset_val = self._getdataset(self.validation_data[0], self.validation_data[1], training=True)
+                # If validation data are provided in self.validation_data, we fetch those
+                dataset_val = self._getdataset(
+                    self.validation_data[0], self.validation_data[1], training=True)
                 X_train, y_train = X, y
             else:
                 # Use all data for training if validation split is 0
                 X_train, y_train = X, y
-                
-            #Fetching the training dataset generator
+
+            # Fetching the training dataset generator
             dataset = self._getdataset(X_train, y_train, training=True)
-            
+
             with self.strategy.scope():
-                #defining the optimizer
+                # defining the optimizer
                 optimizer = Adam(learning_rate=self.learning_rate)
-                
-                #Creating callbacks based on self.callback
-                callbacks = [tf.keras.callbacks.LearningRateScheduler(schedule=self._lrscheduler)]
+
+                # Creating callbacks based on self.callback
+                callbacks = [tf.keras.callbacks.LearningRateScheduler(
+                    schedule=self._lrscheduler)]
                 if self.callbacks is not None:
                     for callback in self.callbacks:
                         callback_api = getattr(tf.keras.callbacks, callback[0])
                         callbacks.append(callback_api(**callback[1]))
-                        
-                #Compiling
-                self.model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                
-                #Fitting the model
+
+                # Compiling
+                self.model.compile(
+                    optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+                # Fitting the model
                 fit_args = {'epochs': self.epochs, 'callbacks': callbacks}
                 if dataset_val is not None:
                     fit_args['validation_data'] = dataset_val
-                
+
                 start_time = time.time()
                 self.history = self.model.fit(dataset, **fit_args)
                 self.fit_time = time.time() - start_time
         else:
-            #if self.epochs = 0, we just pass the model, considering it has already been trained
+            # if self.epochs = 0, we just pass the model, considering it has already been trained
             self.history = []
-        
-        #For sklearn, adding attribute finishing with _ to indicate
-        # that the model has already been fitted    
+
+        # For sklearn, adding attribute finishing with _ to indicate
+        # that the model has already been fitted
         self.is_fitted_ = True
-        
-        #For gridsearchCV and other sklearn method we need a classes_ attribute
+
+        # For gridsearchCV and other sklearn method we need a classes_ attribute
         self.classes_ = np.unique(y)
-        
+
         return self
-    
+
     def predict(self, X):
         """
         Predicts the class labels for the given input data.
@@ -407,7 +423,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * X: The text data for prediction. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
-        
+
         Returns:
         An array of predicted class labels.
         """
@@ -415,8 +431,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         dataset = dataset.batch(self.batch_size)
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
-    
-    
+
     def predict_proba(self, X):
         """
         Predicts class probabilities for the given input data.
@@ -425,73 +440,77 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * X: The text data for which to predict class probabilities.
           Can be an array like a pandas series, or a dataframe with 
           text in column "tokens"
-          
+
         Returns:
         An array of class probabilities for each input instance.
         """
         dataset = self._getdataset(X, training=False)
         dataset = dataset.batch(self.batch_size)
         probs = self.model.predict(dataset)
-        
+
         return probs
-    
-    
+
     def _getdataset(self, X, y=None, training=False):
         """
         Internal method to prepare a TensorFlow dataset from the input data.
         """
-        #Fetching text data if X is a dataframe
+        # Fetching text data if X is a dataframe
         if isinstance(X, pd.DataFrame):
             X_txt = X['tokens']
         else:
             X_txt = X
-        
-        #Tokenizing the text with the bert tokenizer
-        X_tokenized = self.tokenizer(X_txt.tolist(), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
-        
-        #Dataset from tokenized text, with or without labels depending on whether 
+
+        # Tokenizing the text with the bert tokenizer
+        X_tokenized = self.tokenizer(X_txt.tolist(
+        ), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+
+        # Dataset from tokenized text, with or without labels depending on whether
         # we use it for training or not
         if training:
-            dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
-            dataset = dataset.shuffle(buffer_size=1000).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
+            dataset = tf.data.Dataset.from_tensor_slices(
+                ({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, y))
+            dataset = dataset.shuffle(buffer_size=1000).batch(
+                self.batch_size).prefetch(tf.data.AUTOTUNE)
         else:
-            dataset = tf.data.Dataset.from_tensor_slices({"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
-        
+            dataset = tf.data.Dataset.from_tensor_slices(
+                {"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']})
+
         return dataset
-    
+
     def classification_score(self, X, y):
         """
         Computes scores for the given input X and class labels y
-        
+
         Arguments:
         * X: The text data for which to predict class probabilities.
           Can be an array like a pandas series, or a dataframe with 
           text in column "tokens"
         * y: The target labels to predict.
-        
+
         Returns:
         The average weighted f1-score. Also save scores in classification_results
         and f1score attributes
         """
-        
-        #predict class labels for the input text X
+
+        # predict class labels for the input text X
         pred = self.predict(X)
-        
-        #Save classification report
-        self.classification_results = classification_report(y, pred, zero_division=0)
-        
-        #Build confusion matrix
+
+        # Save classification report
+        self.classification_results = classification_report(
+            y, pred, zero_division=0)
+
+        # Build confusion matrix
         self.confusion_mat = confusion_matrix(y, pred, normalize=None)
-        
-        #Save weighted f1-score
+
+        # Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
-        
+
         return self.f1score
-    
+
     def cross_validate(self, X, y, cv=10, n_jobs=None):
         """
         Computes cross-validated scores for the given input X and class labels y
-        
+
         Arguments:
         * X: The text data for which to cross-validate predictions.
           Can be an array like a pandas series, or a dataframe with 
@@ -499,18 +518,18 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * y: The target labels to predict.
         * cv: Number of folds. Default is 10.
         * n_jobs: number of workers to parallelize on. Default is None.
-        
+
         Returns:
         The cross-validate scores as returned by sklearn cross_validate 
         function. These scores are saved in the cv_scores attributes
         """
-        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
-        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
-        
+        cvsplitter = StratifiedKFold(
+            n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(
+            self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+
         return self.cv_scores['test_score'].mean()
-    
-    
-    
+
     def save(self, name):
         """
         Saves the model to the directory specified in src.config file (config.path_to_models).
@@ -518,38 +537,37 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * name: The name to be used for saving the model.
         """
-        #path to the directory where the model will be saved
+        # path to the directory where the model will be saved
         save_path = os.path.join(config.path_to_models, 'trained_models', name)
-        
-        #Creating it if necessary
+
+        # Creating it if necessary
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-            
-        #Saving model's weights to that location
+
+        # Saving model's weights to that location
         self.model.save_weights(os.path.join(save_path, 'weights.h5'))
-        
-        #Saving the model except for keras objects which are not serialized 
-        #by joblib
+
+        # Saving the model except for keras objects which are not serialized
+        # by joblib
         model_backup = self.model
         tokenizer_backup = self.tokenizer
         history_backup = self.history
         strategy_backup = self.strategy
-        
+
         self.model = []
         self.tokenizer = []
         self.history = []
         self.strategy = []
-        
-        #Saving the model (without keras objects) with joblib
+
+        # Saving the model (without keras objects) with joblib
         dump(self, os.path.join(save_path, 'model.joblib'))
-        
-        #Restoring the keras objects
+
+        # Restoring the keras objects
         self.model = model_backup
         self.tokenizer = tokenizer_backup
         self.history = history_backup
         self.strategy = strategy_backup
-        
-        
+
     def load(self, name, parallel_gpu=False):
         """
         Loads a model from the directory specified in src.config file (config.path_to_models).
@@ -559,30 +577,32 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         * parallel_gpu: Flag to indicate whether to initialize the model 
           for parallel GPU usage.
         """
-        #path to the directory where the model to load was saved
-        model_path = os.path.join(config.path_to_models, 'trained_models', name)
-        
-        #Loading the model from there
+        # path to the directory where the model to load was saved
+        model_path = os.path.join(
+            config.path_to_models, 'trained_models', name)
+
+        # Loading the model from there
         loaded_model = load(os.path.join(model_path, 'model.joblib'))
-        
-        #tf.distribute.MirroredStrategy is not saved by joblib
-        #so we need to update it here
+
+        # tf.distribute.MirroredStrategy is not saved by joblib
+        # so we need to update it here
         if parallel_gpu:
             loaded_model.strategy = tf.distribute.MirroredStrategy()
         else:
-            loaded_model.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-        
-        #Loading the model and its tokenizer    
-        loaded_model.model, loaded_model.tokenizer = loaded_model._getmodel(name)
-        
+            loaded_model.strategy = tf.distribute.OneDeviceStrategy(
+                device="/gpu:0")
+
+        # Loading the model and its tokenizer
+        loaded_model.model, loaded_model.tokenizer = loaded_model._getmodel(
+            name)
+
         return loaded_model
-        
-        
+
 
 class MLClassifier(BaseEstimator, ClassifierMixin):
     """
     MLClassifier(base_name='linearSVC', from_trained=None, vec_method='tfidf', **kwargs)
-    
+
     A machine learning classifier that supports various traditional ML algorithms for text classification,
     following the scikit-learn estimator interface.
 
@@ -596,7 +616,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Default is 'tfidf'.
     * **kwargs: arguments accepted by the chosen sklearn classifier sepcified in
         base_name
-    
+
     Methods:
     * fit(X, y): Trains the model on the provided dataset.
     * predict(X): Predicts the class labels for the given input.
@@ -605,16 +625,17 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
     * classification_score(X, y): Calculates weigthed f1-score for the given input and labels.
     * cross_validate(X, y, cv=10): Calculate cross-validated scores with sklearn cross_validate function
     * save(name): Saves the model to the directory specified in config.path_to_models.
-    
+
     Example usage:
     ml_classifier = MLClassifier(base_name='logisticregression', vec_method = 'tfidf')
     ml_classifier.fit(train_texts, train_labels)
     predictions = ml_classifier.predict(test_texts)
     f1score = ml_classifier.classification_score(test_texts, test_labels)
     ml_classifier.save('my_ml_model')
-        
+
     """
-    def __init__(self, base_name = 'linearSVC', from_trained = None, vec_method = 'tfidf', vec_params = None, **kwargs):
+
+    def __init__(self, base_name='linearSVC', from_trained=None, vec_method='tfidf', vec_params=None, **kwargs):
         """
         Constructor: __init__(self, base_name='linearSVC', from_trained=None, vec_method='tfidf', vec_params = None, **kwargs)
         Initializes a new instance of the MLClassifier.
@@ -628,7 +649,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
           'cbow'. Default is 'tfidf'.
         * vec_params: dictionnary of parameters for the vectorization method.
         * **kwargs: Additional keyword arguments that will be passed to the underlying sklearn model.
-        
+
         Functionality:
         Initializes the classifier based on the specified base_name and configuration, sets up the tokenizer/vectorizer, 
         and prepares the model for training or inference as specified.
@@ -638,9 +659,9 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         self.vec_method = vec_method
         self.vec_params = vec_params
         self.kwargs = kwargs
-        
+
         if self.from_trained is not None:
-            #loading previously saved model if provided
+            # loading previously saved model if provided
             self = self.load(self.from_trained)
         else:
             # Initialize the model according to base_name and kwargs
@@ -658,23 +679,23 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
                 self.model = xgb.XGBClassifier(**kwargs)
             elif base_name.lower() == 'dummyclassifier':
                 self.model = DummyClassifier(**kwargs)
-                
+
             model_params = self.model.get_params()
             for param, value in model_params.items():
                 setattr(self, param, value)
-            
+
             if vec_method.lower() == 'tfidf':
                 self.vectorizer = TfidfVectorizer(**(vec_params or {}))
             elif vec_method.lower() == 'cbow':
                 self.vectorizer = CBowVectorizer(**(vec_params or {}))
             elif vec_method.lower() == 'skipgram':
                 self.vectorizer = SkipGramVectorizer(**(vec_params or {}))
-        
-        #Only make predict_proba available if self.model 
+
+        # Only make predict_proba available if self.model
         # has such method implemented
         if hasattr(self.model, 'predict_proba'):
             self.predict_proba = self._predict_proba
-        
+
     def get_params(self, deep=True):
         # Return all parameters, including kwargs
         params = super().get_params(deep=deep)
@@ -685,8 +706,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         # Set parameters including kwargs
         for parameter, value in params.items():
             setattr(self, parameter, value)
-        return self    
-        
+        return self
+
     def fit(self, X, y):
         """
         Trains the model on the provided dataset.
@@ -695,23 +716,22 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         * X: The input text for training. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
         * y: The target labels for training.
-        
+
         Returns:
         * The instance of MLClassifier after training.
         """
-        
-        
+
         X_vec = self._getdataset(X, training=True)
-        
+
         start_time = time.time()
         self.model.fit(X_vec, y)
         self.fit_time = time.time() - start_time
-        
-        self.classes_ = np.unique(y)    
+
+        self.classes_ = np.unique(y)
         self.is_fitted_ = True
-        
+
         return self
-    
+
     def predict(self, X):
         """
         Predicts the class labels for the given input data.
@@ -719,15 +739,14 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * X: The input text for prediction. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
-        
+
         Returns:
         An array of predicted class labels.
         """
         X_vec = self._getdataset(X, training=False)
         pred = self.model.predict(X_vec)
         return pred
-    
-    
+
     def _predict_proba(self, X):
         """
         Predicts class probabilities for the given text data, if the underlying 
@@ -736,73 +755,74 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * X: The input text for prediction. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
-        
+
         Returns:
         An array of class probabilities for each input instance.
         """
         X_vec = self._getdataset(X, training=False)
         probs = self.model.predict_proba(X_vec)
-        
+
         return probs
-    
+
     def _getdataset(self, X, y=None, training=False):
         """
         Vectorizes the text data using the chosen vectorizer.
-        
+
         Arguments:
         * X: The input text. Can be an array like a pandas series, 
           or a dataframe with text in column "tokens"
         * training: boolean. Whether or not thw vectorizer will be fitted to the input text first
-        
+
         Returns:
         The vectorized input text
         """
-        #Fetching text data if X is a dataframe
+        # Fetching text data if X is a dataframe
         if isinstance(X, pd.DataFrame):
             X_txt = X['tokens']
         else:
             X_txt = X
-        
-        if training: 
+
+        if training:
             X_vec = self.vectorizer.fit_transform(X_txt)
         else:
             X_vec = self.vectorizer.transform(X_txt)
-            
+
         return X_vec
-    
+
     def classification_score(self, X, y):
         """
         Computes scores for the given input X and class labels y
-        
+
         Arguments:
         * X: The text data for which to predict classes.
           Can be an array like a pandas series, or a dataframe with 
           text in column "tokens"
         * y: The target labels to predict.
-        
+
         Returns:
         The average weighted f1-score. Also save scores in classification_results
         and f1score attributes and confusion matrix in confusion_mat
         """
-        
-        #predict class labels for the input text X
+
+        # predict class labels for the input text X
         pred = self.predict(X)
-        
-        #Save classification report
-        self.classification_results = classification_report(y, pred, zero_division=0)
-        
-        #Build confusion matrix
+
+        # Save classification report
+        self.classification_results = classification_report(
+            y, pred, zero_division=0)
+
+        # Build confusion matrix
         self.confusion_mat = confusion_matrix(y, pred, normalize=None)
-        
-        #Save weighted f1-score
+
+        # Save weighted f1-score
         self.f1score = f1_score(y, pred, average='weighted', zero_division=0)
-        
+
         return self.f1score
-    
+
     def cross_validate(self, X, y, cv=10, n_jobs=None):
         """
         Computes cross-validated scores for the given input X and class labels y
-        
+
         Arguments:
         * X: The text data for which to cross-validate predictions.
           Can be an array like a pandas series, or a dataframe with 
@@ -810,16 +830,18 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         * y: The target labels to predict.
         * cv: Number of folds. Default is 10.
         * n_jobs: number of workers to parallelize on. Default is None.
-        
+
         Returns:
         The cross-validate scores as returned by sklearn cross_validate 
         function. These scores are saved in the cv_scores attributes
         """
-        cvsplitter = StratifiedKFold(n_splits=cv, shuffle=True, random_state=123)
-        self.cv_scores = cross_validate(self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
-        
+        cvsplitter = StratifiedKFold(
+            n_splits=cv, shuffle=True, random_state=123)
+        self.cv_scores = cross_validate(
+            self, X, y, scoring='f1_weighted', cv=cvsplitter, n_jobs=n_jobs, verbose=0, return_train_score=True)
+
         return self.cv_scores['test_score'].mean()
-    
+
     def save(self, name):
         """
         Saves the model to the directory specified in src.config file (config.path_to_models).
@@ -827,16 +849,16 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * name: The name to be used for saving the model in config.path_to_models.
         """
-        #path to the directory where the model will be saved
+        # path to the directory where the model will be saved
         save_path = os.path.join(config.path_to_models, 'trained_models', name)
-        
-        #Creating it if necessary
+
+        # Creating it if necessary
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-            
-        #Saving the model to that location
+
+        # Saving the model to that location
         dump(self, os.path.join(save_path, 'model.joblib'))
-        
+
     def load(self, name):
         """
         Loads a model from the directory specified in src.config file (config.path_to_models).
@@ -844,11 +866,11 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         Arguments:
         * name: The name of the saved model to load.
         """
-        #path to the directory where the model to load was saved
-        model_path = os.path.join(config.path_to_models, 'trained_models', name)
-        
-        #Returning the model from there
-        loaded_object = load(os.path.join(model_path, 'model.joblib'))
-        
-        return loaded_object
+        # path to the directory where the model to load was saved
+        model_path = os.path.join(
+            config.path_to_models, 'trained_models', name)
 
+        # Returning the model from there
+        loaded_object = load(os.path.join(model_path, 'model.joblib'))
+
+        return loaded_object
