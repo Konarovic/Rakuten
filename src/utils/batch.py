@@ -228,7 +228,7 @@ def fit_save_all(params_list, X_train, y_train, X_test, y_test, result_file_name
         if params['model_suffix'] is not None:
             model_name = model_name + '_' + params['model_suffix']
             
-        model_path = params['modality'] + '/' + model_name + '_' + params['vec_method']
+        model_path = params['modality'] + '/' + model_name
         clf.save(model_path)
         
         #saving where the model is saved
