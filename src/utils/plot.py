@@ -3,6 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import linkage, leaves_list
 from sklearn.metrics import f1_score
+import plotly.express as px
 import pandas as pd
 import numpy as np
 
@@ -63,4 +64,39 @@ def plot_training_history(history):
 
     plt.show()
 
+    return plt
+
+
+def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=None, title=None):
+
+    custom_categories_order = data[x_column].tolist()
+    fig = px.bar(
+        data,
+        y=x_column,
+        x=y_column,
+        color=color_column,
+        color_discrete_sequence=px.colors.qualitative.Plotly,
+        category_orders={x_column: custom_categories_order},
+    )
+
+    fig.update_traces(
+        width=0.8,
+
+    )
+    # Update layout to remove legend and adjust xaxis title
+    fig.update_layout(
+        legend=None,
+        xaxis_title=y_label,
+        yaxis_title=x_label,
+        bargap=0.3,
+        bargroupgap=0.2,
+        barmode='stack',
+        width=1200,
+        height=600,
+        title=title
+
+    )
+
+    # Show the plot
+    fig.show()
     return plt
