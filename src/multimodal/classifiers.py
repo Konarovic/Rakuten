@@ -93,7 +93,7 @@ from joblib import load, dump
 import os
 import time
 
-import src.config as config
+import notebook.config as config
 
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),
@@ -715,7 +715,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
 
     def save(self, name):
         """
-        Saves the model to the directory specified in src.config file (config.path_to_models).
+        Saves the model to the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name to be used for saving the model.
@@ -751,7 +751,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
 
     def load(self, name, parallel_gpu=False):
         """
-        Loads a model from the directory specified in src.config file (config.path_to_models).
+        Loads a model from the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name of the saved model to load.
@@ -986,7 +986,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
 
     def save(self, name):
         """
-        Saves the model to the directory specified in src.config file (config.path_to_models).
+        Saves the model to the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name to be used for saving the model in config.path_to_models.
@@ -1040,7 +1040,7 @@ class MetaClassifier(BaseEstimator, ClassifierMixin):
 
     def load(self, name):
         """
-        Loads a model from the directory specified in src.config file (config.path_to_models).
+        Loads a model from the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name of the saved model to load.

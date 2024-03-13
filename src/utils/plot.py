@@ -32,11 +32,11 @@ def classification_results(y_true, y_pred, index=None, title=None):
     mask_diag = ~np.eye(conf_mat.shape[0], dtype=bool)
 
     fig, ax = plt.subplots(figsize=(10, 8))
-    plt.gca().patch.set_facecolor('#c6bcb6')
+    plt.gca().patch.set_facecolor('#f8e9db')
     sns.heatmap(conf_mat, mask=mask_diag, cmap="rocket", alpha=0.5, annot=round(
-        conf_mat, 12), cbar=False, ax=ax)
+        conf_mat, 2), cbar=False, ax=ax)
     sns.heatmap(conf_mat, mask=mask_other, cmap="rocket_r", alpha=0.5, annot=round(
-        conf_mat, 12), cbar=False, ax=ax)
+        conf_mat, 2), cbar=False, ax=ax)
     if title is not None:
         plt.title(title)
     plt.show()

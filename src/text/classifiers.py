@@ -105,7 +105,7 @@ from joblib import load, dump
 import os
 import time
 
-import src.config as config
+import notebook.config as config
 
 
 def build_bert_model(base_model, from_trained=None, max_length=256, num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
@@ -532,7 +532,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
 
     def save(self, name):
         """
-        Saves the model to the directory specified in src.config file (config.path_to_models).
+        Saves the model to the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name to be used for saving the model.
@@ -570,7 +570,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
 
     def load(self, name, parallel_gpu=False):
         """
-        Loads a model from the directory specified in src.config file (config.path_to_models).
+        Loads a model from the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name of the saved model to load.
@@ -844,7 +844,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
 
     def save(self, name):
         """
-        Saves the model to the directory specified in src.config file (config.path_to_models).
+        Saves the model to the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name to be used for saving the model in config.path_to_models.
@@ -861,7 +861,7 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
 
     def load(self, name):
         """
-        Loads a model from the directory specified in src.config file (config.path_to_models).
+        Loads a model from the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name of the saved model to load.

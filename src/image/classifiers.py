@@ -67,7 +67,7 @@ from joblib import load, dump
 import os
 import time
 
-import src.config as config
+import notebook.config as config
 
 
 def build_Img_model(base_model, from_trained=None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
@@ -488,7 +488,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
 
     def save(self, name):
         """
-        Saves the model to the directory specified in src.config file (config.path_to_models).
+        Saves the model to the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name to be used for saving the model.
@@ -524,7 +524,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
 
     def load(self, name, parallel_gpu=False):
         """
-        Loads a model from the directory specified in src.config file (config.path_to_models).
+        Loads a model from the directory specified in notebook.config file (config.path_to_models).
 
         Arguments:
         * name: The name of the saved model to load.

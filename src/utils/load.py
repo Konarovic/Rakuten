@@ -1,6 +1,6 @@
 from joblib import load, dump
 import os
-import src.config as config
+import notebook.config as config
 
 import ast
 import pandas as pd
@@ -15,7 +15,7 @@ from src.multimodal.classifiers import TFmultiClassifier, MetaClassifier
 
 def load_classifier(name, parallel_gpu=False):
     """
-    Loads a model from the directory specified in src.config file (config.path_to_models).
+    Loads a model from the directory specified in notebook.config file (config.path_to_models).
 
     Arguments:
     * name: The name of the saved model to load.
