@@ -1,7 +1,7 @@
 from sklearn.pipeline import Pipeline
 from src.features.text.transformers.encoding_corrector import EncodingIsolator, ExcessPunctuationRemover, HandMadeCorrector, EncodingApostropheCorrector,\
       ClassicPatternsCorrector, PronounsApostropheCorrector, DoubleEncodingTransformer, NumberEncodingCorrector, LowerTransformer, PySpellCorrector, \
-      SpecificIsolator
+      SpecificIsolator, AccentCorrector, SpaceReplacement
 
 
 class CleanEncodingPipeline(Pipeline):
@@ -17,8 +17,12 @@ class CleanEncodingPipeline(Pipeline):
                 
                 ("Correct Apostrophes", EncodingApostropheCorrector()),
                 ("Correct QU Apostrophes", PronounsApostropheCorrector()),
+                ("Correct Accents", AccentCorrector()),
                 ("Hand Made Correction", HandMadeCorrector()),
-                ("Correct Classic patterns", ClassicPatternsCorrector())
+                ("Correct Classic patterns", ClassicPatternsCorrector()),
+                ("Pyspell Correction", PySpellCorrector()),
+                ("Spaces Correction", SpaceReplacement())
+                
 
                 
                 

@@ -87,7 +87,13 @@ ENCODING_REPLACEMENT_DICT = {
     'langerL': "langer l",
     'rag¿narok': "ragnarok",
     'midg¿rd': "midgard",
-    "¿ø": "diamètre"
+    "¿ø": "diamètre",
+    ' bã©bã©': "bébé",
+     'doublã©e': "doublée",
+     'rétro¿clair': "rétroéclair",
+     'qualitã': 'qualité',
+     're¿gulie': "régulier",
+     'ãªtre': "être"
     
 }
 

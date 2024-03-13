@@ -1,4 +1,5 @@
 import cv2
+import os
 
 def img_resize(folder_path, save_path='./resized/'):
     """

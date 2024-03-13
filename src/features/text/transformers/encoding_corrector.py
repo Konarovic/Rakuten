@@ -124,7 +124,7 @@ def txt_fixencoding(txt, lang, spellers):
 class EncodingIsolator(BaseEstimator, TransformerMixin):
     """A text transformer to replace duplicates of badly encoded markers and some weird combinations with a single one"""
     def __init__(self) -> None:
-        self.pattern = re.compile(r'([?¿º¢©́Ã])\1+')
+        self.pattern = re.compile(r'([?¿º¢©́Ã])\1+|[ã¢©́]\1+')
         self.special_sequence_pattern = re.compile(r'[å¿]')
 
     def fit(self, X, y=None):
@@ -227,23 +227,6 @@ class ClassicPatternsCorrector(BaseEstimator, TransformerMixin):
             X_corrected = X_corrected.str.replace(pat=pattern, repl=correction, case=False)
         return X_corrected
     
-class BadWordsDetector(BaseEstimator, TransformerMixin):
-    """"""
-    def __init__(self) -> None:
-        self.pattern = re.compile( r'\w*[å¿]\w*')
-        self.lang_detector = LangIdDetector()
-        
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X):
-        bad_words = X.str.findall(pat=self.pattern)
-        languages = self.lang_detector.fit_transform(X)
-        return pd.DataFrame({
-            "text":X, 
-            "badwords": bad_words, 
-            "lang": languages 
-            })
     
 class DoubleEncodingTransformer(BaseEstimator, TransformerMixin):
     def __init__(self) -> None:
@@ -266,6 +249,24 @@ class NumberEncodingCorrector(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return  X.str.replace(pat=self.pattern, repl=r"\1", regex=True)
     
+class BadWordsDetector(BaseEstimator, TransformerMixin):
+    """"""
+    def __init__(self) -> None:
+        self.pattern = re.compile( r'\w*[å¿]\w*')
+        self.lang_detector = LangIdDetector()
+        
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        bad_words = X.str.findall(pat=self.pattern)
+        languages = self.lang_detector.fit_transform(X)
+        return pd.DataFrame({
+            "text":X, 
+            "badwords": bad_words, 
+            "lang": languages 
+            })
+    
 class BadWordsCorrector(BaseEstimator, TransformerMixin):
     def __init__(self) -> None:
         super().__init__()
@@ -279,9 +280,10 @@ class BadWordsCorrector(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, X):
-        rows = [x for x in X.itertuples()]
-        corrected_text = [self.correct_text(row.text, row.badwords, row.lang) for row in rows]
-        corrected_text = pd.Series(corrected_text)
+        corrected_text = X.apply(lambda row: self.correct_text(row["text"], row["badwords"], row["lang"]),  axis=1)
+        #rows = [x for x in X.itertuples()]
+        #corrected_text = [self.correct_text(row.text, row.badwords, row.lang) for row in rows]
+        #corrected_text = pd.Series(corrected_text)
         return corrected_text
 
     @lru_cache(maxsize=1000)
@@ -297,19 +299,44 @@ class BadWordsCorrector(BaseEstimator, TransformerMixin):
                     text = re.sub(word, correction, text)
                 except(TypeError):
                     print(f"Badword: {word}\n Text to correct: {text}")
+                    
                     #raise TypeError
         return text
 
 
 class PySpellCorrector(BaseEstimator, TransformerMixin):
     def __init__(self) -> None:
-        self.lang_detector = LangIdDetector()
+        self.bwd = BadWordsDetector()
+        self.bwc = BadWordsCorrector()
+
 
     def fit(self, X, y=None):
         return self
     
     def transform(self, X):
-        languages = self.lang_detector.fit_transform(X)
-        text_info = pd.DataFrame({"lang":languages, "text": X})
-        return text_info
+        X_info = self.bwd.fit_transform(X)
+        X_corrected = self.bwc.fit_transform(X_info)
+        return X_corrected
+    
+class AccentCorrector(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"ã¿")
 
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        return X.str.replace(pat=self.pattern, repl="é", regex=True)
+
+    
+
+
+class SpaceReplacement(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"¿")
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        return X.str.replace(pat=self.pattern, repl=" ", regex=True)
