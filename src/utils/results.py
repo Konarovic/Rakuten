@@ -7,7 +7,7 @@ import os
 import plotly.express as px
 import re
 from src.utils.load import load_classifier
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, f1_score
 
 
 class ResultsManager():
@@ -251,6 +251,15 @@ class ResultsManager():
     def get_model_paths(self):
         return self.df_results.model_path.unique()
 
+    def get_model_label(self, model_path):
+        label = self.df_results[self.df_results.model_path ==
+                                model_path].classifier.values[0]
+        if not pd.isna(self.df_results[self.df_results.model_path == model_path].vectorization.values[0]):
+            label += '(' + self.df_results[self.df_results.model_path ==
+                                           model_path].vectorization.values[0] + ')'
+
+        return label
+
     def get_f1_score(self, model_path):
         return self.df_results[self.df_results.model_path == model_path].score_test.values[0]
 
@@ -266,3 +275,44 @@ class ResultsManager():
                                   for i in range(len(probas))], axis=0)
         y_pred = np.argmax(probas_weighted, axis=1)
         return y_pred
+
+    def voting_pred_cross_validate(self, basenames, n_folds=5, dataset_size=0.5):
+        f_score_cv = []
+        probas = []
+        weight_set = []
+
+        for basename in basenames:
+            probas.append(np.array(self.get_y_pred_probas(basename)))
+            weight_set.append(self.get_f1_score(basename))
+
+        y_test = np.array(self.get_y_test(basenames[0]))
+        test_idx_start = round((len(y_test) * (1-dataset_size)))
+        test_size = len(y_test) - test_idx_start
+
+        for k in range(n_folds):
+
+            idx_start = test_idx_start + round((k-1)*(test_size/n_folds))
+            idx_end = test_idx_start + round((k)*(test_size/n_folds) + 1)
+            idx_fold = range(idx_start, idx_end)
+
+            train_mask = np.ones(len(y_test), dtype=bool)
+            train_mask[:test_idx_start] = False
+            train_mask[idx_fold] = False
+
+            test_mask = np.zeros(len(y_test), dtype=bool)
+            test_mask[idx_fold] = True
+
+            for basename in basenames:
+                probas.append(np.array(self.get_y_pred_probas(basename)))
+                y_pred = np.array(self.get_y_pred(basename))
+                weight_set.append(
+                    f1_score(y_test[train_mask], y_pred[train_mask], average='weighted'))
+
+            probas_weighted = np.sum([probas[i] * weight_set[i]
+                                      for i in range(len(probas))], axis=0)
+            y_pred = np.argmax(probas_weighted, axis=1)
+            f_score_cv.append(
+                f1_score(y_test[test_mask], y_pred[test_mask], average='weighted'))
+
+        print(f_score_cv)
+        return np.mean(f_score_cv)
