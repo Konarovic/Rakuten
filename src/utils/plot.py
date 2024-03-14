@@ -22,8 +22,11 @@ def classification_results(y_true, y_pred, index=None, title=None):
         conf_mat.columns = index
 
     # hierarchical clustering to find optimal order of labels
-    Z = linkage(conf_mat, 'ward')
-    order = leaves_list(Z)
+    # Z = linkage(conf_mat, 'ward')
+    # order = leaves_list(Z)
+    # On force l'ordre pour l'homogénéité des présentations
+    order = [7, 15, 16, 0, 22, 11, 10, 13, 19,
+             21, 20, 14, 18, 12, 2, 8, 6, 4, 5, 1, 3, 24, 17, 26, 25, 23, 9]
     conf_mat = conf_mat.iloc[order, order]
 
     # plot confusion matrix as heatmap
@@ -39,6 +42,9 @@ def classification_results(y_true, y_pred, index=None, title=None):
         conf_mat, 2), cbar=False, ax=ax)
     if title is not None:
         plt.title(title)
+
+    plt.xlabel('Classes prédites')
+    plt.ylabel('Classes réelles')
     plt.show()
 
     return plt
