@@ -323,7 +323,7 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
                 elif 'flaubert' in self.base_name.lower():
                     base_model = TFAutoModel.from_pretrained(base_model_path)
                     tokenizer = FlaubertTokenizer.from_pretrained(
-                        base_model_path)
+                        'flaubert/flaubert_base_uncased')
 
         # Building the keras model
         model = build_bert_model(base_model=base_model, from_trained=from_trained,

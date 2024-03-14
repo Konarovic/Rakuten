@@ -5,6 +5,7 @@ from scipy.cluster.hierarchy import linkage, leaves_list
 from sklearn.metrics import f1_score
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
 
 def classification_results(y_true, y_pred, index=None, title=None):
@@ -72,7 +73,7 @@ def plot_training_history(history):
     return plt
 
 
-def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=None, title=None):
+def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=None, title=None, figsize=(1200, 600)):
 
     custom_categories_order = data[x_column].tolist()
     fig = px.bar(
@@ -84,8 +85,17 @@ def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=
         category_orders={x_column: custom_categories_order},
     )
 
+    for i, row in data.iterrows():
+        fig.add_annotation(
+            x=row[y_column]+0.05,
+            y=row[x_column],
+            text=str(round(row[y_column], 3)),
+            showarrow=False,
+            font=dict(family='Arial', size=12, color='black'),
+        )
+
     fig.update_traces(
-        width=0.8,
+        width=0.5,
 
     )
     # Update layout to remove legend and adjust xaxis title
@@ -93,11 +103,11 @@ def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=
         legend=None,
         xaxis_title=y_label,
         yaxis_title=x_label,
-        bargap=0.3,
-        bargroupgap=0.2,
-        barmode='group',
-        width=1200,
-        height=600,
+        bargap=0.1,
+        bargroupgap=0.1,
+        barmode='stack',
+        width=figsize[0],
+        height=figsize[1],
         title=title
 
     )

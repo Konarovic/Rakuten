@@ -23,28 +23,49 @@ class ResultsManager():
         if self.df_results is None:
             self.df_results = df
         else:
-            self.df_results = pd.concat([self.df_results, df])
+            self.df_results = pd.concat(
+                [self.df_results, df]).reset_index(drop=True)
         self.df_results = self.df_results.drop_duplicates()
 
         return self
 
-    def plot_f1_scores(self, filter_package=['text', 'img', 'bert']):
+    def plot_f1_scores(self, filter_package=['text', 'img', 'bert'], figsize=(1200, 600)):
+
+        # filtre des doublons
         scores = self.df_results[[
-            'model_path', 'score_test', 'package', 'classifier', 'vectorization']]
-        scores.loc[:, 'vectorizer'] = scores.apply(lambda row: row.classifier if pd.isna(
+            'model_path',
+            'score_test',
+            'package',
+            'classifier',
+            'vectorization']].reset_index(drop=True)
+        index_to_keep = scores.groupby(['model_path'])['score_test'].idxmax()
+        scores = scores.loc[index_to_keep].reset_index()
+
+        # filtre des packages
+        scores = scores[scores.package.isin(
+            filter_package)].reset_index(drop=True)
+
+        # ajout des colonnes pour le plot
+        scores['serie_name'] = scores.apply(lambda row: row.classifier if pd.isna(
+            row.vectorization) else row.classifier + ' - ' + row.vectorization, axis=1)
+        scores['vectorizer'] = scores.apply(lambda row: row.classifier if pd.isna(
             row.vectorization) else row.vectorization, axis=1)
-        scores = scores.groupby(['model_path', 'package', 'classifier', 'vectorizer']).max(
-            'score_test').reset_index()
-        scores = scores[scores.package.isin(filter_package)]
+
+        # tri par score décroissant
+        scores = scores[['serie_name', 'score_test',
+                         'vectorizer']].reset_index()
         sorted_scores = scores.sort_values(by='score_test', ascending=False)
+
+        # plot
         uplot.plot_bench_results(
             sorted_scores,
-            'model_path',
+            'serie_name',
             'score_test',
             'model',
             'f1 score',
             color_column='vectorizer',
-            title='Benchmark des f1 scores'
+            title='Benchmark des f1 scores',
+            figsize=figsize
         )
 
         return self
@@ -110,6 +131,9 @@ class ResultsManager():
 
         return self.le.classes_
 
+    def get_num_classes(self):
+        return len(self.get_cat_labels())
+
     def plot_classification_report(self, model_path):
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
@@ -147,6 +171,23 @@ class ResultsManager():
 
         return ast.literal_eval(pred)
 
+    def get_y_pred_probas(self, model_path):
+        if pd.isna(self.df_results[self.df_results.model_path == model_path].probs_test.values[0]):
+            clf = load_classifier(model_path)
+
+            if hasattr(clf, 'predict_proba'):
+                probas = clf.predict_proba(self.get_X_test())
+            else:
+                probas = np.zeros(
+                    (len(self.get_X_test()), self.get_num_classes()))
+                y_pred = self.get_y_pred(model_path)
+                for i, y in enumerate(y_pred):
+                    probas[i, y] = 1
+
+            return probas
+        return ast.literal_eval(self.df_results[self.df_results.model_path ==
+                                                model_path].probs_test.values[0])
+
     def get_y_test(self, model_path):
         if pd.isna(self.df_results[self.df_results.model_path == model_path].y_test.values[0]):
             df = pd.read_csv(os.path.join(
@@ -175,3 +216,19 @@ class ResultsManager():
 
     def get_model_paths(self):
         return self.df_results.model_path.unique()
+
+    def get_f1_score(self, model_path):
+        return self.df_results[self.df_results.model_path == model_path].score_test.values[0]
+
+    def voting_pred(self, basenames):
+        probas = []
+        weight_set = []
+
+        for basename in basenames:
+            probas.append(np.array(self.get_y_pred_probas(basename)))
+            weight_set.append(self.get_f1_score(basename))
+
+        probas_weighted = np.sum([probas[i] * weight_set[i]
+                                  for i in range(len(probas))], axis=0)
+        y_pred = np.argmax(probas_weighted, axis=1)
+        return y_pred
