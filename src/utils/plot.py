@@ -8,17 +8,17 @@ import numpy as np
 import plotly.express as px
 
 
-def classification_results(y_true, y_pred, index=None, title=None):
+def classification_results(y_true, y_pred, index=None, model_label=None):
     # Print evaluation metrics
     print(classification_report(y_true, y_pred, target_names=index))
     print(f1_score(y_true, y_pred, average='weighted'))
 
-    plot_confusion_matrix(y_true, y_pred, index, title)
+    plot_confusion_matrix(y_true, y_pred, index, model_label)
 
     return plt
 
 
-def plot_confusion_matrix(y_true, y_pred, index=None, title=None):
+def plot_confusion_matrix(y_true, y_pred, index=None, model_label=None):
     # Build confusion matrix
     conf_mat = round(pd.crosstab(y_true, y_pred, rownames=[
                      'Classes reelles'], colnames=['Classes predites'], normalize='columns')*100)
@@ -47,8 +47,8 @@ def plot_confusion_matrix(y_true, y_pred, index=None, title=None):
         conf_mat, 2), cbar=False, ax=ax)
     sns.heatmap(conf_mat, mask=mask_other, cmap="rocket_r", alpha=0.5, annot=round(
         conf_mat, 2), cbar=False, ax=ax)
-    if title is not None:
-        plt.title(title)
+    if model_label is not None:
+        plt.title("Matrice de confusion du modèle : " + model_label)
 
     plt.xlabel('Classes prédites')
     plt.ylabel('Classes réelles')

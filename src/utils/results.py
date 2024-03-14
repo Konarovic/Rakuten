@@ -7,6 +7,7 @@ import os
 import plotly.express as px
 import re
 from src.utils.load import load_classifier
+from sklearn.metrics import classification_report
 
 
 class ResultsManager():
@@ -142,12 +143,37 @@ class ResultsManager():
     def get_num_classes(self):
         return len(self.get_cat_labels())
 
-    def plot_classification_report(self, model_path):
+    def plot_classification_report(self, model_path, model_label=None):
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
 
         uplot.classification_results(
-            y_test, y_pred, index=self.get_cat_labels())
+            y_test,
+            y_pred,
+            index=self.get_cat_labels(),
+            model_label=model_label
+        )
+        return self
+
+    def plot_confusion_matrix(self, model_path, model_label=None):
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+
+        uplot.plot_confusion_matrix(
+            y_test,
+            y_pred,
+            index=self.get_cat_labels(),
+            model_label=model_label
+        )
+        return self
+
+    def plot_f1_scores_report(self, model_path, model_label=None):
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+
+        print(classification_report(y_test, y_pred,
+              target_names=self.get_cat_labels()))
+
         return self
 
     def plot_classification_report_merged(self, model_paths):
