@@ -118,6 +118,25 @@ class ResultsManager():
             y_test, y_pred, index=self.get_cat_labels())
         return self
 
+    def plot_classification_report_merged(self, model_paths):
+        y_pred = []
+        y_test = self.get_y_test(model_paths[0])
+        for model_path in model_paths:
+            y_pred.append(self.get_y_pred(model_path))
+
+        y_merged = []
+        for i, y in enumerate(y_test):
+            merged_label = y_pred[0][i]
+            for y_p in y_pred:
+                if y_p[i] == y:
+                    merged_label = y
+                    break
+            y_merged.append(merged_label)
+
+        uplot.classification_results(
+            y_test, y_merged, index=self.get_cat_labels())
+        return self
+
     def get_y_pred(self, model_path):
         if pd.isna(self.df_results[self.df_results.model_path == model_path].pred_test.values[0]):
             clf = load_classifier(model_path)
@@ -137,9 +156,6 @@ class ResultsManager():
         return ast.literal_eval(self.df_results[self.df_results.model_path == model_path].y_test.values[0])
 
     def get_X_test(self):
-        print(os.path.join(
-            self.config.path_to_data, 'df_test_index.csv'))
-        print('path_to_data', self.config.path_to_data)
         if self.X_test is None:
             df = pd.read_csv(os.path.join(
                 self.config.path_to_data, 'df_test_index.csv'))
