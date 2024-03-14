@@ -29,7 +29,7 @@ class ResultsManager():
 
         return self
 
-    def plot_f1_scores(self, filter_package=['text', 'img', 'bert'], figsize=(1200, 600)):
+    def plot_f1_scores(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
 
         # filtre des doublons
         scores = self.df_results[[
@@ -42,8 +42,14 @@ class ResultsManager():
         scores = scores.loc[index_to_keep].reset_index()
 
         # filtre des packages
-        scores = scores[scores.package.isin(
-            filter_package)].reset_index(drop=True)
+        if filter_package is not None:
+            scores = scores[
+                (scores.package.isin(filter_package))
+            ].reset_index(drop=True)
+        if filter_model is not None:
+            scores = scores[
+                (scores.model_path.isin(filter_model))
+            ].reset_index(drop=True)
 
         # ajout des colonnes pour le plot
         scores['serie_name'] = scores.apply(lambda row: row.classifier if pd.isna(
@@ -57,6 +63,8 @@ class ResultsManager():
         sorted_scores = scores.sort_values(by='score_test', ascending=False)
 
         # plot
+        if title is None:
+            title = 'Benchmark des f1 scores'
         uplot.plot_bench_results(
             sorted_scores,
             'serie_name',
@@ -64,7 +72,7 @@ class ResultsManager():
             'model',
             'f1 score',
             color_column='vectorizer',
-            title='Benchmark des f1 scores',
+            title=title,
             figsize=figsize
         )
 

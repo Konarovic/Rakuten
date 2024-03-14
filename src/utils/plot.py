@@ -13,6 +13,12 @@ def classification_results(y_true, y_pred, index=None, title=None):
     print(classification_report(y_true, y_pred, target_names=index))
     print(f1_score(y_true, y_pred, average='weighted'))
 
+    plot_confusion_matrix(y_true, y_pred, index, title)
+
+    return plt
+
+
+def plot_confusion_matrix(y_true, y_pred, index=None, title=None):
     # Build confusion matrix
     conf_mat = round(pd.crosstab(y_true, y_pred, rownames=[
                      'Classes reelles'], colnames=['Classes predites'], normalize='columns')*100)
@@ -47,8 +53,6 @@ def classification_results(y_true, y_pred, index=None, title=None):
     plt.xlabel('Classes prédites')
     plt.ylabel('Classes réelles')
     plt.show()
-
-    return plt
 
 
 def plot_training_history(history):
