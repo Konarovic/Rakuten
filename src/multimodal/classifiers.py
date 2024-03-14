@@ -93,7 +93,7 @@ from joblib import load, dump
 import os
 import time
 
-import notebook.config as config
+import config
 
 
 def build_multi_model(txt_base_model, img_base_model, from_trained=None, max_length=256, img_size=(224, 224, 3),

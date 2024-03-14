@@ -1,6 +1,6 @@
 from joblib import load, dump
 import os
-import notebook.config as config
+import config
 
 import ast
 import pandas as pd

@@ -139,6 +139,7 @@ class ResultsManager():
     def get_X_test(self):
         print(os.path.join(
             self.config.path_to_data, 'df_test_index.csv'))
+        print('path_to_data', self.config.path_to_data)
         if self.X_test is None:
             df = pd.read_csv(os.path.join(
                 self.config.path_to_data, 'df_test_index.csv'))

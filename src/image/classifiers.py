@@ -67,7 +67,7 @@ from joblib import load, dump
 import os
 import time
 
-import notebook.config as config
+import config
 
 
 def build_Img_model(base_model, from_trained=None, img_size=(224, 224, 3), num_class=27, drop_rate=0.0, activation='softmax', strategy=None):
