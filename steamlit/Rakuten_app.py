@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 
+
 custom_css = """
 <style>
     /* Styles pour spécifier la taille du texte */
@@ -72,7 +73,7 @@ st.sidebar.markdown("[Julien Fournier](link)")
 st.sidebar.markdown("[Alexandre Mangwa](link)")
 
 
-# page 0
+# page 0----------------------------------------------------------------------------------------------------------------------------------------------
 if page == pages[0]:
     # Titre principal
     st.title("Classification de produits")
@@ -152,7 +153,7 @@ if page == pages[0]:
     )
           
   
- #page1 
+ #page1 ----------------------------------------------------------------------------------------------------------------------------------------------
 if page == pages[1] :
     #Dataviz
     st.title("DATAVIZ")
