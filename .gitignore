@@ -11,3 +11,8 @@ env/
 model/
 **.h5
 models/
+data/clean/
+data/raw/
+results/
+notebook/config.py
+streamlit/config.py
