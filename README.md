@@ -63,11 +63,13 @@ wget -O data/raw/X_test.csv https://challengedata.ens.fr/participants/challenges
 wget -O data/images/images.zip https://challengedata.ens.fr/participants/challenges/35/download/supplementary-files
 ```
 
-3- Télécharger les data déjà nettoyées par ce lien et dézipper les trois fichiers dans `/data/clean` :
+3- Download the already cleaned data via this link and unzip the three files into `/data/clean`.
 [Lien data](https://drive.google.com/file/d/19m9KGL0YJoQgC1kOm4yhQODdXK9sKxcu/view?usp=sharing)
 
-4- Télécharger les résultats d'entrainement par le lien suivant et dézipper les fichiers .csv dans `/results`
+4- Download the training results using the following link and unzip the .csv files into `/results`.
 [Lien results](https://drive.google.com/file/d/1-jFTy2IIFRvN2gMYnsf7lmwtcrgCrn-z/view?usp=sharing)
+
+5- Edit the config files located in `notebook/config.py` and `streamlit/config.py` to specify the local paths of the project folder.
 
 ### Preprocessing
 
