@@ -69,8 +69,30 @@ wget -O data/images/images.zip https://challengedata.ens.fr/participants/challen
 4- Download the training results using the following link and unzip the .csv files into `/results`.
 [Lien results](https://drive.google.com/file/d/1-jFTy2IIFRvN2gMYnsf7lmwtcrgCrn-z/view?usp=sharing)
 
-5- Edit the config files located in `notebook/config.py` and `streamlit/config.py` to specify the local paths of the project folder.
+5- Create or edit the config files located in `notebook/config.py` and `streamlit/config.py` to specify the local paths of the project folder.
+```python
+import os
+import sys
+dir_root = '/path/to/my/root/folder'
 
+project_dir = '/path/to/my/project/folder'
+if project_dir not in sys.path:
+    sys.path.append(project_dir)
+    sys.path.append(os.path.join(project_dir, 'src'))
+
+# directory of the project
+path_to_project = project_dir
+# path to the data (dataframe)
+path_to_data = project_dir + '/data/clean'
+# path to where the summary of the benchmark results will be saved (csv)
+path_to_results = project_dir + '/results'
+# path to the folder containing images
+path_to_images = project_dir + '/images/image_train_resized'
+# path to the folder where the models will be saved
+path_to_models = project_dir + '/models'
+# Path to where tensorboard logs will be saved
+path_to_tflogs = project_dir + '/tflogs'
+``̀
 ### Preprocessing
 
 For launching CleanTextPipeline
