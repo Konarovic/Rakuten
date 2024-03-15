@@ -8,6 +8,7 @@ import plotly.express as px
 import re
 from src.utils.load import load_classifier
 from sklearn.metrics import classification_report, f1_score
+from tabulate import tabulate
 
 
 class ResultsManager():
@@ -139,6 +140,14 @@ class ResultsManager():
                 self.config.path_to_data, 'le_classes.npy'), allow_pickle=True)
 
         return self.le.classes_
+
+    def get_label_encoder(self):
+        if self.le is None:
+            self.le = LabelEncoder()
+            self.le.classes_ = np.load(os.path.join(
+                self.config.path_to_data, 'le_classes.npy'), allow_pickle=True)
+
+        return self.le
 
     def get_num_classes(self):
         return len(self.get_cat_labels())
@@ -280,10 +289,13 @@ class ResultsManager():
         f_score_cv = []
         probas = []
         weight_set = []
+        report = []
 
         for basename in basenames:
             probas.append(np.array(self.get_y_pred_probas(basename)))
-            weight_set.append(self.get_f1_score(basename))
+            s = self.get_f1_score(basename)
+            weight_set.append(s)
+            report.append([basename, s])
 
         y_test = np.array(self.get_y_test(basenames[0]))
         test_idx_start = round((len(y_test) * (1-dataset_size)))
@@ -313,6 +325,10 @@ class ResultsManager():
             y_pred = np.argmax(probas_weighted, axis=1)
             f_score_cv.append(
                 f1_score(y_test[test_mask], y_pred[test_mask], average='weighted'))
+            report.append(['voting fold ' + str(k), f_score_cv[-1]])
 
-        print(f_score_cv)
+        report.append(['voting mean', np.mean(f_score_cv)])
+        print(tabulate(report, headers=[
+              'model / fold', 'f1 score']))
+
         return np.mean(f_score_cv)
