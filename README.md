@@ -92,7 +92,8 @@ path_to_images = project_dir + '/images/image_train_resized'
 path_to_models = project_dir + '/models'
 # Path to where tensorboard logs will be saved
 path_to_tflogs = project_dir + '/tflogs'
-``̀
+```
+
 ### Preprocessing
 
 For launching CleanTextPipeline
