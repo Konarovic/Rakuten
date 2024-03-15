@@ -11,9 +11,11 @@ import os
 from importlib import reload
 from sklearn.metrics import f1_score
 from importlib import reload
-from results import ResultsManager
+
 import config
 import src.utils.results as results
+reload(results)
+from results import ResultsManager
 
 
 # chargement des Ressources
