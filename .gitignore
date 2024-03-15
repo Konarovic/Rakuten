@@ -11,3 +11,5 @@ env/
 model/
 **.h5
 models/
+data/clean/
+data/raw/

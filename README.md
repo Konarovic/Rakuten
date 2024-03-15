@@ -57,11 +57,17 @@ pip install -r requirements.txt
 2- Download images and dataset on Rakuten challenge site, unzip images 
 
 ```
-wget -O data/X_train.csv https://challengedata.ens.fr/participants/challenges/35/download/x-train
-wget -O data/y_train.csv https://challengedata.ens.fr/participants/challenges/35/download/y-train
-wget -O data/X_train.csv https://challengedata.ens.fr/participants/challenges/35/download/x-test
+wget -O data/raw/X_train.csv https://challengedata.ens.fr/participants/challenges/35/download/x-train
+wget -O data/raw/y_train.csv https://challengedata.ens.fr/participants/challenges/35/download/y-train
+wget -O data/raw/X_test.csv https://challengedata.ens.fr/participants/challenges/35/download/x-test
 wget -O data/images/images.zip https://challengedata.ens.fr/participants/challenges/35/download/supplementary-files
 ```
+
+3- Télécharger les data déjà nettoyées par ce lien et dézipper les trois fichiers dans `/data/clean` :
+[Lien data](https://drive.google.com/file/d/19m9KGL0YJoQgC1kOm4yhQODdXK9sKxcu/view?usp=sharing)
+
+4- Télécharger les résultats d'entrainement par le lien suivant et dézipper les fichiers .csv dans `/results`
+[Lien results](https://drive.google.com/file/d/1-jFTy2IIFRvN2gMYnsf7lmwtcrgCrn-z/view?usp=sharing)
 
 ### Preprocessing
 
