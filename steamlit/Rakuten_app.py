@@ -12,18 +12,18 @@ from importlib import reload
 from sklearn.metrics import f1_score
 from importlib import reload
 
-import config
-import src.utils.results as results
-reload(results)
-from results import ResultsManager
+
+#import config
+#from src.utils import results
+#reload(results)
+#from results import ResultsManager
 
 
 # chargement des Ressources
 #DATAFRAMES
-df=pd.read_csv("../data/X_train.csv")
+df=pd.read_csv("../data/raw/X_train.csv")
 df_train_clean=pd.read_csv("../data/clean/df_train_index.csv")
-xtrain=pd.read_csv("../data/X_train.csv")
-ytrain=pd.read_csv("../data/Y_train.csv")
+ytrain=pd.read_csv("../data/raw/Y_train.csv")
 
 
 #chargement images
@@ -41,7 +41,7 @@ img_rakuten_website = "images/rakuten_website.png"
 corr = 'images/corr_cat.jpg'
 
 #dossier images
-wc_folder = "../WC"
+wc_folder = "Images/wc_visuels"
 
 
 # css custom pour les typo / les bocs etc
@@ -104,6 +104,17 @@ custom_css = """
     justify-content: center;
     align-items: center;
     }
+    
+    .expander {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    }
+    
+    .expander-content {
+        font-size: 30px; /* Taille de police pour le contenu de l'expander */
+    }
+
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -134,7 +145,7 @@ with col3:
 
 # SOMMAIRE
 st.sidebar.title("Sommaire")
-pages=["Presentation", "Exploration", "DataViz", 'Préprocessing', "Modélisation texte", "Modélisation images", "Modélisation fusion", "Bonus", "Conclusion"]
+pages=["Presentation", "Exploration", "DataViz", 'Préprocessing', "Modélisation texte", "Modélisation images", "Modélisation fusion", "Test du modèle", "Conclusion"]
 page=st.sidebar.radio("Aller vers", pages)
 st.sidebar.header("Auteurs")
 st.sidebar.markdown("[Thibaud Benoist](link)")
@@ -228,84 +239,89 @@ if page == pages[1]:
     with col3:
         st.write("\n")
     
-    
-    col1, col2 = st.columns([1, 3])
-    with col1:
-    # Problématique
-        st.header("Ressources fournies : dataframes")
-        st.markdown(
-        """
-        Nous avons plusieurs elements fournis pour le test :
-        - 1 dataframe X_train composé de 84916 produits
-        - 1 dataframe X_test composé de 13812 produits
-        - 1 dataframe y_train : avec les code produits
+    with st.expander("Dataframes"):
+        col1, col2 = st.columns([1, 3])
+        with col1:
+        # Problématique
+            st.header("Ressources fournies : dataframes")
+            st.markdown(
+            """
+            Nous avons plusieurs elements fournis pour le test :
+            - 1 dataframe X_train composé de 84916 produits
+            - 1 dataframe X_test composé de 13812 produits
+            - 1 dataframe y_train : avec les code produits
+            
+            - 1 dossier d'images train avec 84916 images
+            - 1 dossier d'images test avec 13812 images
+            """
+        )    
+        with col2:
+            container = st.container()
+            with st.container():
+                st.image(schema_dataframe, width=1000, output_format='auto', use_column_width=True)
+            
         
-        - 1 dossier d'images train avec 84916 images
-        - 1 dossier d'images test avec 13812 images
-        """
-    )    
-    with col2:
-        container = st.container()
-        with st.container():
-            st.image(schema_dataframe, width=1000, output_format='auto', use_column_width=True)
         
-    
+            
+        col1, col2 = st.columns([1, 3])
+        with col1:
+        # Problématique
+            
+            st.markdown(
+            """
+            27 codes produits au total
+            """
+        )    
+        with col2:
+            st.image(schema_dataframe_Y, use_column_width=False, caption="", output_format='auto')
     
         
-    col1, col2 = st.columns([1, 3])
-    with col1:
-    # Problématique
-        
-        st.markdown(
-        """
-        27 codes produits au total
-        """
-    )    
-    with col2:
-        st.image(schema_dataframe_Y, use_column_width=False, caption="", output_format='auto')
-   
-    
-    st.markdown("""
-                Sur les données concernant les dataframes nous avons de nombreux NaN dans la colonnes description, 
-                plusieurs langues, des balises HTML, des mauvais encodings
-                """
-                )
-    
-    st.write("")
-    st.write("")
+        st.markdown("""
+                    Sur les données concernant les dataframes nous avons de nombreux NaN dans la colonnes description, 
+                    plusieurs langues, des balises HTML, des mauvais encodings
+                    """
+                    )
     
     
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.header("Ressources fournies : images")
-        st.markdown(
-        """
-        Pour les images :
-        - toutes en 500*500
-        - que des jpeg
-        
-        - certaines avec un contour blanc tres important
-        """
-    )
-    with col2:
-        st.image(schema_image, use_column_width=False, caption="", output_format='auto')
+    
+    with st.expander("Images"):
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            st.header("Ressources fournies : images")
+            st.markdown(
+            """
+            Pour les images :
+            - toutes en 500*500
+            - que des jpeg
+            
+            - certaines avec un contour blanc tres important
+            """
+        )
+        with col2:
+            st.image(schema_image, use_column_width=False, caption="", output_format='auto')
         
         
     # Objectifs
-    st.header("Etapes suivantes")
-    st.markdown(
-        """ 
-        **0. Exploration de la data**
-        
-        **1. Nettoyer les données pour les rendre exploitables** 
-        
-        **2. Entraîner différents modèles de machine learning et deep learning sur les données textes et images**
-        
-        **3. Créer un modèle fusion à partir de nos résultats pour valider une généralisation du modèle**
-        
-        **4. Développer une API pour importer des textes et images et tester la classification avec notre modèle fusion** 
-        """
-    )
+    col1, col2, col3 = st.columns([1,3,1])
+    with col1:
+        st.write()
+    with col2:
+        st.header("Etapes suivantes")
+        st.markdown(
+            """ 
+            **0. Exploration de la data**
+            
+            **1. Nettoyer les données pour les rendre exploitables** 
+            
+            **2. Entraîner différents modèles de machine learning et deep learning sur les données textes et images**
+            
+            **3. Créer un modèle fusion à partir de nos résultats pour valider une généralisation du modèle**
+            
+            **4. Développer une API pour importer des textes et images et tester la classification avec notre modèle fusion** 
+            """
+        )
+    with col3:
+        st.write("")
           
   
  # page 2 ##########################################################################################################################
@@ -313,7 +329,7 @@ if page == pages[2] :
     #Dataviz
     st.title("DATAVIZ")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Produits par catégories", "Articles sans descriptions par catégories", "Longeur des textes par catégories", "Langues par catégories"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Produits par catégories", "Articles sans descriptions par catégories", "Longeur des textes par catégories", "Langues par catégories", 'Corrélation entre catégories', 'Wordclouds'])
 
     with tab1:
         st.header("Produits par catégories")
@@ -492,68 +508,63 @@ if page == pages[2] :
             **Variabilité des langues** : les textes sont majoritairement rédigés en français (environ 80 %). Certains textes sont en anglais ou en allemand.
             """
         )
-        
     
     
-
-    
-    
-    
-    st.header("Corrélation des catégories")
-    st.markdown(
-        """
-        **Séparabilité des catégories** : Certaines catégories ont un chevauchement lexical notable (par exemple, les consoles de jeu et les jeux vidéo), 
-        comme on peut le remarquer dans les wordclouds ou dans la matrice de corrélation entre vecteurs de fréquence des mots.
-        
-        On peut voir que les catégories livres neufs, livres d'occasion et Magazines d'occasion sont tres correlées, nous avons également la même analyse mais dans une moindre mesure pour les consoles de jeux,
-        jeux de societés, jeux vidéo d'occasion, équipement pour jeux video
-        """
-    )
-    col1, col2, col3 = st.columns([1, 2, 1]) 
-    with col1:
-        st.write("") 
-    with col2:
-        st.image(corr, use_column_width=True)
-          
-    with col3:
-        st.write("") 
-    
-    st.header("Wordclouds")
-    st.markdown(
-        """
-        Quelques représentations visuelles de wordclouds. Les worldcloud servent avant tout a représenter les mots les plus fréquents des catégories. Plus un mot est présent plus il est grand
-        """
-    )
-    
-    images = []
-    for fichier in os.listdir(wc_folder):
-        if fichier.endswith(".jpg") or fichier.endswith(".png"):
-            images.append(os.path.join(wc_folder, fichier))
+    with tab5:
+        st.header("Corrélation des catégories")
+        st.markdown(
+            """
+            **Séparabilité des catégories** : Certaines catégories ont un chevauchement lexical notable (par exemple, les consoles de jeu et les jeux vidéo), 
+            comme on peut le remarquer dans les wordclouds ou dans la matrice de corrélation entre vecteurs de fréquence des mots.
             
+            On peut voir que les catégories livres neufs, livres d'occasion et Magazines d'occasion sont tres correlées, nous avons également la même analyse mais dans une moindre mesure pour les consoles de jeux,
+            jeux de societés, jeux vidéo d'occasion, équipement pour jeux video
+            """
+        )
+        col1, col2, col3 = st.columns([1, 2, 1]) 
+        with col1:
+            st.write("") 
+        with col2:
+            st.image(corr, use_column_width=True)
+            
+        with col3:
+            st.write("")    
+    
+    
+    with tab6:
+        st.header("Wordclouds")
+        st.markdown(
+            """
+            Quelques représentations visuelles de wordclouds. Les worldcloud servent avant tout a représenter les mots les plus fréquents des catégories. Plus un mot est présent plus il est grand
+            """
+        )
+        
+        # Chemin du dossier contenant les images
+        images_folder = 'images/wc_visuels/'
+       
+        image_files = os.listdir(images_folder)
+        
+        
+        col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1]) 
+       
+        def display_image_with_text(image_path, text):
+            with st.container():
+                st.image(image_path, use_column_width=True)
+                st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
+        
+        for i, col in enumerate([col2, col4]):
+            image_path = os.path.join(images_folder, image_files[i])
+            with col:
+                display_image_with_text(image_path, f"{image_files[i][:-4]}")
+       
+        for i, col in enumerate([col2, col4]):
+            image_path = os.path.join(images_folder, image_files[i+2])
+            with col:
+                display_image_with_text(image_path, f"{image_files[i+2][:-4]}")    
     
     
 
-    # Chemin du dossier contenant les images
-    images_folder = 'images/wc_visuels/'
-    # Liste des noms de fichiers d'images
-    image_files = os.listdir(images_folder)
-    # Créer les colonnes
-    col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1]) 
-    # Fonction pour afficher une image et du texte centré
-    def display_image_with_text(image_path, text):
-        with st.container():
-            st.image(image_path, use_column_width=True)
-            st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
-    # Afficher les images et les textes
-    for i, col in enumerate([col2, col4]):
-        image_path = os.path.join(images_folder, image_files[i])
-        with col:
-            display_image_with_text(image_path, f"{image_files[i][:-4]}")
-    # Afficher les images et les textes
-    for i, col in enumerate([col2, col4]):
-        image_path = os.path.join(images_folder, image_files[i+2])
-        with col:
-            display_image_with_text(image_path, f"{image_files[i+2][:-4]}")
+    
 
 
     
@@ -565,92 +576,94 @@ if page == pages[2] :
 #page 3  #############################################################################################################################################################################
 if page == pages[3] :
     st.title("PREPROCESSING")
+    tab1, tab2 = st.tabs (['Traitement sur le texte', 'Traitement sur les images' ])
     
-
-    st.header("Traitement sur le texte")
-    st.markdown(
-    """
-    Pour reprendre les objectifs par rapport au texte nous allons nettoyer nos colones 
-    Voici un schéma explicatif de la procédure :
-    """
-    )
-     
-    col1, col2, col3 = st.columns([1, 2, 1]) 
-    
-    with col1:
-        st.write("")
+    with tab1:
         
-    with col2:
-        
-        st.image(schema_prepro_txt, use_column_width=True)
-    
-    with col3:
-        st.write("")
-        
-    col1, col2= st.columns([1, 1]) 
-    
-    with col1:
-        st.markdown("""
-        dataframe orginal            
-        """)
-        st.write(df.head())
-        
-    with col2:
-        st.markdown("""
-        dataframe preprocessé            
-        """)
-        st.write(df_train_clean.head())
-    
-    
-    st.header("Traitement sur les images")
-    st.markdown(
+        st.header("Traitement sur le texte")
+        st.markdown(
         """
-        Concernant les images le padding est ajusté pour n'avoir que de l'information utile dans notre image
+        Pour reprendre les objectifs par rapport au texte nous allons nettoyer nos colones 
+        Voici un schéma explicatif de la procédure :
         """
-    )
-    
-    col1, col2, col3 = st.columns([1, 1, 1]) 
-    
-    with col1:
-        st.write("")
+        )
         
-    with col2:
+        col1, col2, col3 = st.columns([1, 2, 1]) 
         
-        st.image('images/padding_img.png', use_column_width=True)
+        with col1:
+            st.write("")
+            
+        with col2:
+            
+            st.image(schema_prepro_txt, use_column_width=True)
+        
+        with col3:
+            st.write("")
+            
+        col1, col2= st.columns([1, 1]) 
+        
+        with col1:
+            st.markdown("""
+            dataframe orginal            
+            """)
+            st.write(df.head())
+            
+        with col2:
+            st.markdown("""
+            dataframe preprocessé            
+            """)
+            st.write(df_train_clean.head())
+    
+    with tab2:
+        st.header("Traitement sur les images")
+        st.markdown(
+            """
+            Concernant les images le padding est ajusté pour n'avoir que de l'information utile dans notre image
+            """
+        )
+        
+        col1, col2, col3 = st.columns([1, 1, 1]) 
+        
+        with col1:
+            st.write("")
+            
+        with col2:
+            
+            st.image('images/padding_img.png', use_column_width=True)
 
-    
-    with col3:
-        st.write("")
+        
+        with col3:
+            st.write("")
         
 
 #Page4 ############################################################################################################################################ 
 if page == pages[4]:
     st.title("MODELISATION : texte")
-    st.subheader("approche")
-    
-    st.markdown("""
-                Classification des images
-CNN et Vision transformer (Figure 11 et 12)
-Dans le domaine de la classification d'images, l'adoption de réseaux de deep learning est incontournable. 
-Les réseaux de neurones convolutifs (CNN) sont particulièrement efficaces pour cette tâche mais plus récemment, 
-les modèles basés sur des architectures de transformer, comme le modèle Vision Transformer (ViT) 
-se sont aussi révélés efficaces pour la classification d'images. 
+    with st.expander("Approche modèle texte"):
+        
+        st.markdown("""
+                    Classification des images
+    CNN et Vision transformer (Figure 11 et 12)
+    Dans le domaine de la classification d'images, l'adoption de réseaux de deep learning est incontournable. 
+    Les réseaux de neurones convolutifs (CNN) sont particulièrement efficaces pour cette tâche mais plus récemment, 
+    les modèles basés sur des architectures de transformer, comme le modèle Vision Transformer (ViT) 
+    se sont aussi révélés efficaces pour la classification d'images. 
 
-Pour classifier les produits sur la base des images associées, nous avons donc utilisé différents réseaux convolutifs 
-(ResNet, EfficientNet et VGG) ainsi que le transformer ViT (Vision Transformer), tous pré-entraînés sur la base de données ImageNet. 
+    Pour classifier les produits sur la base des images associées, nous avons donc utilisé différents réseaux convolutifs 
+    (ResNet, EfficientNet et VGG) ainsi que le transformer ViT (Vision Transformer), tous pré-entraînés sur la base de données ImageNet. 
 
-Tout comme les modèles BERT pour le traitement de texte, chaque modèle de classification d'images a été doté d'une tête de classification 
-comprenant une couche dense de 128 unités suivie d'un dropout de 20%, menant à la couche de classification finale. 
-L'entraînement a suivi une démarche similaire à celle employée pour les modèles BERT: entraînement sur 80% des données, 
-évaluation sur les 20% restants (même partition que pour le texte), avec un fine-tuning des poids sur 8 époques d'entraînement 
-et un taux d'apprentissage initial de 5e-5, réduit de 20% à chaque époque.
+    Tout comme les modèles BERT pour le traitement de texte, chaque modèle de classification d'images a été doté d'une tête de classification 
+    comprenant une couche dense de 128 unités suivie d'un dropout de 20%, menant à la couche de classification finale. 
+    L'entraînement a suivi une démarche similaire à celle employée pour les modèles BERT: entraînement sur 80% des données, 
+    évaluation sur les 20% restants (même partition que pour le texte), avec un fine-tuning des poids sur 8 époques d'entraînement 
+    et un taux d'apprentissage initial de 5e-5, réduit de 20% à chaque époque.
 
-Les f1-scores mesurés sur l'ensemble de test révèlent une supériorité marquée du modèle Vision Transformer (ViT, f1-score = 0.675) 
-comparativement au meilleur modèle CNN testé (ResNet152, f1-score = 0.658). Ces modèles image restent cependant beaucoup moins performant 
-que les modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive d'images. Néanmoins, 
-il est intéressant de noter que les catégories les plus fréquemment confondues par les modèles dédiés aux images correspondent presque exactement 
-à celles posant des difficultés dans la classification de texte.
-                        """)
+    Les f1-scores mesurés sur l'ensemble de test révèlent une supériorité marquée du modèle Vision Transformer (ViT, f1-score = 0.675) 
+    comparativement au meilleur modèle CNN testé (ResNet152, f1-score = 0.658). Ces modèles image restent cependant beaucoup moins performant 
+    que les modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive d'images. Néanmoins, 
+    il est intéressant de noter que les catégories les plus fréquemment confondues par les modèles dédiés aux images correspondent presque exactement 
+    à celles posant des difficultés dans la classification de texte.
+                            """)
     
     
     
@@ -687,35 +700,35 @@ il est intéressant de noter que les catégories les plus fréquemment confondue
 #Page5 ############################################################################################################################################   
 if page == pages[5]:
     st.title("MODELISATION : images")
-    st.subheader("approche")
+    with st.expander("Approche modèle image"):
     
-    st.markdown("""
-                Classification du texte
-        Dans le contexte de la classification de produits sur la base du texte seul, nous avons commencé par examiner différentes techniques de vectorisation 
-        (Bag-of-Words avec TF-IDF et Word2Vec avec Skipgram et CBOW) associées à des méthodes de classification classiques (SVM, régression logistique, arbres de décision, etc). 
-        L'entraînement s'est effectué sur 80% des données, avec une évaluation des performances sur les 20% restants.
-        
-        Nous avons optimisé les hyper-paramètres (e.g. taille du vecteur d’embedding pour Word2Vec ou paramètres de régularisation pour SVM, etc) via une recherche exhaustive avec validation croisée à 5 folds sur l'ensemble d'entraînement. 
-        Ce premier benchmark indique que la vectorisation Bag-of-Words (TF-IDF) combiné à LinearSVC ou xgBoost surpasse les méthodes Word2Vec, avec un f1-score de 0.824 pour LinearSVC basé sur TF-IDF (Figure 7).
-        
-        Les matrices de confusion révèlent la difficulté de ces modèles à différencier des catégories sémantiquement proches, telles que (Figure 8):
-        "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
-        "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour enfants"
-        "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
-        "Jeux vidéo d'occasion", "CDs et équipements de jeux vidéo", "Accessoires gaming"
+        st.markdown("""
+                    Classification du texte
+            Dans le contexte de la classification de produits sur la base du texte seul, nous avons commencé par examiner différentes techniques de vectorisation 
+            (Bag-of-Words avec TF-IDF et Word2Vec avec Skipgram et CBOW) associées à des méthodes de classification classiques (SVM, régression logistique, arbres de décision, etc). 
+            L'entraînement s'est effectué sur 80% des données, avec une évaluation des performances sur les 20% restants.
+            
+            Nous avons optimisé les hyper-paramètres (e.g. taille du vecteur d’embedding pour Word2Vec ou paramètres de régularisation pour SVM, etc) via une recherche exhaustive avec validation croisée à 5 folds sur l'ensemble d'entraînement. 
+            Ce premier benchmark indique que la vectorisation Bag-of-Words (TF-IDF) combiné à LinearSVC ou xgBoost surpasse les méthodes Word2Vec, avec un f1-score de 0.824 pour LinearSVC basé sur TF-IDF (Figure 7).
+            
+            Les matrices de confusion révèlent la difficulté de ces modèles à différencier des catégories sémantiquement proches, telles que (Figure 8):
+            "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
+            "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour enfants"
+            "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
+            "Jeux vidéo d'occasion", "CDs et équipements de jeux vidéo", "Accessoires gaming"
 
-    
-        L'emploi de modèles basés sur les transformers dans la résolution de problèmes de classification de texte est devenu incontournable. 
-        Nous avons donc poursuivi notre stratégie de classification textuelle en entraînant des transformers de type BERT (Bidirectional Encoder Representations from Transformers). 
-        Plusieurs versions de transformers pré-entraînés sur divers corpus français ont été comparées: CamemBERT-base, CamemBERT-ccnet et FlauBERT. 
-        Chaque modèle a été complété par une tête de classification comprenant une couche dense de 128 unités suivie d'un dropout de 20%, avant d'arriver à la couche finale de classification. 
-        Les modèles ont été entraînés sur 80% des données et testés sur les 20% restants (même partition que mentionnée précédemment).
         
-        L'examen des matrices de confusion révèle que l'utilisation de modèles transformers réduit le taux d'erreur sur les catégories sémantiquement proches. 
-        Néanmoins, ce sont les mêmes catégories qui posent toujours problème. 
-        L'analyse de cas spécifiques de classifications incorrectes met en lumière la complexité inhérente à cette tâche: 
-        il est difficile de déterminer à la simple lecture du texte la catégorie associée à ces produits (Figure XX).
-                        """)
+            L'emploi de modèles basés sur les transformers dans la résolution de problèmes de classification de texte est devenu incontournable. 
+            Nous avons donc poursuivi notre stratégie de classification textuelle en entraînant des transformers de type BERT (Bidirectional Encoder Representations from Transformers). 
+            Plusieurs versions de transformers pré-entraînés sur divers corpus français ont été comparées: CamemBERT-base, CamemBERT-ccnet et FlauBERT. 
+            Chaque modèle a été complété par une tête de classification comprenant une couche dense de 128 unités suivie d'un dropout de 20%, avant d'arriver à la couche finale de classification. 
+            Les modèles ont été entraînés sur 80% des données et testés sur les 20% restants (même partition que mentionnée précédemment).
+            
+            L'examen des matrices de confusion révèle que l'utilisation de modèles transformers réduit le taux d'erreur sur les catégories sémantiquement proches. 
+            Néanmoins, ce sont les mêmes catégories qui posent toujours problème. 
+            L'analyse de cas spécifiques de classifications incorrectes met en lumière la complexité inhérente à cette tâche: 
+            il est difficile de déterminer à la simple lecture du texte la catégorie associée à ces produits (Figure XX).
+                            """)
     
     
     
@@ -755,17 +768,17 @@ if page == pages[5]:
 #Page6 ############################################################################################################################################   
 if page == pages[6]:
     st.title("MODELISATION : fusion")
-    st.subheader("approche")
+    with st.expander("Approche modèle fusion"):
     
-    st.markdown("""
-                composition et la mise en page avant impression. Le Lorem Ipsum est le faux texte standard de l'imprimerie depuis les années 1500, 
-                quand un imprimeur anonyme assembla ensemble des morceaux de texte pour réaliser un livre spécimen de polices de texte. 
-                
-                Il n'a pas fait que survivre cinq siècles, mais s'est aussi adapté à la bureautique informatique, 
-                sans que son contenu n'en soit modifié. Il a été popularisé dans les années 1960 grâce à la vente de feuilles Letraset 
-                contenant des passages du Lorem Ipsum, et, plus récemment, par son inclusion dans des applications de mise en page de texte, 
-                comme Aldus PageMaker.
-                        """)
+        st.markdown("""
+                    composition et la mise en page avant impression. Le Lorem Ipsum est le faux texte standard de l'imprimerie depuis les années 1500, 
+                    quand un imprimeur anonyme assembla ensemble des morceaux de texte pour réaliser un livre spécimen de polices de texte. 
+                    
+                    Il n'a pas fait que survivre cinq siècles, mais s'est aussi adapté à la bureautique informatique, 
+                    sans que son contenu n'en soit modifié. Il a été popularisé dans les années 1960 grâce à la vente de feuilles Letraset 
+                    contenant des passages du Lorem Ipsum, et, plus récemment, par son inclusion dans des applications de mise en page de texte, 
+                    comme Aldus PageMaker.
+                            """)
     
     
     
