@@ -1,6 +1,6 @@
 from joblib import load, dump
 import os
-import config
+import notebook.config as config
 
 import ast
 import pandas as pd
@@ -49,6 +49,11 @@ def load_classifier(name, parallel_gpu=False):
             loaded_model.model, loaded_model.tokenizer, loaded_model.preprocessing_function = loaded_model._getmodel(
                 name)
 
+        if hasattr(loaded_model, 'callbacks'):
+            if loaded_model.callbacks is not None:
+                callbacks = loaded_model.callbacks
+                loaded_model.callbacks = [callback for callback in callbacks if callback[0] != 'TensorBoard']
+        
         # For copies of loaded object to also inherit from name (e.g.
         # for ensemble methods or CV methods), we set from_trained
         # to the model loaded here
@@ -93,10 +98,9 @@ def load_batch_results(filename):
     df_results = pd.read_csv(os.path.join(
         config.path_to_results, filename + '.csv'), index_col=0)
 
-    col_to_convert = ['conf_mat_test', 'probs_test', 'pred_test', 'y_test']
+    col_to_convert = ['conf_mat_test', 'probs_test', 'pred_test', 'y_test', 'score_test_cat']
     for col in col_to_convert:
-        df_results.loc[~df_results[col].isna(), col] = df_results.loc[~df_results[col].isna(
-        ), col].apply(ast.literal_eval).apply(np.array)
+        df_results.loc[~df_results[col].isna(), col] = df_results.loc[~df_results[col].isna(), col].apply(ast.literal_eval).apply(np.array)
 
     return df_results
 
