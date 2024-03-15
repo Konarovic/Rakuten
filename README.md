@@ -1,19 +1,164 @@
-# RakutenTeam
+# DataScientest - RakutenTeam
+- [Thibaud BENOIST](https://www.linkedin.com/in/thibaud-benoist-76593730/)
+- [Julien CHANSON](https://www.linkedin.com/in/julienchanson/)
+- [Julien FOURNIER](https://www.linkedin.com/in/julien-fournier-63530537/)
+- [Alexandre MANGWA](https://www.linkedin.com/in/alexandre-mangwa-7a3aa1140/)
+
 # Rakuten Challenge
 
-This repository features machine learning models developed for a data project at **datascientest focusing on the Rakuten Challenge. 
-The challenge consists in predicting product categories based on text descriptions and images. 
-This repository includes implementations for handling text data, image data, combined multimodal data (text and image), 
-and ensemble models to enhance prediction accuracy in the context of this challenge.
+In this project, the objective was to evaluate the capability of various classification methods to categorize text and image-based products from a marketplace catalog. 
+Specialized models handling text and images separately were first benchmarked before being merged into hybrid classifiers. 
 
-## Overview
+The combination by simple majority vote of the hybrid model (a transformer merging BERT and ViT) with several specialized models (BERT and XGBoost for text; ViT and ResNet for images) yielded a weighted-F1 score of **0.911** after training on 80% of the data. 
+
+This score is highly satisfactory and ranks among the highest scores in both public and private leaderboards on the challenge site from which this dataset originates.
+
+This project was carried out as part of our data scientist training with the [DataScientest](https://datascientest.com/) training organization, from December 2023 to March 2024.
+
+## Repository overview
+```
+├── LICENSE
+├── README.md                       <- The top-level README for developers using this project.
+├── data                            <- Should be in your computer but not on Github (only in .gitignore)
+│   ├── clean                       <- Contains dataset cleaned after preprocessing
+│   │   └── df_text_index.csv       <- Dataset 'text' used for models testing, represents 20% of original dataset
+│   │   └── df_train_index.csv      <- Dataset 'text' used for models training, represents 80% of original dataset
+│   │   └── le_classes.npy          <- Numpy array of label encoder classes 
+│   ├── images                      <- Directory containing the image (to be download on challenge site)
+│   └── raw                         <- The original, immutable data dump.
+│
+├── models                          <- Trained and serialized models, model predictions, or model summaries
+│
+├── notebooks                       <- Jupyter notebooks
+│
+├── reports                         <- The PDF report
+│
+├── requirements.txt                <- The requirements file for pip
+|
+├── env_wsl.yml                         <- The conda yaml environnment file
+│
+├── src                             <- Source code for use in this project.
+
+```
+
+## Quick Start
+
+### Installation
+1- Deploy the python environment :
+```bash
+conda create -p ./env -f env_wsl.yml
+```
+or 
+
+```bash
+pip install -r requirements.txt
+```
+
+2- Download images and dataset on Rakuten challenge site, unzip images 
+
+```
+wget -O data/X_train.csv https://challengedata.ens.fr/participants/challenges/35/download/x-train
+wget -O data/y_train.csv https://challengedata.ens.fr/participants/challenges/35/download/y-train
+wget -O data/X_train.csv https://challengedata.ens.fr/participants/challenges/35/download/x-test
+wget -O data/images/images.zip https://challengedata.ens.fr/participants/challenges/35/download/supplementary-files
+```
+
+### Preprocessing
+
+For launching CleanTextPipeline
+```python
+from src.features.text.pipelines.cleaner import CleanTextPipeline
+pipe = CleanTextPipeline()
+cleaned_descriptions = pipe.fit_transform(descriptions)
+```
+
+For launching CleanDescription
+```python
+from src.features.text.pipelines.corrector import CleanEncodingPipeline
+pipe = CleanEncodingPipeline()
+corrected_descriptions = pipe.fit_transform(cleaned_descriptions)
+```
+
+For translation
+```python
+from src.features.text.transformers.translators import TextTranslator
+
+translator = TextTranslator(
+    text_column="designation",
+    lang_column="language"
+)
+
+print(translator.lang_column, translator.text_column, translator.target_lang)
+
+translations = translator.fit_transform(df)
+```
+
+For preprocessing images
+```python
+from src.features.image.functions.resizer import img_resize
+img_resize('/data/images')
+```
+
+For getting image path from dataset
+```python
+from src.features.images.transformers.path_finder import PathFinder
+
+finder = PathFinder(img_suffix="_resized")
+df["path"] = finder.fit_transform(df)
+```
+
+### Training models
+
+cf. 
+- `notebook/notebook_benchmark_bert.ipynb`
+- `notebook/notebook_benchmark_fusion_meta.ipynb`
+- `notebook/notebook_benchmark_fusion_TF.ipynb`
+- `notebook/notebook_benchmark_img.ipynb`
+- `notebook/notebook_benchmark_txt.ipynb`
+
+### Report 
+cf.
+- `reports/report_figures.ipynb`
+
+
+## Code architecture
+
+### Feature preprocessors
+All features classes are based on sklearn Transformers pattern and organized by function
+The code is in `src/features` directory
+```
+├── images                          <- images preprocessors
+├── text                            <- Should be in your computer but not on Github (only in .gitignore)
+│   ├── pipelines                   <- Combinations 
+│   │   └── cleaner.py              <- Pipeline for basic text cleaning
+│   │   └── corrector.py            <- Pipeline for regex cleaning
+│   ├── transformers                <- Directory containing all the text transformers
+│   │   └── transformer_xxx.py      <- transformer
+
+```
+
+the `vizualisation/wordclouds.py` file contains methods far drawing wordcloud images.
+
+### Classifiers and results parsers
+```
+├── image                           <- images classifiers
+│   ├── classifiers.py              <- file containing ImgClassifier class
+├── multimodal                      <- multimodal classifiers
+│   ├── classifiers.py              <- file containing MetaClassifier and TFmultiClassifier classes
+├── text                            <- text classifiers
+│   ├── classifiers.py              <- file containing MLClassifier and TFbertClassifier classes
+│   ├── vectorizers.py              <- file containing Word2Vec vectorizers transformers 
+├── utils                           <- text classifiers
+│   ├── batch.py                    <- file containing `fit_save_all()` method for orchestrating all benchmarks
+│   ├── load.py                     <- file for loading and saving fitted models
+│   ├── plot.py                     <- helper to plot 
+│   ├── results.py                  <- file containing ResultsManager class
+```
+
 
 There are five classes for different aspects of the multimodal classification task:
-
 - `TFbertClassifier`: For text classification using BERT models.
 - `MLClassifier`: For classification tasks using traditional machine learning algorithms.
 - `ImgClassifier`: For image classification tasks using pre-trained models like Vision Transformer (ViT), EfficientNet, ResNet, VGG16, and VGG19.
 - `TFmultiClassifier`: For multimodal deep networks that combines text and image data.
 - `MetaClassifier`: For applying ensemble methods (voting, stacking, bagging, and boosting) to improve model performance by combining multiple of the above classifiers.
-
-## Quick Start

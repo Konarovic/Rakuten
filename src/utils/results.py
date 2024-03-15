@@ -12,6 +12,30 @@ from tabulate import tabulate
 
 
 class ResultsManager():
+    """
+    Loads and manages the results of the models trained.
+    Results are stored in a CSV file with the following columns:
+    * modality: the type of data used (e.g. text, img, multimodal)
+    * class: the class of the model (e.g. MLClassifier, RandomForestClassifier)
+    * vectorization: the type of vectorization used (e.g. TfidfVectorizer, CountVectorizer)
+    * classifier: the type of classifier used (e.g. LogisticRegression, RandomForestClassifier)
+    * tested_params: the parameters used for the model training
+    * best_params: the best parameters found by the grid search
+    * score_test: the f1 score on the test set
+    * score_test_cat: the f1 score per category on the test set
+    * conf_mat_test: the confusion matrix on the test set
+    * score_train: the f1 score on the train set
+    * fit_time: the time it took to fit the model
+    * score_cv_test: the f1 score on the cross validation test set
+    * score_cv_train: the f1 score on the cross validation train set
+    * fit_cv_time: the time it took to fit the model on the cross validation set
+    * probs_test: the probabilities of the predictions on the test set
+    * pred_test: the predictions on the test set
+    * y_test: the true labels of the test set
+    * model_path: the path to the model file
+    * package: a classification of the model (e.g. text, img, bert)
+    """
+
     def __init__(self, config) -> None:
         self.config = config
         self.df_results = None
@@ -20,6 +44,35 @@ class ResultsManager():
         pass
 
     def add_result_file(self, file_path, package):
+        """
+        Add a result file to the results manager.
+        The file should be a CSV file with the following columns:
+        * modality: the type of data used (e.g. text, img, multimodal)
+        * class: the class of the model (e.g. MLClassifier, RandomForestClassifier)
+        * vectorization: the type of vectorization used (e.g. TfidfVectorizer, CountVectorizer)
+        * classifier: the type of classifier used (e.g. LogisticRegression, RandomForestClassifier)
+        * tested_params: the parameters used for the model training
+        * best_params: the best parameters found by the grid search
+        * score_test: the f1 score on the test set
+        * score_test_cat: the f1 score per category on the test set
+        * conf_mat_test: the confusion matrix on the test set
+        * score_train: the f1 score on the train set
+        * fit_time: the time it took to fit the model
+        * score_cv_test: the f1 score on the cross validation test set
+        * score_cv_train: the f1 score on the cross validation train set
+        * fit_cv_time: the time it took to fit the model on the cross validation set
+        * probs_test: the probabilities of the predictions on the test set
+        * pred_test: the predictions on the test set
+        * y_test: the true labels of the test set
+        * model_path: the path to the model file
+
+        Args:
+            file_path (str): the path to the CSV file
+            package (str): a classification of the model (e.g. text, img, bert)
+
+        Returns:
+            ResultsManager: the results manager
+        """
         df = pd.read_csv(file_path, index_col=0)
         df['package'] = package
         if self.df_results is None:
@@ -32,6 +85,18 @@ class ResultsManager():
         return self
 
     def plot_f1_scores(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
+        """
+        Plot the f1 scores of the models on an horizontal bar plot.
+
+        Args:
+            filter_package (list, optional): a list of packages to filter the results. Defaults to None.
+            filter_model (list, optional): a list of model paths to filter the results. Defaults to None.
+            figsize (tuple, optional): the size of the plot. Defaults to (1200, 600).
+            title (str, optional): the title of the plot. Defaults to None.
+
+        Returns:
+            ResultsManager: the results manager
+        """
 
         # filtre des doublons
         scores = self.df_results[[
@@ -80,22 +145,52 @@ class ResultsManager():
 
         return self
 
-    def plot_f1_scores_by_prdtype(self, filter_package=['text', 'img', 'bert']):
+    def plot_f1_scores_by_prdtype(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
+        """
+        Plot the f1 scores of the models by category on an horizontal bar plot.
+
+        Args:
+            filter_package (list, optional): a list of packages to filter the results. Defaults to None.
+            filter_model (list, optional): a list of model paths to filter the results. Defaults to None.
+            figsize (tuple, optional): the size of the plot. Defaults to (1200, 600).
+            title (str, optional): the title of the plot. Defaults to None.
+
+        Returns:
+            ResultsManager: the results manager
+        """
         scores = self.df_results[[
-            'model_path', 'score_test', 'score_test_cat', 'package', 'classifier', 'vectorization']]
-        scores.loc[:, 'vectorizer'] = scores.apply(lambda row: row.classifier if pd.isna(
+            'model_path',
+            'score_test',
+            'package',
+            'classifier',
+            'vectorization',
+            'score_test_cat']].reset_index(drop=True)
+        scores = scores[scores.score_test_cat.notna()].reset_index(drop=True)
+        index_to_keep = scores.groupby(['model_path'])['score_test'].idxmax()
+        scores = scores.loc[index_to_keep].reset_index()
+
+        # filtre des packages
+        if filter_package is not None:
+            scores = scores[
+                (scores.package.isin(filter_package))
+            ].reset_index(drop=True)
+        if filter_model is not None:
+            scores = scores[
+                (scores.model_path.isin(filter_model))
+            ].reset_index(drop=True)
+
+        # ajout des colonnes pour le plot
+        scores['serie_name'] = scores.apply(lambda row: row.classifier if pd.isna(
+            row.vectorization) else row.classifier + ' - ' + row.vectorization, axis=1)
+        scores['vectorizer'] = scores.apply(lambda row: row.classifier if pd.isna(
             row.vectorization) else row.vectorization, axis=1)
-        scores_index = scores.groupby(['model_path'])['score_test'].idxmax(
-        )
-        scores = scores.loc[scores_index].drop_duplicates()
-        scores = scores[(scores.package.isin(filter_package))
-                        & (scores.score_test_cat.notna())]
+
         scores_to_plot = None
 
         for index, row in scores.iterrows():
             score_to_plot = pd.DataFrame(ast.literal_eval(row.score_test_cat))
             score_to_plot.columns = ['score_test']
-            score_to_plot['model'] = row.model_path
+            score_to_plot['model'] = row.serie_name
             score_to_plot['category'] = self.get_cat_labels()
 
             if scores_to_plot is None:
@@ -119,14 +214,11 @@ class ResultsManager():
         # Update layout to remove legend and adjust xaxis title
         fig.update_layout(
             legend=None,
-            xaxis_title='y_label',
-            yaxis_title='x_label',
-            # bargap=0.3,
-            # bargroupgap=0.2,
+            xaxis_title='f1 score',
+            yaxis_title='classe',
             width=1200,
             height=600,
-            title='title',
-            # yaxis_range=[0.60, 1]
+            title=title,
         )
 
         # Show the plot
@@ -134,6 +226,12 @@ class ResultsManager():
         return self
 
     def get_cat_labels(self):
+        """
+        Get the category labels.
+
+        Returns:
+            list: the category labels ordered by index
+        """
         if self.le is None:
             self.le = LabelEncoder()
             self.le.classes_ = np.load(os.path.join(
@@ -142,6 +240,12 @@ class ResultsManager():
         return self.le.classes_
 
     def get_label_encoder(self):
+        """
+        Get the label encoder.
+
+        Returns:
+            LabelEncoder: the label encoder
+        """
         if self.le is None:
             self.le = LabelEncoder()
             self.le.classes_ = np.load(os.path.join(
@@ -150,9 +254,23 @@ class ResultsManager():
         return self.le
 
     def get_num_classes(self):
+        """
+        Get the number of classes.
+
+        Returns:
+            int: the number of classes
+        """
         return len(self.get_cat_labels())
 
     def plot_classification_report(self, model_path, model_label=None):
+        """
+        Display the classification report of a model.
+        Plot the confusion matrix of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+        """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
 
@@ -165,6 +283,16 @@ class ResultsManager():
         return self
 
     def plot_confusion_matrix(self, model_path, model_label=None):
+        """
+        Plot the confusion matrix of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+
+        Returns:
+            ResultsManager: the results manager
+        """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
 
@@ -177,6 +305,13 @@ class ResultsManager():
         return self
 
     def plot_f1_scores_report(self, model_path, model_label=None):
+        """
+        Display the classification report of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+        """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
 
@@ -186,6 +321,15 @@ class ResultsManager():
         return self
 
     def plot_classification_report_merged(self, model_paths):
+        """
+        Display the classification report of further models merged taking the best predictions of all models.
+
+        Args:
+            model_paths (list): a list of model paths
+
+        Returns:
+            ResultsManager: the results manager
+        """
         y_pred = []
         y_test = self.get_y_test(model_paths[0])
         for model_path in model_paths:
@@ -205,6 +349,16 @@ class ResultsManager():
         return self
 
     def get_y_pred(self, model_path):
+        """
+        Get the predictions of a model.
+        If not available in the dataset results, the model is loaded and the predictions are computed.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            np.array: the predictions
+        """
         if pd.isna(self.df_results[self.df_results.model_path == model_path].pred_test.values[0]):
             clf = load_classifier(model_path)
             y_pred = clf.predict(self.get_X_test())
@@ -215,6 +369,17 @@ class ResultsManager():
         return ast.literal_eval(pred)
 
     def get_y_pred_probas(self, model_path):
+        """
+        Get the probabilities of the predictions of a model.
+        If not available in the dataset results, the model is loaded and the probabilities are computed.
+        If the model does not have a predict_proba method, the probabilities are computed from the predictions.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            np.array: the probabilities
+        """
         if pd.isna(self.df_results[self.df_results.model_path == model_path].probs_test.values[0]):
             clf = load_classifier(model_path)
 
@@ -232,6 +397,15 @@ class ResultsManager():
                                                 model_path].probs_test.values[0])
 
     def get_y_test(self, model_path):
+        """
+        Get the true labels of the test set of a model.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            np.array: the true labels
+        """
         if pd.isna(self.df_results[self.df_results.model_path == model_path].y_test.values[0]):
             df = pd.read_csv(os.path.join(
                 self.config.path_to_data, 'df_test_index.csv'))
@@ -240,6 +414,12 @@ class ResultsManager():
         return ast.literal_eval(self.df_results[self.df_results.model_path == model_path].y_test.values[0])
 
     def get_X_test(self):
+        """
+        Get the test set.
+
+        Returns:
+            pd.DataFrame: the test set
+        """
         if self.X_test is None:
             df = pd.read_csv(os.path.join(
                 self.config.path_to_data, 'df_test_index.csv'))
@@ -258,9 +438,24 @@ class ResultsManager():
         return self.X_test
 
     def get_model_paths(self):
+        """
+        Get all the model paths loaded in the results manager.
+
+        Returns:
+            list: the model paths
+        """
         return self.df_results.model_path.unique()
 
     def get_model_label(self, model_path):
+        """
+        Get the label of a model.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            str: the label of the model
+        """
         label = self.df_results[self.df_results.model_path ==
                                 model_path].classifier.values[0]
         if not pd.isna(self.df_results[self.df_results.model_path == model_path].vectorization.values[0]):
@@ -270,9 +465,28 @@ class ResultsManager():
         return label
 
     def get_f1_score(self, model_path):
+        """
+        Get the f1 score of a model.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            float: the f1 score
+        """
         return self.df_results[self.df_results.model_path == model_path].score_test.values[0]
 
     def voting_pred(self, basenames):
+        """
+        Get the predictions of a voting model.
+        Computes the weighted average of the predictions of the models.
+
+        Args:
+            basenames (list): a list of model paths
+
+        Returns:    
+            np.array: the predictions
+        """
         probas = []
         weight_set = []
 
@@ -286,6 +500,18 @@ class ResultsManager():
         return y_pred
 
     def voting_pred_cross_validate(self, basenames, n_folds=5, dataset_size=0.5):
+        """
+        Print the f1 score of a voting model with cross validation.
+        Computes the weighted average of the predictions of the models.
+
+        Args:
+            basenames (list): a list of model paths
+            n_folds (int, optional): the number of folds. Defaults to 5.
+            dataset_size (float, optional): the size of the dataset. Defaults to 0.5.
+
+        Returns:
+            f1_score (float): the f1 mean score on the test set
+        """
         f_score_cv = []
         probas = []
         weight_set = []
