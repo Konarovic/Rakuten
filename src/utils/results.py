@@ -513,6 +513,7 @@ class ResultsManager():
             f1_score (float): the f1 mean score on the test set
         """
         f_score_cv = []
+        f_score_cv_macro = []
         probas = []
         weight_set = []
         report = []
@@ -551,9 +552,12 @@ class ResultsManager():
             y_pred = np.argmax(probas_weighted, axis=1)
             f_score_cv.append(
                 f1_score(y_test[test_mask], y_pred[test_mask], average='weighted'))
+            f_score_cv_macro.append(
+                f1_score(y_test[test_mask], y_pred[test_mask], average='macro'))
             report.append(['voting fold ' + str(k), f_score_cv[-1]])
 
-        report.append(['voting mean', np.mean(f_score_cv)])
+        report.append(['voting mean weighted', np.mean(f_score_cv)])
+        report.append(['voting mean macro', np.mean(f_score_cv_macro)])
         print(tabulate(report, headers=[
               'model / fold', 'f1 score']))
 
