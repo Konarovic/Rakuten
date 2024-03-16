@@ -1,3 +1,4 @@
+from importlib import reload
 import pandas as pd
 import src.utils.plot as uplot
 import numpy as np
@@ -9,6 +10,7 @@ import re
 from src.utils.load import load_classifier
 from sklearn.metrics import classification_report, f1_score
 from tabulate import tabulate
+reload(uplot)
 
 
 class ResultsManager():
@@ -98,6 +100,30 @@ class ResultsManager():
             ResultsManager: the results manager
         """
 
+        fig = self.build_fig_f1_scores(
+            filter_package=filter_package,
+            filter_model=filter_model,
+            figsize=figsize,
+            title=title
+        )
+        fig.show()
+
+        return self
+
+    def build_fig_f1_scores(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
+        """
+        Instantiate fig object of the f1 scores of the models on an horizontal bar plot.
+
+        Args:
+            filter_package (list, optional): a list of packages to filter the results. Defaults to None.
+            filter_model (list, optional): a list of model paths to filter the results. Defaults to None.
+            figsize (tuple, optional): the size of the plot. Defaults to (1200, 600).
+            title (str, optional): the title of the plot. Defaults to None.
+
+        Returns:
+            ResultsManager: the results manager
+        """
+
         # filtre des doublons
         scores = self.df_results[[
             'model_path',
@@ -132,7 +158,7 @@ class ResultsManager():
         # plot
         if title is None:
             title = 'Benchmark des f1 scores'
-        uplot.plot_bench_results(
+        fig = uplot.get_fig_benchs_results(
             sorted_scores,
             'serie_name',
             'score_test',
@@ -143,7 +169,7 @@ class ResultsManager():
             figsize=figsize
         )
 
-        return self
+        return fig
 
     def plot_f1_scores_by_prdtype(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
         """
@@ -293,16 +319,31 @@ class ResultsManager():
         Returns:
             ResultsManager: the results manager
         """
+        fig = self.get_fig_confusion_matrix(model_path, model_label)
+        fig.show()
+
+        return self
+
+    def get_fig_confusion_matrix(self, model_path, model_label=None):
+        """
+        Build the figure of the confusion matrix of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+
+        Returns:
+            figure to plot
+        """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
 
-        uplot.plot_confusion_matrix(
+        return uplot.get_fig_confusion_matrix(
             y_test,
             y_pred,
             index=self.get_cat_labels(),
             model_label=model_label
         )
-        return self
 
     def plot_f1_scores_report(self, model_path, model_label=None):
         """
@@ -319,6 +360,20 @@ class ResultsManager():
               target_names=self.get_cat_labels()))
 
         return self
+
+    def get_f1_scores_report(self, model_path, model_label=None):
+        """
+        Display the classification report of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+        """
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+
+        return classification_report(y_test, y_pred,
+                                     target_names=self.get_cat_labels(), output_dict=True)
 
     def plot_classification_report_merged(self, model_paths):
         """
@@ -437,13 +492,16 @@ class ResultsManager():
             self.X_test = df[['tokens', 'img_path']]
         return self.X_test
 
-    def get_model_paths(self):
+    def get_model_paths(self, filter_package=None):
         """
         Get all the model paths loaded in the results manager.
 
         Returns:
             list: the model paths
         """
+        if filter_package is not None:
+            return self.df_results[self.df_results.package.isin(filter_package)].model_path.unique()
+
         return self.df_results.model_path.unique()
 
     def get_model_label(self, model_path):

@@ -114,8 +114,33 @@ custom_css = """
         font-size: 30px; /* Taille de police pour le contenu de l'expander */
     }
 
+    .stTabs [data-baseweb="tab-list"] {
+		gap: 12px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+		height: 50px;
+        white-space: pre-wrap;
+		background-color: #F0F2F6;
+		border-radius: 4px 4px 0px 0px;
+		gap: 1px;
+		padding-top: 10px;
+		padding-bottom: 10px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+	.stTabs [aria-selected="true"] {
+  		background-color: #bf0203;
+        color: white;
+	}
+
+    div.st-emotion-cache-16txtl3 {
+        padding: 2rem 2rem;
+    }
 </style>
 """
+st.set_page_config(layout="wide")
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
@@ -126,20 +151,21 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # DEBUT CODE STREAMLIT************************************************************************************************************
 
 # LOGO RAKUTEN // toutes pages
-col1, col2, col3 = st.columns([1, 1, 1])
-with col1:
-    st.write("")
-with col2:
-    print('toto', os.getcwd())
-    image_path = "images/rakuten.png"  # Example image path
-    image = Image.open(image_path)
-    resized_image = image.resize((int(image.width * 1), int(image.height * 1)))
-    st.image(resized_image)
-with col3:
-    st.write("")
+# col1, col2, col3 = st.columns([1, 1, 1])
+# with col1:
+#     st.write("")
+# with col2:
+#     print('toto', os.getcwd())
+#     image_path = "images/rakuten.png"  # Example image path
+#     image = Image.open(image_path)
+#     resized_image = image.resize((int(image.width * 1), int(image.height * 1)))
+#     st.image(resized_image)
+# with col3:
+#     st.write("")
 
 
 # SOMMAIRE
+st.sidebar.image("images/rakuten.png", use_column_width=True)
 st.sidebar.title("Sommaire")
 pages = ["Presentation", "Exploration", "DataViz", 'Préprocessing', "Modélisation texte",
          "Modélisation images", "Modélisation fusion", "Test du modèle", "Conclusion"]
@@ -149,6 +175,21 @@ st.sidebar.markdown("[Thibaud Benoist](link)")
 st.sidebar.markdown("[Julien Chanson](link)")
 st.sidebar.markdown("[Julien Fournier](link)")
 st.sidebar.markdown("[Alexandre Mangwa](link)")
+
+
+def get_results_manager():
+    res = results.ResultsManager(config)
+    res.add_result_file(config.path_to_results +
+                        '/results_benchmark_sklearn.csv', 'text')
+    res.add_result_file(config.path_to_results +
+                        '/results_benchmark_sklearn_tfidf.csv', 'text')
+    res.add_result_file(config.path_to_results +
+                        '/results_benchmark_bert.csv', 'bert')
+    res.add_result_file(config.path_to_results +
+                        '/results_benchmark_img.csv', 'img')
+    res.add_result_file(
+        config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
+    return res
 
 
 # page 0############################################################################################################################################
@@ -610,8 +651,13 @@ if page == pages[3]:
 
 # Page4 ############################################################################################################################################
 if page == pages[4]:
+
     st.title("MODELISATION : texte")
-    with st.expander("Approche modèle texte"):
+
+    tab1, tab2, tab3 = st.tabs(
+        ["Synthèse", "Benchmark des modèles texte", "Détail des performances par modèle"])
+
+    with tab1:
 
         st.markdown("""
                     Classification des images
@@ -637,40 +683,29 @@ if page == pages[4]:
     à celles posant des difficultés dans la classification de texte.
                             """)
 
-    col1, col2 = st.columns([2, 3])
-
-    with col1:
-        res = results.ResultsManager(config)
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_sklearn.csv', 'text')
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_bert.csv', 'bert')
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_img.csv', 'img')
-        res.add_result_file(
-            config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
-        fig = res.plot_f1_scores(filter_package=['bert', 'text'])
+    with tab2:
+        res = get_results_manager()
+        fig = res.build_fig_f1_scores(filter_package=['bert', 'text'])
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # fig=res.plot_confusion_matrix('text/LinearSVC_tfidf', model_label='LinearSVC (TF-IDF)')
-        # st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        st.title("")
-
-        options = ["model1", "model2", "model3"]
-
+    with tab3:
+        res = get_results_manager()
+        models_paths = res.get_model_paths(filter_package=['bert', 'text'])
+        models_paths = np.sort(models_paths)
         option_selected = st.selectbox(
-            "Choisissez un model pour afficher la matrice de confusion  :", options)
+            "Choisissez un model pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path))
 
-        if option_selected == "Model1":
-            st.write("Vous avez sélectionné le model1.")
-        elif option_selected == "Model2":
-            st.write("Vous avez sélectionné le model2.")
-        elif option_selected == "Model3":
-            st.write("Vous avez sélectionné le model3.")
+        col1, col2 = st.columns([1, 1])
 
+        with col1:
+            plt_matrix = res.get_fig_confusion_matrix(
+                option_selected, model_label=res.get_model_label(option_selected))
+            st.pyplot(plt_matrix, use_container_width=True)
+
+        with col2:
+            st.dataframe(pd.DataFrame(
+                res.get_f1_scores_report(option_selected)).T, use_container_width=True)
 # Page5 ############################################################################################################################################
 if page == pages[5]:
     st.title("MODELISATION : images")
@@ -707,15 +742,7 @@ if page == pages[5]:
     col1, col2 = st.columns([2, 3])
 
     with col1:
-        res = results.ResultsManager(config)
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_sklearn.csv', 'text')
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_bert.csv', 'bert')
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_img.csv', 'img')
-        res.add_result_file(
-            config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
+        res = get_results_manager()
         fig = res.plot_f1_scores(filter_package=['bert', 'text'])
 
         st.plotly_chart(fig, use_container_width=True)
@@ -725,7 +752,7 @@ if page == pages[5]:
 
     with col2:
         st.title("")
-
+        res = get_results_manager()
         options = ["model1", "model2", "model3"]
 
         option_selected = st.selectbox(

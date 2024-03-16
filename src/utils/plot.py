@@ -19,6 +19,12 @@ def classification_results(y_true, y_pred, index=None, model_label=None):
 
 
 def plot_confusion_matrix(y_true, y_pred, index=None, model_label=None):
+
+    fig = get_fig_confusion_matrix(y_true, y_pred, index, model_label)
+    fig.show()
+
+
+def get_fig_confusion_matrix(y_true, y_pred, index=None, model_label=None):
     # Build confusion matrix
     conf_mat = round(pd.crosstab(y_true, y_pred, rownames=[
                      'Classes reelles'], colnames=['Classes predites'], normalize='columns')*100)
@@ -52,7 +58,8 @@ def plot_confusion_matrix(y_true, y_pred, index=None, model_label=None):
 
     plt.xlabel('Classes prédites')
     plt.ylabel('Classes réelles')
-    plt.show()
+
+    return plt
 
 
 def plot_training_history(history):
@@ -79,6 +86,13 @@ def plot_training_history(history):
 
 def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=None, title=None, figsize=(1200, 600)):
 
+    fig = get_fig_benchs_results(
+        data, x_column, y_column, x_label, y_label, color_column, title, figsize)
+    fig.show()
+    return plt
+
+
+def get_fig_benchs_results(data, x_column, y_column, x_label, y_label, color_column=None, title=None, figsize=(1200, 600)):
     custom_categories_order = data[x_column].tolist()
     fig = px.bar(
         data,
@@ -117,5 +131,4 @@ def plot_bench_results(data, x_column, y_column, x_label, y_label, color_column=
     )
 
     # Show the plot
-    fig.show()
-    return plt
+    return fig
