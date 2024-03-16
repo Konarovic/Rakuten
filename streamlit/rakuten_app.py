@@ -61,7 +61,7 @@ custom_css = """
         font-family: 'Roboto Light', sans-serif; /* Utiliser Roboto pour tout le texte */
     }
     p {
-        font-size: 20px; /* Taille de la police pour les paragraphes */
+        font-size: 16px; /* Taille de la police pour les paragraphes */
         font-family: 'Roboto Light', sans-serif; /* Utiliser Roboto pour tout le texte */
     }
     
@@ -652,35 +652,72 @@ if page == pages[3]:
 # Page4 ############################################################################################################################################
 if page == pages[4]:
 
-    st.title("MODELISATION : texte")
+    st.title("Modélisation : texte")
 
     tab1, tab2, tab3 = st.tabs(
-        ["Synthèse", "Benchmark des modèles texte", "Détail des performances par modèle"])
+        ["Synthèse", "Benchmark des modèles", "Détail des performances par modèle"])
 
     with tab1:
 
         st.markdown("""
-                    Classification des images
-    CNN et Vision transformer (Figure 11 et 12)
-    Dans le domaine de la classification d'images, l'adoption de réseaux de deep learning est incontournable. 
-    Les réseaux de neurones convolutifs (CNN) sont particulièrement efficaces pour cette tâche mais plus récemment, 
-    les modèles basés sur des architectures de transformer, comme le modèle Vision Transformer (ViT) 
-    se sont aussi révélés efficaces pour la classification d'images. 
+                    
+Dans le contexte de la classification de produits sur la base du texte seul, nous avons commencé par
+examiner différentes techniques de vectorisation (**Bag-of-Words avec TF-IDF et Word2Vec avec Skipgram
+et CBOW**) associées à des méthodes de classification classiques (SVM, régression logistique, arbres de
+décision, etc).
+                    
+Nous avons poursuivi notre stratégie de classification textuelle en
+entraînant des transformers de type **BERT (Bidirectional Encoder Representations from Transformers**).
+Plusieurs versions de transformers pré-entraînés sur divers corpus français ont été comparées:
+**CamemBERT-base**, **CamemBERT-ccnet** et **FlauBERT**.
+                    
+## Meilleurs résultats par modèle
+                    """)
 
-    Pour classifier les produits sur la base des images associées, nous avons donc utilisé différents réseaux convolutifs 
-    (ResNet, EfficientNet et VGG) ainsi que le transformer ViT (Vision Transformer), tous pré-entraînés sur la base de données ImageNet. 
+        col11, col12 = st.columns([1, 1])
+        with col11:
+            st.markdown("""
 
-    Tout comme les modèles BERT pour le traitement de texte, chaque modèle de classification d'images a été doté d'une tête de classification 
-    comprenant une couche dense de 128 unités suivie d'un dropout de 20%, menant à la couche de classification finale. 
-    L'entraînement a suivi une démarche similaire à celle employée pour les modèles BERT: entraînement sur 80% des données, 
-    évaluation sur les 20% restants (même partition que pour le texte), avec un fine-tuning des poids sur 8 époques d'entraînement 
-    et un taux d'apprentissage initial de 5e-5, réduit de 20% à chaque époque.
+| Modèles 'standards'  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| Linear SVC  |   0.824 |  6 |
+| XGBoost  | 0.819 |   3 840 |
+| Logistic Regression  | 0.813 |    179 |
+| SVC  | 0.784 |    2 993 |
+| Random Forest  | 0.776 |    2 344 |
+| Multinomial NB  | 0.771 |    0.45 |
+                    
+""")
 
-    Les f1-scores mesurés sur l'ensemble de test révèlent une supériorité marquée du modèle Vision Transformer (ViT, f1-score = 0.675) 
-    comparativement au meilleur modèle CNN testé (ResNet152, f1-score = 0.658). Ces modèles image restent cependant beaucoup moins performant 
-    que les modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive d'images. Néanmoins, 
-    il est intéressant de noter que les catégories les plus fréquemment confondues par les modèles dédiés aux images correspondent presque exactement 
-    à celles posant des difficultés dans la classification de texte.
+        with col12:
+            st.markdown("""
+| Modèles 'transformers'  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| CamemBERT  |   0.886 |  16 955 |
+| XGBoost  |   0.885 |  17 225 |
+| Logistic Regression  |   0.878 |  15 138 |
+
+                        """)
+
+        st.markdown("""
+## Vectorisation
+                    
+Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation.
+Pour les modèles 'standards', nous avons comparé les performances de la vectorisation Bag-of-Words (TF-IDF) avec Word2Vec (SKIP-GRAM et CBOW).
+                    
+                    
+| Vectorisation  | Description | Hyper-paramètres optimaux |
+| :--------------- |:---------------| :-----|
+| Bag of words (TF-IDF)  | Conversion des textes en vecteur de valeurs TF-IDF a partir de l’ensemble d'entraînement. Pas de limite de taille de vecteur. Valeur de TF-IDF normalisés par la norme euclidienne pour chaque entrée. |  Paramètres par défaut |
+| Word2Vec (Skip-gram)  | Modèle visant à prédire un contexte de mot en fonction d'un mot en particulier | window = 10, vector_size = 500, min_count=2 |
+| Word2Vec (CBOW)  | Modèle visant à prédire un mot en fonctio d'un contexte | window = 10, vector_size = 300, min_count = 3 |
+
+> _A noter que l'ajustement des hyper-paramètres de Word2Vec dépend de la modélisation appliquée ensuite, d'où la nécessité de faire des GridSearchCV combinés si on souhaite optimiser ces paramètres._
+## Méthodologie et benchmark
+- Entrainement sur 80% des donnéees
+- Evaluation des performances sur les 20% restants
+- Optimisation des hyper-paramètres via **GridSearchCV** avec validation croisée à 5 folds sur l'ensemble d'entraînement
+
                             """)
 
     with tab2:
@@ -693,8 +730,9 @@ if page == pages[4]:
         res = get_results_manager()
         models_paths = res.get_model_paths(filter_package=['bert', 'text'])
         models_paths = np.sort(models_paths)
+
         option_selected = st.selectbox(
-            "Choisissez un model pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path))
+            "Choisissez un modèle pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
 
         col1, col2 = st.columns([1, 1])
 
@@ -703,67 +741,100 @@ if page == pages[4]:
                 option_selected, model_label=res.get_model_label(option_selected))
             st.pyplot(plt_matrix, use_container_width=True)
 
+            st.markdown("""
+Les matrices de confusion révèlent la difficulté de ces modèles à différencier des catégories
+sémantiquement proches, telles que :
+- "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
+- "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
+- "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour
+enfants"
+- "Jeux vidéo d'occasion", "CDs et équipements de jeux vidéo", "Accessoires gaming"
+                    """)
+
         with col2:
-            st.dataframe(pd.DataFrame(
-                res.get_f1_scores_report(option_selected)).T, use_container_width=True)
+            st.dataframe(
+                pd.DataFrame(res.get_f1_scores_report(option_selected)).T,
+                use_container_width=True,
+                height=1200
+            )
 # Page5 ############################################################################################################################################
 if page == pages[5]:
-    st.title("MODELISATION : images")
-    with st.expander("Approche modèle image"):
+    st.title("Modélisation : images")
+    tab1, tab2, tab3 = st.tabs(
+        ["Synthèse", "Benchmark des modèles", "Détail des performances par modèle"])
+
+    with tab1:
 
         st.markdown("""
-                    Classification du texte
-            Dans le contexte de la classification de produits sur la base du texte seul, nous avons commencé par examiner différentes techniques de vectorisation 
-            (Bag-of-Words avec TF-IDF et Word2Vec avec Skipgram et CBOW) associées à des méthodes de classification classiques (SVM, régression logistique, arbres de décision, etc). 
-            L'entraînement s'est effectué sur 80% des données, avec une évaluation des performances sur les 20% restants.
-            
-            Nous avons optimisé les hyper-paramètres (e.g. taille du vecteur d’embedding pour Word2Vec ou paramètres de régularisation pour SVM, etc) via une recherche exhaustive avec validation croisée à 5 folds sur l'ensemble d'entraînement. 
-            Ce premier benchmark indique que la vectorisation Bag-of-Words (TF-IDF) combiné à LinearSVC ou xgBoost surpasse les méthodes Word2Vec, avec un f1-score de 0.824 pour LinearSVC basé sur TF-IDF (Figure 7).
-            
-            Les matrices de confusion révèlent la difficulté de ces modèles à différencier des catégories sémantiquement proches, telles que (Figure 8):
-            "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
-            "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour enfants"
-            "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
-            "Jeux vidéo d'occasion", "CDs et équipements de jeux vidéo", "Accessoires gaming"
+                    
+Dans le domaine de la classification d'images, l'adoption de réseaux de deep learning est incontournable.
+Les réseaux de **neurones convolutifs (CNN)** sont particulièrement performants mais plus récemment, les
+modèles basés sur des architectures de transformer, comme le modèle **Vision Transformer (ViT)** se sont
+aussi révélés efficaces.
+Pour classifier les produits sur la base des images associées, nous avons donc utilisé différents réseaux
+convolutifs **(ResNet, EfficientNet et VGG)** ainsi que le transformer **ViT (Vision Transformer)**, tous
+pré-entraînés sur la base de données ImageNet.
+                    
+## Meilleurs résultats par modèle
+                    """)
 
-        
-            L'emploi de modèles basés sur les transformers dans la résolution de problèmes de classification de texte est devenu incontournable. 
-            Nous avons donc poursuivi notre stratégie de classification textuelle en entraînant des transformers de type BERT (Bidirectional Encoder Representations from Transformers). 
-            Plusieurs versions de transformers pré-entraînés sur divers corpus français ont été comparées: CamemBERT-base, CamemBERT-ccnet et FlauBERT. 
-            Chaque modèle a été complété par une tête de classification comprenant une couche dense de 128 unités suivie d'un dropout de 20%, avant d'arriver à la couche finale de classification. 
-            Les modèles ont été entraînés sur 80% des données et testés sur les 20% restants (même partition que mentionnée précédemment).
-            
-            L'examen des matrices de confusion révèle que l'utilisation de modèles transformers réduit le taux d'erreur sur les catégories sémantiquement proches. 
-            Néanmoins, ce sont les mêmes catégories qui posent toujours problème. 
-            L'analyse de cas spécifiques de classifications incorrectes met en lumière la complexité inhérente à cette tâche: 
-            il est difficile de déterminer à la simple lecture du texte la catégorie associée à ces produits (Figure XX).
-                            """)
+        st.markdown("""
 
-    col1, col2 = st.columns([2, 3])
+| Modèles 'standards'  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| ViT_b16  |   0.675 |  10 572 |
+| ResNet152  | 0.658 |   6 894 |
+| ResNet101  | 0.656 |   6 754 |
+| EfficientNetB1  | 0.655 |    6 657 |
+| Random Forest  | 0.653 |    6 720 |
+| Multinomial NB  | 0.620 |    6 054 |
+                    
 
-    with col1:
+> Les F1-scores mesurés sur l'ensemble de test révèlent une supériorité marquée du modèle Vision
+Transformer **(ViT, F1-score = 0.675)** comparativement au meilleur modèle CNN testé **(ResNet152,
+F1-score = 0.658)**. Ces modèles image restent cependant beaucoup moins performants que les
+modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive
+d'images. Néanmoins, il est intéressant de noter que les catégories les plus fréquemment confondues par
+les modèles dédiés aux images correspondent presque exactement à celles posant des difficultés dans la
+classification de texte.
+""")
+
+    with tab2:
         res = get_results_manager()
-        fig = res.plot_f1_scores(filter_package=['bert', 'text'])
+        fig = res.build_fig_f1_scores(filter_package=['img'])
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # fig=res.plot_confusion_matrix('text/LinearSVC_tfidf', model_label='LinearSVC (TF-IDF)')
-        # st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        st.title("")
+    with tab3:
         res = get_results_manager()
-        options = ["model1", "model2", "model3"]
+        models_paths = res.get_model_paths(filter_package=['img'])
+        models_paths = np.sort(models_paths)
 
         option_selected = st.selectbox(
-            "Choisissez un model pour afficher la matrice de confusion  :", options)
+            "Choisissez un modèle pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
 
-        if option_selected == "Model1":
-            st.write("Vous avez sélectionné le model1.")
-        elif option_selected == "Model2":
-            st.write("Vous avez sélectionné le model2.")
-        elif option_selected == "Model3":
-            st.write("Vous avez sélectionné le model3.")
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            plt_matrix = res.get_fig_confusion_matrix(
+                option_selected, model_label=res.get_model_label(option_selected))
+            st.pyplot(plt_matrix, use_container_width=True)
+
+            st.markdown("""
+On retrouve des clusters de catégories difficiles à distinguer assez similaires à ceux des modèles texte :
+- "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
+- "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
+- "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour
+enfants"
+- "Jeux vidéo d'occasion", "CDs et équipements de jeux vidéo", "Accessoires gaming"
+                    """)
+
+        with col2:
+            st.dataframe(
+                pd.DataFrame(res.get_f1_scores_report(option_selected)).T,
+                use_container_width=True,
+                height=1200
+            )
 
 
 # Page6 ############################################################################################################################################
