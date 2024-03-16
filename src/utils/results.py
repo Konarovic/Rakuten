@@ -145,9 +145,10 @@ class ResultsManager():
             ].reset_index(drop=True)
 
         # ajout des colonnes pour le plot
-        scores['serie_name'] = scores.apply(lambda row: row.classifier if pd.isna(
+
+        scores['serie_name'] = scores.apply(lambda row: row.model_path.split('/')[-1] if pd.isna(
             row.vectorization) else row.classifier + ' - ' + row.vectorization, axis=1)
-        scores['vectorizer'] = scores.apply(lambda row: row.classifier if pd.isna(
+        scores['vectorizer'] = scores.apply(lambda row: row.model_path.split('/')[-1] if pd.isna(
             row.vectorization) else row.vectorization, axis=1)
 
         # tri par score décroissant
@@ -620,3 +621,28 @@ class ResultsManager():
               'model / fold', 'f1 score']))
 
         return np.mean(f_score_cv)
+
+    def get_voting_confusion_matrix(self, models_paths, model_label=None):
+        y_pred = self.voting_pred(models_paths)
+        y_test = self.get_y_test(models_paths[0])
+
+        return uplot.get_fig_confusion_matrix(
+            y_test,
+            y_pred,
+            index=self.get_cat_labels(),
+            model_label=model_label
+        )
+
+    def get_voting_f1_scores_report(self, models_paths, model_label=None):
+        """
+        Display the classification report of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+        """
+        y_pred = self.voting_pred(models_paths)
+        y_test = self.get_y_test(models_paths[0])
+
+        return classification_report(y_test, y_pred,
+                                     target_names=self.get_cat_labels(), output_dict=True)

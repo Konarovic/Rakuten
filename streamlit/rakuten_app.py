@@ -189,6 +189,8 @@ def get_results_manager():
                         '/results_benchmark_img.csv', 'img')
     res.add_result_file(
         config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
+    res.add_result_file(
+        config.path_to_results+'/results_benchmark_fusion_meta.csv', 'fusion')
     return res
 
 
@@ -677,8 +679,8 @@ Plusieurs versions de transformers pré-entraînés sur divers corpus français 
         col11, col12 = st.columns([1, 1])
         with col11:
             st.markdown("""
-
-| Modèles 'standards'  | f1 score | Durée fit (s) |
+### Modèles standards
+| Modèle  | f1 score | Durée fit (s) |
 | :--------------- |---------------:| -----:|
 | Linear SVC  |   0.824 |  6 |
 | XGBoost  | 0.819 |   3 840 |
@@ -691,7 +693,8 @@ Plusieurs versions de transformers pré-entraînés sur divers corpus français 
 
         with col12:
             st.markdown("""
-| Modèles 'transformers'  | f1 score | Durée fit (s) |
+### Modèles transformers
+| Modèle  | f1 score | Durée fit (s) |
 | :--------------- |---------------:| -----:|
 | CamemBERT  |   0.886 |  16 955 |
 | XGBoost  |   0.885 |  17 225 |
@@ -780,7 +783,7 @@ pré-entraînés sur la base de données ImageNet.
 
         st.markdown("""
 
-| Modèles 'standards'  | f1 score | Durée fit (s) |
+| Modèle  | f1 score | Durée fit (s) |
 | :--------------- |---------------:| -----:|
 | ViT_b16  |   0.675 |  10 572 |
 | ResNet152  | 0.658 |   6 894 |
@@ -839,54 +842,147 @@ enfants"
 
 # Page6 ############################################################################################################################################
 if page == pages[6]:
-    st.title("MODELISATION : fusion")
-    with st.expander("Approche modèle fusion"):
+    st.title("Modélisation : fusion")
+
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Synthèse", "Benchmark des modèles", "Détail des performances par modèle", "Simulateur de fusion"])
+
+    with tab1:
 
         st.markdown("""
-                    composition et la mise en page avant impression. Le Lorem Ipsum est le faux texte standard de l'imprimerie depuis les années 1500, 
-                    quand un imprimeur anonyme assembla ensemble des morceaux de texte pour réaliser un livre spécimen de polices de texte. 
                     
-                    Il n'a pas fait que survivre cinq siècles, mais s'est aussi adapté à la bureautique informatique, 
-                    sans que son contenu n'en soit modifié. Il a été popularisé dans les années 1960 grâce à la vente de feuilles Letraset 
-                    contenant des passages du Lorem Ipsum, et, plus récemment, par son inclusion dans des applications de mise en page de texte, 
-                    comme Aldus PageMaker.
-                            """)
+Nous avons retenu les deux meilleurs architectures obtenues sur le texte et les images
+(i.e. camemBERT et ViT). Plusieurs architectures de modèles effectuant la fusion entre ces deux
+transformers ont ensuite été testées et comparées:
+- Approches d’ensemble: classifiers de type voting ou stacking (par régression logistique) opérant sur
+les logits de sortie des modèles spécialisés pré-entraînés. _Le poids attribué à chaque modèle dans le
+voting classifier est défini par le rapport des F1-scores des modèles spécialisés (par exemple:
+camemBERT: F1-scoreBERT / (F1-scoreBERT + F1-scoreViT) = 0.57; ViT: F1-scoreViT / (F1-scoreBERT +
+F1-scoreViT) = 0.43)_.                   
+Pour éviter tout leakage des F1-scores utilisés comme poids du modèle, la
+performance du voting classifier est estimée par validation croisée à 5 folds sur l’ensemble de test.
+- Approche transformer (TF): fusion des sorties des derniers blocs de transformer de camemBERT et
+ViT par l'intermédiaire d’un bloc transformer cross-attentionnel, suivi d’un nombre variable de blocs
+de transformer classiques avec self-attention (TF: 1, 3 ou 6 blocs).
 
-    col1, col2 = st.columns([2, 3])
+Après analyse approfondie des résultats obtenus, une troisième approche de fusion a été testée : **l'approche hybride**.
+Cette approche consiste à intégrer dans un modèle voting classifier une combinaison de plusieurs modèles.
+Le meilleur de ces modèles hybrides combine les classifiers suivants: TF6 (hybride),
+camembert-base-ccnet (texte), flaubert-base-uncased (texte), xgboost_tfidf (texte), vit_b16 (image),
+ResNet152 (image). Ce modèle permet de gagner plus d’un point de F1-score par rapport au modèle
+multimodale simple de type transformer **(F1-score = 0.911)**
+## Meilleurs résultats par modèle
+                    """)
+        col11, col12 = st.columns([1, 1])
+        with col11:
+            st.markdown("""
 
-    with col1:
-        res = results.ResultsManager(config)
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_sklearn.csv', 'text')
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_bert.csv', 'bert')
-        res.add_result_file(config.path_to_results +
-                            '/results_benchmark_img.csv', 'img')
-        res.add_result_file(
-            config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
-        fig = res.plot_f1_scores(filter_package=['bert', 'text'])
+### Modèles fusion basés sur CamemBERT-ccnet et ViT 
+| Modèle  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| TF6  |   0.899 |  28 874 |
+| TF3  | 0.897 |   24 375 |
+| TF1  | 0.899 |   20 773 |
+| Voting  | 0.892 |   NA |
+| Stacking  | 0.891 |    1 311 |
+
+""")
+        with col12:
+            st.markdown("""
+### Modèles fusion hybrides
+                        
+| Modèle  | f1 score |
+| :--------------- |---------------:|
+| **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.911** |
+| TF6, CamemBERT, ViT | 0.909 |
+| TF6, FlauBERT, ResNet152  | 0.907 |
+| CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
+| CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
+| SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
+
+
+                        """)
+    with tab2:
+        res = get_results_manager()
+
+        # scores = scores[['serie_name', 'score_test',
+        #                  'vectorizer']].reset_index()
+        # sorted_scores = scores.sort_values(by='score_test', ascending=False)
+
+        # # plot
+        # if title is None:
+        #     title = 'Benchmark des f1 scores'
+        # fig = uplot.get_fig_benchs_results(
+        #     sorted_scores,
+        #     'serie_name',
+        #     'score_test',
+        #     'model',
+        #     'f1 score',
+        #     color_column='vectorizer',
+        #     title=title,
+        #     figsize=figsize
+        # )
+        fig = res.build_fig_f1_scores(filter_package=['fusion'])
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # fig=res.plot_confusion_matrix('text/LinearSVC_tfidf', model_label='LinearSVC (TF-IDF)')
-        # st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        st.title("")
-
-        options = ["model1", "model2", "model3"]
+    with tab3:
+        res = get_results_manager()
+        models_paths = res.get_model_paths(filter_package=['fusion'])
+        models_paths = np.sort(models_paths)
 
         option_selected = st.selectbox(
-            "Choisissez un model pour afficher la matrice de confusion  :", options)
+            "Choisissez un modèle pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
 
-        if option_selected == "Model1":
-            st.write("Vous avez sélectionné le model1.")
-        elif option_selected == "Model2":
-            st.write("Vous avez sélectionné le model2.")
-        elif option_selected == "Model3":
-            st.write("Vous avez sélectionné le model3.")
+        col1, col2 = st.columns([1, 1])
 
+        with col1:
+            plt_matrix = res.get_fig_confusion_matrix(
+                option_selected, model_label=res.get_model_label(option_selected))
+            st.pyplot(plt_matrix, use_container_width=True)
 
+            st.markdown("""
+On retrouve des clusters de catégories difficiles à distinguer assez similaires à ceux des modèles texte :
+- "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
+- "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
+- "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour
+enfants"
+- "Jeux vidéo d'occasion", "CDs et équipements de jeux vidéo", "Accessoires gaming"
+                    """)
+
+        with col2:
+            st.dataframe(
+                pd.DataFrame(res.get_f1_scores_report(option_selected)).T,
+                use_container_width=True,
+                height=1200
+            )
+
+    with tab4:
+        res = get_results_manager()
+        models_paths = res.get_model_paths()
+        models_paths = np.sort(models_paths)
+
+        options_selected = st.multiselect(
+            "Choisissez plusieurs modèles pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            if len(options_selected) > 1:
+                plt_matrix = res.get_voting_confusion_matrix(
+                    options_selected, model_label="fusion personnalisée")
+                st.pyplot(plt_matrix, use_container_width=True)
+            else:
+                st.write("Sélectionnez au moins deux modèles")
+
+        with col2:
+            if len(options_selected) > 1:
+                st.dataframe(
+                    pd.DataFrame(res.get_voting_f1_scores_report(
+                        options_selected)).T,
+                    use_container_width=True,
+                    height=1200
+                )
 # Page7 ############################################################################################################################################
 if page == pages[7]:
     st.title("TEST du modele")
