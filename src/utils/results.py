@@ -424,6 +424,28 @@ class ResultsManager():
 
         return ast.literal_eval(pred)
 
+    def predict(self, model_path, X):
+        """
+        Get the predictions of a model.
+        If not available in the dataset results, the model is loaded and the predictions are computed.
+
+        Args:
+            model_path (str): the path to the model file
+            X (pd.DataFrame): the data to predict
+
+        Returns:
+            np.array: the predictions
+        """
+        # try:
+        clf = load_classifier(model_path)
+        y_pred = clf.predict(X)
+        labels = self.get_label_encoder().inverse_transform(y_pred)
+        # except Exception as e:
+        # print(e)
+        # labels = None
+
+        return labels
+
     def get_y_pred_probas(self, model_path):
         """
         Get the probabilities of the predictions of a model.

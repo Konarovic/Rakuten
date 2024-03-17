@@ -985,11 +985,13 @@ enfants"
                 )
 # Page7 ############################################################################################################################################
 if page == pages[7]:
+    import streamlit.components.v1 as components
     st.title("TEST du modele")
     st.header("Classification à partir d'images ou de texte")
 
     st.subheader("image ou texte")
-
+    components.iframe(
+        "https://fr.shopping.rakuten.com/", width=600, height=800)
     options = ["Image", "Texte"]
 
     option_selected = st.selectbox("Image ou texte  :", options)
@@ -1003,8 +1005,7 @@ if page == pages[7]:
                 "Entrez l'URL de l'image", "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/313370685/original/81a70456ffda906bfb8763cb2cb549e1359b98a7/create-web-app-with-steamlit.png")
 
             # Affichage de l'image à partir de l'URL
-            st.image(image_url, caption="Image téléchargée depuis un lien URL")
-
+            # st.image(image_url, caption="Image téléchargée depuis un lien URL")
             uploaded_file = st.file_uploader(
                 "Télécharger une image", type=['jpg', 'png'])
             # Vérifier si un fichier a été téléchargé
