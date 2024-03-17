@@ -56,6 +56,7 @@ from vit_keras import vit
 
 import numpy as np
 import pandas as pd
+import cv2
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, f1_score, confusion_matrix
@@ -370,6 +371,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         if not isinstance(X, np.ndarray):
             dataset = self._getdataset(X, training=False)
         else:
+            X = cv2.resize(X, self.img_size[:2])
             X = self.preprocessing_function(X)
             dataset = X.reshape((1,) + X.shape)
             
@@ -393,6 +395,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         if not isinstance(X, np.ndarray):
             dataset = self._getdataset(X, training=False)
         else:
+            X = cv2.resize(X, self.img_size[:2])
             X = self.preprocessing_function(X)
             dataset = X.reshape((1,) + X.shape)
             

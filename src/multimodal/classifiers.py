@@ -83,6 +83,7 @@ from vit_keras import vit
 
 import numpy as np
 import pandas as pd
+import cv2
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import VotingClassifier, StackingClassifier, BaggingClassifier, AdaBoostClassifier
@@ -614,7 +615,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         else:
             X_tokenized = self.tokenizer(X['text'], 
                                          padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
-            X_image = self.preprocessing_function(X['image'])
+            X_image = cv2.resize(X['image'], self.img_size[:2])
+            X_image = self.preprocessing_function(X_image)
             X_image = X_image.reshape((1,) + X_image.shape)
             image_processed = self.preprocessing_function(X_image)
             dataset = [{"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, image_processed]
@@ -645,7 +647,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         else:
             X_tokenized = self.tokenizer(X['text'], 
                                          padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
-            X_image = self.preprocessing_function(X['image'])
+            X_image = cv2.resize(X['image'], self.img_size[:2])
+            X_image = self.preprocessing_function(X_image)
             X_image = X_image.reshape((1,) + X_image.shape)
             image_processed = self.preprocessing_function(X_image)
             dataset = [{"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, image_processed]
