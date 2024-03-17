@@ -422,13 +422,19 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
 
         Arguments:
         * X: The text data for prediction. Can be an array like a pandas series, 
-          or a dataframe with text in column "tokens"
+          a dataframe with text in column "tokens" or a single string
 
         Returns:
         An array of predicted class labels.
         """
-        dataset = self._getdataset(X, training=False)
-        dataset = dataset.batch(self.batch_size)
+        
+        if not isinstance(X, str):
+            dataset = self._getdataset(X, training=False)
+            dataset = dataset.batch(self.batch_size)
+        else:
+            X_tokenized = self.tokenizer(X, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            dataset = {"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}
+        
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
 
@@ -438,14 +444,20 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
 
         Arguments:
         * X: The text data for which to predict class probabilities.
-          Can be an array like a pandas series, or a dataframe with 
-          text in column "tokens"
+          Can be an array like a pandas series, a dataframe with 
+          text in column "tokens"  or a single string
 
         Returns:
         An array of class probabilities for each input instance.
         """
-        dataset = self._getdataset(X, training=False)
-        dataset = dataset.batch(self.batch_size)
+        
+        if not isinstance(X, str):
+            dataset = self._getdataset(X, training=False)
+            dataset = dataset.batch(self.batch_size)
+        else:
+            X_tokenized = self.tokenizer(X, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            dataset = {"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}
+          
         probs = self.model.predict(dataset)
 
         return probs
