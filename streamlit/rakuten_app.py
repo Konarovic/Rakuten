@@ -15,7 +15,9 @@ from importlib import reload
 
 
 from src.utils import results
+from src.utils import scrapper
 reload(results)
+reload(scrapper)
 
 
 # chargement des Ressources
@@ -985,13 +987,17 @@ enfants"
                 )
 # Page7 ############################################################################################################################################
 if page == pages[7]:
-    import streamlit.components.v1 as components
     st.title("TEST du modele")
     st.header("Classification à partir d'images ou de texte")
 
     st.subheader("image ou texte")
-    components.iframe(
-        "https://fr.shopping.rakuten.com/", width=600, height=800)
+    txt = st.text_area(
+        "Collez ici le contenu html de la page produit de Rakuten", value="")
+    if st.button("valider"):
+        scrap = scrapper.RakutenScrapper()
+        des, desc, img = scrap.get_rakuten_product_infos(txt)
+        st.write(des)
+
     options = ["Image", "Texte"]
 
     option_selected = st.selectbox("Image ou texte  :", options)

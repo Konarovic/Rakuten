@@ -10,6 +10,9 @@ import re
 from src.utils.load import load_classifier
 from sklearn.metrics import classification_report, f1_score
 from tabulate import tabulate
+import requests
+from PIL import Image
+from io import BytesIO
 reload(uplot)
 
 
@@ -424,7 +427,7 @@ class ResultsManager():
 
         return ast.literal_eval(pred)
 
-    def predict(self, model_path, X):
+    def predict(self, model_path, text=None, img_url=None):
         """
         Get the predictions of a model.
         If not available in the dataset results, the model is loaded and the predictions are computed.
@@ -438,11 +441,21 @@ class ResultsManager():
         """
         # try:
         clf = load_classifier(model_path)
-        y_pred = clf.predict(X)
-        labels = self.get_label_encoder().inverse_transform(y_pred)
-        # except Exception as e:
-        # print(e)
-        # labels = None
+
+        if img_url is None:
+            pred = clf.predict(text)
+        else:
+            img_res = requests.get(img_url, stream=True)
+            if img_res.status_code == 200:
+                img = Image.open(BytesIO(img_res.content))
+                img_array = np.array(img)
+
+            if text is None:
+                pred = clf.predict(img_url)
+            else:
+                pred = clf.predict({'text': text, 'image': img_array})
+
+        labels = self.get_label_encoder().inverse_transform(pred)
 
         return labels
 
