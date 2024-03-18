@@ -41,6 +41,7 @@ graf_corr = "images/corr.jpg"
 graf_WC = "images/maskWC.png"
 img_rakuten_website = "images/rakuten_website.png"
 corr = 'images/corr_cat.jpg'
+image_BERT = 'images/image_BERT.png'
 
 # dossier images
 wc_folder = "Images/wc_visuels"
@@ -689,45 +690,54 @@ if page == pages[4]:
     st.title("Modélisation : texte")
 
     tab1, tab2, tab3 = st.tabs(
-        ["Approche", "Benchmark des modèles", "Détail des performances par modèle"])
+        ["**Approche**", "**Benchmark des modèles**", "**Détail des performances par modèle**"])
 
     with tab1:
-
         st.markdown("""
-                    
-Dans le contexte de la classification de produits sur la base du texte seul, nous avons commencé par
-examiner différentes techniques de vectorisation (**Bag-of-Words avec TF-IDF et Word2Vec avec Skipgram
-et CBOW**) associées à des méthodes de classification classiques (SVM, régression logistique, arbres de
-décision, etc).
-                    
-Nous avons poursuivi notre stratégie de classification textuelle en
-entraînant des transformers de type **BERT (Bidirectional Encoder Representations from Transformers**).
-Plusieurs versions de transformers pré-entraînés sur divers corpus français ont été comparées:
-**CamemBERT-base**, **CamemBERT-ccnet** et **FlauBERT**.
-                    
-## Meilleurs résultats par modèle
-                    """)
+                        
+    Classification de produits sur la base du texte seul en deux temps: 
+    - approche
+    combinant différentes techniques de vectorisation à des méthodes de classification classiques.
+    - transformers de type **BERT (Bidirectional Encoder Representations from Transformers**).
+                        """)
+        tab1_1, tab1_2, tab1_3 = st.tabs(["ML standard", "BERT", "Methode"])
+        with tab1_1:        
+            st.markdown("""
+    ### Classifieurs
+    **SVM** (LinearSVC), **boosted trees** (xgboost), **regression logistique**, **bayesien** (MultinomialNB), etc
+    ### Vectorisation
+                       
+    | Vectorisation  | Description | Hyper-paramètres optimaux |
+    | :--------------- |:---------------| :-----|
+    | **Bag of words (TF-IDF)**  | Vecteur de valeurs TF-IDF a partir de l’ensemble d'entraînement, sans de limite de taille de vecteur |  Paramètres par défaut |
+    | **Word2Vec (Skip-gram)**  | Vecteur d'embedding de taille predefini | window = 10, vector_size = 500, min_count=2 |
+    | **Word2Vec (CBOW)**  | Vecteur d'embedding de taille predefini | window = 10, vector_size = 300, min_count = 3 |
 
-        st.markdown("""
-## Vectorisation
-                    
-Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation.
-Pour les modèles 'standards', nous avons comparé les performances de la vectorisation Bag-of-Words (TF-IDF) avec Word2Vec (SKIP-GRAM et CBOW).
-                    
-                    
-| Vectorisation  | Description | Hyper-paramètres optimaux |
-| :--------------- |:---------------| :-----|
-| Bag of words (TF-IDF)  | Conversion des textes en vecteur de valeurs TF-IDF a partir de l’ensemble d'entraînement. Pas de limite de taille de vecteur. Valeur de TF-IDF normalisés par la norme euclidienne pour chaque entrée. |  Paramètres par défaut |
-| Word2Vec (Skip-gram)  | Modèle visant à prédire un contexte de mot en fonction d'un mot en particulier | window = 10, vector_size = 500, min_count=2 |
-| Word2Vec (CBOW)  | Modèle visant à prédire un mot en fonctio d'un contexte | window = 10, vector_size = 300, min_count = 3 |
+    > _A noter que l'ajustement des hyper-paramètres de Word2Vec dépend de la modélisation appliquée ensuite, d'où la nécessité de faire des GridSearchCV combinés si on souhaite optimiser ces paramètres._
 
-> _A noter que l'ajustement des hyper-paramètres de Word2Vec dépend de la modélisation appliquée ensuite, d'où la nécessité de faire des GridSearchCV combinés si on souhaite optimiser ces paramètres._
-## Méthodologie et benchmark
-- Entrainement sur 80% des donnéees
-- Evaluation des performances sur les 20% restants
-- Optimisation des hyper-paramètres via **GridSearchCV** avec validation croisée à 5 folds sur l'ensemble d'entraînement
-
-                            """)
+       Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation.                         """)
+        
+        with tab1_2:
+            st.markdown("""
+    Different transformers, pré-entraînés sur divers corpus français, ont été comparés (**CamemBERT-base**, **CamemBERT-ccnet** et **FlauBERT**)""")    
+            
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                st.write("")
+            with col2:
+                st.image(image_BERT, use_column_width=True)
+            with col3:
+                st.write("")
+                
+            st.markdown("""
+    _Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation._""") 
+            
+        with tab1_3:        
+            st.markdown("""
+    ## Méthodologie et benchmark
+    - Entrainement sur 80% des donnéees
+    - Evaluation des performances sur les 20% restants
+    - Optimisation des hyper-paramètres via **GridSearchCV** avec validation croisée à 5 folds sur l'ensemble d'entraînement""")
 
     with tab2:
         res = get_results_manager()
@@ -796,7 +806,7 @@ enfants"
 if page == pages[5]:
     st.title("Modélisation : images")
     tab1, tab2, tab3 = st.tabs(
-        ["Synthèse", "Benchmark des modèles", "Détail des performances par modèle"])
+        ["**Approche**", "**Benchmark des modèles**", "**Détail des performances par modèle**"])
 
     with tab1:
 
