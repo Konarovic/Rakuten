@@ -141,11 +141,11 @@ df["path"] = finder.fit_transform(df)
 ### Training models
 
 cf. 
-- `notebook/notebook_benchmark_bert.ipynb`
+- `notebook/notebook_benchmark_txt_bert.ipynb`
 - `notebook/notebook_benchmark_fusion_meta.ipynb`
 - `notebook/notebook_benchmark_fusion_TF.ipynb`
 - `notebook/notebook_benchmark_img.ipynb`
-- `notebook/notebook_benchmark_txt.ipynb`
+- `notebook/notebook_benchmark_txt_ML.ipynb`
 
 ### Report 
 cf.
