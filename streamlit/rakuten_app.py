@@ -16,6 +16,7 @@ from importlib import reload
 
 from src.utils import results
 from src.utils import scrapper
+from src.utils.visualize import plot_weighted_text
 reload(results)
 reload(scrapper)
 
@@ -226,12 +227,8 @@ if page == pages[0]:
         st.markdown(
             """
             ###
-            ### - Produire un modèle capable de classifier précisément (au sens du f1-score) chacun des produits.
-            ###
-            ###
+            ### - Produire un modèle capable de classifier précisément (au sens du weighted f1-score) chacun des produits.
             ### - Produire un modèle robuste
-            ###
-            ### 
             ### - Produire un modèle multi-modal (texte + image).
             ###
             """)
@@ -1041,7 +1038,6 @@ enfants"
                 )
 # Page7 ############################################################################################################################################
 if page == pages[7]:
-    st.title("TEST du modele")
     st.header("Classification à partir d'images ou de texte")
     options = ["html", "data", 'Démo "poussette"',
                'Démo "livre Dune"', 'Démo "jeu Dune"']
@@ -1091,9 +1087,27 @@ if page == pages[7]:
 
         col1, col2 = st.columns([2, 4])
         with col1:
-            st.write(designation)
-            st.image(image_url, use_column_width=True)
+            tab11, tab12 = st.tabs(["Données brutes", "GradCam"])
+            with tab11:
+                st.write(designation)
+                st.image(image_url, use_column_width=True)
+            with tab12:
+                icam = pred['icam']
+                fig, ax = plt.subplots(1, 2)
+                ax[0].imshow(icam.image)
+                ax[0].axis('off')
+                ax[0].set_title('original')
+                ax[1].imshow(icam.image_masked)
+                ax[1].axis('off')
+                ax[1].set_title('deepCAM')
+                st.pyplot(fig)
 
+                fig, ax = plt.subplots()
+                plot_weighted_text(0, 0.7, icam.text, icam.text_masked*0+0.4, base_font_size=80,
+                                   char_per_line=80, title='Original', title_color='blue', title_fontsize=100, ax=ax)
+                plot_weighted_text(0, ax.get_ylim()[0], icam.text, icam.text_masked*5, base_font_size=60,
+                                   char_per_line=100, title='deepCAM', title_color='purple', title_fontsize=100, ax=ax)
+                st.pyplot(fig)
         with col2:
             st.write("<p>Classe prédite : <strong>{}</strong></p>".format(
                 pred['pred_labels'][0]), unsafe_allow_html=True)
@@ -1101,6 +1115,8 @@ if page == pages[7]:
                 true_cat), unsafe_allow_html=True)
             st.write("<p>Probabilité : <strong>{:.2f}</strong></p>".format(
                 np.max(pred['pred_probas'][0])), unsafe_allow_html=True)
+            st.write("<p>Temps : <strong>{:.2f} s</strong></p>".format(
+                pred['time']), unsafe_allow_html=True)
 
             # Créer les données pour le graphique
             categories = pred['labels']

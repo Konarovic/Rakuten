@@ -13,6 +13,8 @@ from tabulate import tabulate
 import requests
 from PIL import Image
 from io import BytesIO
+from src.utils.visualize import deepCAM, plot_weighted_text
+import time
 reload(uplot)
 
 
@@ -432,13 +434,14 @@ class ResultsManager():
         probas = []
         weight_set = []
         img_array = None
+        icam = None
 
         if img_url:
             img_res = requests.get(img_url, stream=True)
             if img_res.status_code == 200:
                 img = Image.open(BytesIO(img_res.content))
                 img_array = np.array(img)
-
+        start_time = time.time()
         for basename in models_paths:
             probas.append(
                 np.array(self.predict_proba(basename, text, img_array)))
@@ -446,12 +449,27 @@ class ResultsManager():
 
         probas_weighted = np.sum([probas[i] * weight_set[i]
                                   for i in range(len(probas))], axis=0)
+        end_time = time.time()
 
         pred = np.argmax(probas_weighted, axis=1)
 
         labels = self.get_label_encoder().inverse_transform(pred)
 
-        return {'pred_labels': labels, 'pred_probas': probas_weighted.tolist(), 'labels': self.get_cat_labels()}
+        # gradcam
+        clf_fusion = load_classifier('fusion/camembert-base-vit_b16_TF6')
+        icam = deepCAM(clf_fusion)
+
+        # Pick some data
+        # idx = 0
+        # image = cv2.imread(data['img_path'][idx])
+        # text = data['tokens'][idx]
+
+        # Format it as a dictionnary since here we've got a fusion model
+        X = {'text': text, 'image': img_array}
+
+        # Compute masks and masked inputs
+        icam.computeMaskedInput(X, min_factor=0.0)
+        return {'pred_labels': labels, 'pred_probas': probas_weighted.tolist(), 'labels': self.get_cat_labels(), 'icam': icam, 'time': end_time - start_time}
 
     def predict_proba(self, model_path, text, img):
         clf = load_classifier(model_path)
