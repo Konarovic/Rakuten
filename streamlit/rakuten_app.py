@@ -441,14 +441,13 @@ if page == pages[2]:
     # Dataviz
     st.title("DATAVIZ")
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Produits par catégories", "Articles sans descriptions par catégories",
-                                            "Longeur des textes par catégories", "Langues par catégories", 'Corrélation entre catégories'])
+    tab1, tab2, tab3, tab4 = st.tabs(["**Déséquilibre de classes**", "**Déséquilibre de texte**",
+                                            "**Langues par catégories**", '**Corrélation entre catégories**'])
 
     with tab1:
-        st.header("Produits par catégories")
         st.markdown(
             """
-        **Déséquilibre de classes** : Les catégories de produit du jeu de données affichent un déséquilibre notable, 
+        Les catégories de produit du jeu de données affichent un déséquilibre notable, 
         allant de moins de 100 articles pour certaines catégories telles que figurines, confiserie ou vêtements pour enfants, 
         jusqu'à plusieurs milliers d’articles pour des catégories comme le mobilier ou les accessoires de piscine
         """
@@ -461,7 +460,7 @@ if page == pages[2]:
         fig = px.bar(
             x=nb_categories_sorted.index,
             y=nb_categories_sorted.values,
-            title="Nombre de produits par catégorie (trié)",
+            title="Nombre de produits par catégorie",
             labels={"x": "Catégories", "y": "Nombre de produits"},
             color=nb_categories_sorted,
             color_discrete_sequence=px.colors.sequential.Viridis,
@@ -472,131 +471,124 @@ if page == pages[2]:
         st.plotly_chart(fig)
 
     with tab2:
-        st.header("Articles sans descriptions par catégories")
-
         st.markdown(
             """
-        **Déséquilibre de classes** : Certaines produits n'ont pas de descriptions, on retrouve ici majoritairement les livres BD, les magazines d'occasion, les cartes de jeux.
-        """
-        )
-
-        # Compter le nombre de produits par catégorie
-        cat_count = df_train_clean["prdtypefull"].value_counts()
-        df = df_train_clean.loc[df_train_clean['description'].isna()]
-        df['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
-            ' - ').str[1]
-        df_count = df['prdtypefull'].value_counts().sort_values()
-
-        # Créer un graphique à barres avec plotly express
-        fig = px.bar(
-            x=df_count.index,
-            y=df_count.values,
-            title="Categories avec le plus de valeurs manquantes en description",
-            labels={"x": "Catégories", "y": "Nombre de produits"},
-            color=df_count.values,
-            color_continuous_scale='viridis',
-            width=1400,
-            height=600,
-        )
-
-        # Mettre à jour les étiquettes de l'axe x
-        fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
-
-        # Afficher le graphique
-        st.plotly_chart(fig)
-
-    with tab3:
-        st.header("Longeur des textes par catégories")
-
-        st.markdown(
-            """
-        **Déséquilibre de textes** : La longueur des descriptions textuelles montrent une variabilité importante. 
+        Certaines produits n'ont pas de champ descriptions. 
+        La longueur des descriptions textuelles montrent aussi une variabilité importante.
         Les descriptions des livres d’occasion ou des cartes de jeux sont généralement brèves 
         (quelques dizaines de mots, champ description absent), tandis que celles des jeux vidéo pour PC 
         s'étendent souvent sur plusieurs centaines de mots.
         """
         )
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            # Compter le nombre de produits par catégorie
+            df = df_train_clean.loc[df_train_clean['description'].isna()]
+            df['prdtypefull'] = df['prdtypefull'].str.split(
+                ' - ').str[1]
+            df_count = df['prdtypefull'].value_counts().sort_values()
+            print(df_count.index)
+            # Créer un graphique à barres avec plotly express
+            fig = px.bar(
+                x=df_count.index,
+                y=df_count.values,
+                title="Nombre de produits sans champ description",
+                labels={"x": "Catégories", "y": "Nombre de produits"},
+                color=df_count.values,
+                color_continuous_scale='viridis',
+                width=700,
+                height=600,
+            )
 
-        df_train_clean['longeur'] = (
+            # Mettre à jour les étiquettes de l'axe x
+            fig.update_xaxes(tickangle=45, tickfont=dict(size=14))
+
+            # Afficher le graphique
+            st.plotly_chart(fig)
+            
+        with col2:
+            df_train_clean['longeur'] = (
             df_train_clean["designation_translated"] + df_train_clean["description_translated"]).astype(str)
-        df_train_clean['longeur_val'] = df_train_clean['longeur'].apply(
-            lambda x: len(x))
-        df_train_clean['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
-            ' - ').str[1]
+            df_train_clean['longeur_val'] = df_train_clean['longeur'].apply(
+                lambda x: len(x))
+            df_train_clean['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
+                ' - ').str[1]
+            print(df_train_clean.index)
+            idx_order = df_count.index.tolist()
+            all_cat = df_train_clean['prdtypefull'].unique()
+            missing_cat = [idx for idx in all_cat if idx not in idx_order]
+            idx_order = missing_cat + idx_order
+            
+            
+            # Créer un graphique à barres avec plotly express
+            fig = px.box(df_train_clean,
+                        x='prdtypefull',
+                        y='longeur_val',
+                        title="Longeur des textes",
+                        labels={'prdtypefull': "Catégories",
+                                'longeur_val': "Nombre de mots"},
+                        width=700,
+                        height=600,
+                        )
 
-        # Créer un graphique à barres avec plotly express
-        fig = px.box(df_train_clean,
-                     x='prdtypefull',
-                     y='longeur_val',
-                     title="Longeur des textes par catégories",
-                     labels={'prdtypefull': "Catégories",
-                             'longeur_val': "Nombre de mots"},
+            # Mettre à jour les étiquettes de l'axe x
+            fig.update_xaxes(tickangle=45, tickfont=dict(size=14),
+                             categoryorder='array', categoryarray=idx_order)
 
-                     width=1400,
-                     height=600,
-                     )
+            # Afficher le graphique
+            st.plotly_chart(fig)
 
-        # Mettre à jour les étiquettes de l'axe x
-        fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
-
-        # Afficher le graphique
-        st.plotly_chart(fig)
-
-    with tab4:
-        st.header("Langues par catégories")
-
+    with tab3:
         st.markdown(
             """
-        **Variabilité des langues**: Bien que nous ayons fait le choix de traduire l’ensemble du jeu de données vers une langue unique 
+        Les textes sont majoritairement rédigés en français (environ 80 %). Certains textes sont en anglais ou en allemand.
+        Bien que nous ayons fait le choix de traduire l’ensemble du jeu de données vers une langue unique 
         (francais), on remarque que la langue varie significativement selon la catégorie de produit. 
         """
         )
 
-        # Compter le nombre de fois que chaque produit apparaît pour chaque langue
-        counts = df.groupby(['prdtypefull', 'language']
-                            ).size().reset_index(name='Nombre')
+        counts = pd.crosstab(df['language'],df['prdtypefull'],
+                             normalize='columns').sort_values('fr', axis=1, ascending=False)
+        # counts = pd.crosstab(['prdtypefull', 'language']
+        #                     ).size().reset_index(name='Nombre')
 
         # Création du graphique
         fig = go.Figure()
 
-        for langue in counts['language'].unique():
-            df_langue = counts[counts['language'] == langue]
-            fig.add_trace(go.Bar(
-                x=df_langue['prdtypefull'],
-                y=df_langue['Nombre'].sort_values().to_numpy(),
-                name=langue
-            ))
+        # for langue in counts['language'].unique():
+        #     df_langue = counts[counts['language'] == langue]
+        #     fig.add_trace(go.Bar(
+        #         x=df_langue['prdtypefull'],
+        #         y=df_langue['Nombre'].sort_values().to_numpy(),
+        #         name=langue
+        #     ))
+        
+        for lang in counts.index:
+            fig.add_trace(go.Bar(x=counts.columns,  y=counts.loc[lang,:]*100,
+                            name=lang))
 
         # Mise en forme du graphique
         fig.update_layout(
-            title='Nombre de propositions par type de produit et par langue',
+            title='Pourcentage des langues par categorie',
             xaxis=dict(title='Catégories'),
-            yaxis=dict(title='Nombre de produits'),
+            yaxis=dict(title='Pourcentage de produits'),
             barmode='stack',  # Barres superposées
 
             width=1400,
             height=600
         )
-
+        fig.update_xaxes(tickangle=45, tickfont=dict(size=14))
+                         
         # Affichage du graphique
         st.plotly_chart(fig)
 
-        st.header("Langues présentes")
+    with tab4:
         st.markdown(
             """
-            **Variabilité des langues** : les textes sont majoritairement rédigés en français (environ 80 %). Certains textes sont en anglais ou en allemand.
-            """
-        )
-
-    with tab5:
-        st.header("Corrélation des catégories")
-        st.markdown(
-            """
-            **Séparabilité des catégories** : Certaines catégories ont un chevauchement lexical notable (par exemple, les consoles de jeu et les jeux vidéo), 
+            Certaines catégories ont un chevauchement lexical important (par exemple, les consoles de jeu et les jeux vidéo), 
             comme on peut le remarquer dans les wordclouds ou dans la matrice de corrélation entre vecteurs de fréquence des mots.
-            
-            On peut voir que les catégories livres neufs, livres d'occasion et Magazines d'occasion sont tres correlées, nous avons également la même analyse mais dans une moindre mesure pour les consoles de jeux,
-            jeux de societés, jeux vidéo d'occasion, équipement pour jeux video
             """
         )
         col1, col2, col3 = st.columns([1, 2, 1])
