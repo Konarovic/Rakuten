@@ -48,7 +48,6 @@ corr = 'images/corr_cat.jpg'
 wc_folder = "Images/wc_visuels"
 
 
-
 # css custom pour les typo / les bocs etc
 custom_css = """
 <style>
