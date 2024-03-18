@@ -427,14 +427,16 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         Returns:
         An array of predicted class labels.
         """
-        
+
         if not isinstance(X, str):
             dataset = self._getdataset(X, training=False)
             dataset = dataset.batch(self.batch_size)
         else:
-            X_tokenized = self.tokenizer(X, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
-            dataset = {"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}
-        
+            X_tokenized = self.tokenizer(
+                X, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            dataset = {"input_ids": X_tokenized['input_ids'],
+                       "attention_mask": X_tokenized['attention_mask']}
+
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
 
@@ -450,14 +452,16 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         Returns:
         An array of class probabilities for each input instance.
         """
-        
+
         if not isinstance(X, str):
             dataset = self._getdataset(X, training=False)
             dataset = dataset.batch(self.batch_size)
         else:
-            X_tokenized = self.tokenizer(X, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
-            dataset = {"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}
-          
+            X_tokenized = self.tokenizer(
+                X, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            dataset = {"input_ids": X_tokenized['input_ids'],
+                       "attention_mask": X_tokenized['attention_mask']}
+
         probs = self.model.predict(dataset)
 
         return probs
@@ -469,12 +473,19 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         # Fetching text data if X is a dataframe
         if isinstance(X, pd.DataFrame):
             X_txt = X['tokens']
+            X_txt = X_txt.tolist()
         else:
             X_txt = X
 
+        print('xtxt', type(X_txt))
         # Tokenizing the text with the bert tokenizer
-        X_tokenized = self.tokenizer(X_txt.tolist(
-        ), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+        X_tokenized = self.tokenizer(
+            X_txt,
+            padding="max_length",
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="tf"
+        )
 
         # Dataset from tokenized text, with or without labels depending on whether
         # we use it for training or not

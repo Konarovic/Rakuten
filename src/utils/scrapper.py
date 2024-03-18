@@ -55,7 +55,16 @@ class RakutenScrapper():
             image_path = soup.select(".prdMainPhoto")[0].get('href')
         else:
             image_path = 'not found'
-        return designation, description, image_path
+
+        if len(soup.select(".prdBreadcrumbItem")) > 0:
+            true_cat = ''
+            for item in soup.select(".prdBreadcrumbItem"):
+                true_cat = " > ".join([true_cat, item.get_text().strip()])
+            print(true_cat)
+        else:
+            true_cat = 'not found'
+
+        return designation, description, image_path, true_cat
 
     def get_selenium_driver(self):
         options = Options()

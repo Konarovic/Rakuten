@@ -989,41 +989,55 @@ enfants"
 if page == pages[7]:
     st.title("TEST du modele")
     st.header("Classification à partir d'images ou de texte")
+    options = ["html", "data"]
+    option_selected = st.selectbox("Page rakuten ou données :", options)
 
-    st.subheader("image ou texte")
-    txt = st.text_area(
-        "Collez ici le contenu html de la page produit de Rakuten", value="")
-    if st.button("valider"):
-        scrap = scrapper.RakutenScrapper()
-        des, desc, img = scrap.get_rakuten_product_infos(txt)
-        st.write(des)
+    if option_selected == "html":
 
-    options = ["Image", "Texte"]
+        input_html = st.text_area(
+            "Collez ici le contenu html de la page produit de Rakuten", value="")
+    else:
+        input_image_url = st.text_input(
+            "URL de l'image", value="")
+        input_designation = st.text_area(
+            "Description du produit", value="")
 
-    option_selected = st.selectbox("Image ou texte  :", options)
+    if st.button("Valider"):
+        res = get_results_manager()
+        true_cat = 'nc'
+        if input_html:
+            scrap = scrapper.RakutenScrapper()
+            des, desc, img, true_cat = scrap.get_rakuten_product_infos(
+                input_html)
+            designation = des + ' ' + desc
+            image_url = img
+        else:
+            designation = input_designation
+            image_url = input_image_url
 
-    if option_selected == "Image":
+        pred = res.predict(
+            models_paths=['fusion/camembert-base-vit_b16_TF6'],
+            # model_path='text/camembert-base-ccnet',
+            text=designation,
+            img_url=image_url
+        )
+
         col1, col2 = st.columns([2, 4])
         with col1:
-
-            # Champ de saisie pour l'URL de l'image
-            image_url = st.text_input(
-                "Entrez l'URL de l'image", "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/313370685/original/81a70456ffda906bfb8763cb2cb549e1359b98a7/create-web-app-with-steamlit.png")
-
-            # Affichage de l'image à partir de l'URL
-            # st.image(image_url, caption="Image téléchargée depuis un lien URL")
-            uploaded_file = st.file_uploader(
-                "Télécharger une image", type=['jpg', 'png'])
-            # Vérifier si un fichier a été téléchargé
-            if uploaded_file is not None:
-                # Afficher l'image téléchargée dans un petit cadre
-                st.image(uploaded_file, caption='Image téléchargée')
+            st.write(designation)
+            st.image(image_url, use_column_width=True)
 
         with col2:
+            st.write("<p>Classe prédite : <strong>{}</strong></p>".format(
+                pred['pred_labels'][0]), unsafe_allow_html=True)
+            st.write("<p>Classe réelle : <strong>{}</strong></p>".format(
+                true_cat), unsafe_allow_html=True)
+            st.write("<p>Probabilité : <strong>{:.2f}</strong></p>".format(
+                np.max(pred['pred_probas'][0])), unsafe_allow_html=True)
+
             # Créer les données pour le graphique
-            categories = ['Catégorie 1', 'Catégorie 2',
-                          'Catégorie 3', 'Catégorie 4', 'Catégorie 5']
-            prediction = [0.78, 0.21]
+            categories = pred['labels']
+            prediction = pred['pred_probas'][0]
 
             # Créer le graphique à barres
             fig = go.Figure(data=[
@@ -1041,16 +1055,6 @@ if page == pages[7]:
 
             # Afficher le graphique dans Streamlit
             st.plotly_chart(fig, use_container_width=True)
-
-            classe_predite = "Classe A"
-            classe_reelle = "Classe B"
-            estimation = 0.78
-            st.write("<p style='text-align:center;'><strong>Classe prédite: {}</p>".format(
-                classe_predite), unsafe_allow_html=True)
-            st.write("<p style='text-align:center;'><strong>Classe réelle: {}</p>".format(
-                classe_reelle), unsafe_allow_html=True)
-            st.write("<p style='text-align:center;'><strong>Estimation: {:.2f}</p>".format(
-                estimation), unsafe_allow_html=True)
 
     elif option_selected == "Texte":
         col1, col2 = st.columns([2, 4])

@@ -427,37 +427,51 @@ class ResultsManager():
 
         return ast.literal_eval(pred)
 
-    def predict(self, model_path, text=None, img_url=None):
-        """
-        Get the predictions of a model.
-        If not available in the dataset results, the model is loaded and the predictions are computed.
+    def predict(self, models_paths, text=None, img_url=None):
 
-        Args:
-            model_path (str): the path to the model file
-            X (pd.DataFrame): the data to predict
+        probas = []
+        weight_set = []
+        img_array = None
 
-        Returns:
-            np.array: the predictions
-        """
-        # try:
-        clf = load_classifier(model_path)
-
-        if img_url is None:
-            pred = clf.predict(text)
-        else:
+        if img_url:
             img_res = requests.get(img_url, stream=True)
             if img_res.status_code == 200:
                 img = Image.open(BytesIO(img_res.content))
                 img_array = np.array(img)
 
-            if text is None:
-                pred = clf.predict(img_url)
-            else:
-                pred = clf.predict({'text': text, 'image': img_array})
+        for basename in models_paths:
+            probas.append(
+                np.array(self.predict_proba(basename, text, img_array)))
+            weight_set.append(self.get_f1_score(basename))
+
+        probas_weighted = np.sum([probas[i] * weight_set[i]
+                                  for i in range(len(probas))], axis=0)
+
+        pred = np.argmax(probas_weighted, axis=1)
 
         labels = self.get_label_encoder().inverse_transform(pred)
 
-        return labels
+        return {'pred_labels': labels, 'pred_probas': probas_weighted.tolist(), 'labels': self.get_cat_labels()}
+
+    def predict_proba(self, model_path, text, img):
+        clf = load_classifier(model_path)
+
+        model_type = model_path.split('/')[0]
+        if (model_type == 'text' or model_type == 'bert') and text:
+            if hasattr(clf, 'predict_proba'):
+                probas = clf.predict_proba(text)
+            else:
+                probas = np.zeros(
+                    (1, self.get_num_classes()))
+                pred = clf.predict(text)
+                probas[0, pred] = 1
+        elif model_type == 'img' and img:
+            probas = clf.predict_proba(img)
+        else:
+            probas = clf.predict_proba(
+                {'text': text, 'image': img})
+
+        return probas
 
     def get_y_pred_probas(self, model_path):
         """
