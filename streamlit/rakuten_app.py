@@ -121,7 +121,7 @@ custom_css = """
     }
 
     .stTabs [data-baseweb="tab"] {
-		height: 50px;
+		height: 70px;
         white-space: pre-wrap;
 		background-color: #F0F2F6;
 		border-radius: 4px 4px 0px 0px;
@@ -169,7 +169,7 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # SOMMAIRE
 st.sidebar.image("images/rakuten.png", use_column_width=True)
 st.sidebar.title("Sommaire")
-pages = ["Presentation", "Exploration", "DataViz", 'Préprocessing', "Modélisation texte",
+pages = ["Présentation", "Exploration", "DataViz", 'Préprocessing', "Modélisation texte",
          "Modélisation images", "Modélisation fusion", "Test du modèle", "Conclusion"]
 page = st.sidebar.radio("Aller vers", pages)
 st.sidebar.header("Auteurs")
@@ -198,67 +198,128 @@ def get_results_manager():
 
 # page 0############################################################################################################################################
 if page == pages[0]:
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
-        st.write("")
-    with col2:
+    tab1, tab2, tab3 = st.tabs(["Contexte", "Objectifs", "Résultats"])
+
+    with tab1:
+        st.image("images/rakuten.png", width=200)
+        st.markdown(
+            """
+ ### La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
+""")
+
         st.markdown("""
-            <div style="text-align:center;">
-                <h1>PRESENTATION</h1>
-            </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.write("\n")
+                    ### Un des enjeux majeurs de la marketplace est de permettre aux acheteurs de trouver facilement les produits qu’ils recherchent.
 
-    st.header("Contexte :")
-    st.markdown(
-        """
-    Le concept fondamental d’une marketplace réside dans sa capacité à mettre en relation vendeurs et acheteurs par le biais
-    d’une plateforme en ligne unique, simplifiant ainsi le processus d’achat et de vente d’une vaste gamme de produits. 
-    Pour qu’elle soit efficace, il est crucial que les produits soient aisément identifiables, que les utilisateurs bénéficient 
-    d’une navigation fluide tout au long de leur parcours d’achat et que la plateforme offre des recommandations personnalisées alignées 
-    sur le comportement des utilisateurs. 
-    Un aspect essentiel du bon fonctionnement d’une marketplace est donc l’organisation méthodique des produits dans des catégories précises, 
-    facilitant la recherche et la découvrabilité des produits.
-    """)
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
-        st.write("")
-    with col2:
-        st.image(img_rakuten_website)
-    with col3:
-        st.write("\n")
+                    ### Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
+                    
+                    ### Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
+""")
+        col1, col2 = st.columns([1, 10])
+        with col2:
+            st.markdown("""
+                    ###      - 80 000 produits
+                    ###      - 27 catégories à distinguer
+                    ###      - Description textuelle multilangue
+                        """)
 
-    st.markdown(
-        """
+    with tab2:
+        st.markdown(
+            """
+            ###
+            ### - Produire un modèle capable de classifier précisément (au sens du f1-score) chacun des produits.
+            ###
+            ###
+            ### - Produire un modèle robuste
+            ###
+            ### 
+            ### - Produire un modèle multi-modal (texte + image).
+            ###
+            """)
+        st.image("images/process.jpg",
+                 caption="Processus de classification multi-modale des produits")
+    with tab3:
+        st.balloons()
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            st.markdown(
+                """
+            ### Meilleur modèle
+            
+            VOTING CLASSIFIER basé sur :
+            - Un transformer cross-attentionnel CamemBERT + ViT
+            - Un CamemBERT
+            - Un FlauBERT
+            - Un XGBoost (TF-IDF)
+            - Un ViT
+            - Un ResNET152
 
-    Ce processus de classification des produits requiert l’application de techniques de machine learning (ML) pour plusieurs raisons essentielles : 
-    les vendeurs pourraient (pour diverses raisons) ne pas assigner les nouveaux produits aux catégories pertinentes, 
-    introduisant des erreurs dans l’organisation du catalogue
-    le classement manuel des produits peut s'avérer particulièrement fastidieux et inefficace lors de l’ajout massif d’articles.
-    les catégories peuvent être amenées à être modifiées pour améliorer l'expérience d’achat des utilisateurs, 
-    impliquant une mise à jour sur l’ensemble du catalogue.
+            La fusion a été pondérée par les scores f1 des modèles individuels.
 
-    L’utilisation de technique de machine learning permet de surmonter ces problèmes éventuels 
-    en automatisant tout ou partie de la catégorisation des produits sur la base des descriptions et images fournies par les vendeurs. 
+            """)
+        with col2:
+            st.image('images/models.jpg', width=1200,
+                     caption="f1 scores des modèles combinés")
+    # col1, col2, col3 = st.columns([1, 1, 1])
+    # with col1:
+    #     st.write("")
+    # with col2:
+    #     st.markdown("""
+    #         <div style="text-align:center;">
+    #             <h1>PRESENTATION</h1>
+    #         </div>
+    #     """, unsafe_allow_html=True)
+    # with col3:
+    #     st.write("\n")
 
-    Le dataset utilisé dans ce projet est issu d’un challenge proposé par le groupe Rakuten, l’un des acteurs majeurs du marketplace B2B2C. 
-    Il se compose d’un catalogue d’environ 80.000 produits, répartis selon 27 catégories distinctes, accompagnés de leurs descriptions textuelles 
-    et images correspondantes. Voici le lien du concours [lien vers concours](https://challengedata.ens.fr/challenges/59)
-        """
-    )
-    st.header("Objectifs :")
-    st.markdown(
-        """
-    L’objectif principal est de développer le **meilleur modèle capable de classifier précisément (au sens du f1-score)** 
-    chacun des produits en se basant sur les descriptions et images fournies. 
-    Cela induit de développer plusieurs modèles et de les benchmarker afin de sélectionner le modèle le plus performant et le plus robuste.
+    # st.header("Contexte :")
+    # st.markdown(
+    #     """
+    # Le concept fondamental d’une marketplace réside dans sa capacité à mettre en relation vendeurs et acheteurs par le biais
+    # d’une plateforme en ligne unique, simplifiant ainsi le processus d’achat et de vente d’une vaste gamme de produits.
+    # Pour qu’elle soit efficace, il est crucial que les produits soient aisément identifiables, que les utilisateurs bénéficient
+    # d’une navigation fluide tout au long de leur parcours d’achat et que la plateforme offre des recommandations personnalisées alignées
+    # sur le comportement des utilisateurs.
+    # Un aspect essentiel du bon fonctionnement d’une marketplace est donc l’organisation méthodique des produits dans des catégories précises,
+    # facilitant la recherche et la découvrabilité des produits.
+    # """)
+    # col1, col2, col3 = st.columns([1, 1, 1])
+    # with col1:
+    #     st.write("")
+    # with col2:
+    #     st.image(img_rakuten_website)
+    # with col3:
+    #     st.write("\n")
 
-    L’ensemble des membres du groupe projet étant débutant dans le domaine du **NLP (Natural Language Processing)** et de la **CV (Computer Vision)**. 
-    Nous avons à comprendre et appliquer ces techniques au projet.
+    # st.markdown(
+    #     """
 
-        """
-    )
+    # Ce processus de classification des produits requiert l’application de techniques de machine learning (ML) pour plusieurs raisons essentielles :
+    # les vendeurs pourraient (pour diverses raisons) ne pas assigner les nouveaux produits aux catégories pertinentes,
+    # introduisant des erreurs dans l’organisation du catalogue
+    # le classement manuel des produits peut s'avérer particulièrement fastidieux et inefficace lors de l’ajout massif d’articles.
+    # les catégories peuvent être amenées à être modifiées pour améliorer l'expérience d’achat des utilisateurs,
+    # impliquant une mise à jour sur l’ensemble du catalogue.
+
+    # L’utilisation de technique de machine learning permet de surmonter ces problèmes éventuels
+    # en automatisant tout ou partie de la catégorisation des produits sur la base des descriptions et images fournies par les vendeurs.
+
+    # Le dataset utilisé dans ce projet est issu d’un challenge proposé par le groupe Rakuten, l’un des acteurs majeurs du marketplace B2B2C.
+    # Il se compose d’un catalogue d’environ 80.000 produits, répartis selon 27 catégories distinctes, accompagnés de leurs descriptions textuelles
+    # et images correspondantes. Voici le lien du concours [lien vers concours](https://challengedata.ens.fr/challenges/59)
+    #     """
+    # )
+    # st.header("Objectifs :")
+    # st.markdown(
+    #     """
+    # L’objectif principal est de développer le **meilleur modèle capable de classifier précisément (au sens du f1-score)**
+    # chacun des produits en se basant sur les descriptions et images fournies.
+    # Cela induit de développer plusieurs modèles et de les benchmarker afin de sélectionner le modèle le plus performant et le plus robuste.
+
+    # L’ensemble des membres du groupe projet étant débutant dans le domaine du **NLP (Natural Language Processing)** et de la **CV (Computer Vision)**.
+    # Nous avons à comprendre et appliquer ces techniques au projet.
+
+    #     """
+    # )
 
 
 # page 1 ##########################################################################################################################
@@ -372,30 +433,23 @@ if page == pages[2]:
         jusqu'à plusieurs milliers d’articles pour des catégories comme le mobilier ou les accessoires de piscine
         """
         )
-        col1, col2, col3 = st.columns([1, 6, 1])
-        with col1:
-            st.write("")
-        with col2:
 
-            df_train_clean['categorie'] = df_train_clean['prdtypefull'].str.split(
-                ' - ').str[1]
-            nb_categories = df_train_clean['categorie'].value_counts()
-            nb_categories_sorted = nb_categories.sort_values()
-            fig = px.bar(
-                x=nb_categories_sorted.index,
-                y=nb_categories_sorted.values,
-                title="Nombre de produits par catégorie (trié)",
-                labels={"x": "Catégories", "y": "Nombre de produits"},
-                color=nb_categories_sorted,
-                color_discrete_sequence=px.colors.sequential.Viridis,
-                width=1400,  # spécifier la largeur du graphique
-                height=600,  # spécifier la hauteur du graphique
-            )
-            fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
-            st.plotly_chart(fig)
-
-        with col3:
-            st.write("")
+        df_train_clean['categorie'] = df_train_clean['prdtypefull'].str.split(
+            ' - ').str[1]
+        nb_categories = df_train_clean['categorie'].value_counts()
+        nb_categories_sorted = nb_categories.sort_values()
+        fig = px.bar(
+            x=nb_categories_sorted.index,
+            y=nb_categories_sorted.values,
+            title="Nombre de produits par catégorie (trié)",
+            labels={"x": "Catégories", "y": "Nombre de produits"},
+            color=nb_categories_sorted,
+            color_discrete_sequence=px.colors.sequential.Viridis,
+            width=1400,  # spécifier la largeur du graphique
+            height=600,  # spécifier la hauteur du graphique
+        )
+        fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
+        st.plotly_chart(fig)
 
     with tab2:
         st.header("Articles sans descriptions par catégories")
