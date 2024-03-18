@@ -779,7 +779,7 @@ Pour les modèles 'standards', nous avons comparé les performances de la vector
     with tab2:
         res = get_results_manager()
         fig = res.build_fig_f1_scores(filter_package=['bert', 'text'])
-
+        fig.update_xaxes(range=[0.6, 0.9])
         st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
@@ -859,6 +859,7 @@ classification de texte.
         res = get_results_manager()
         fig = res.build_fig_f1_scores(filter_package=['img'])
 
+        fig.update_xaxes(range=[0.5, 0.8])
         st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
@@ -874,6 +875,7 @@ classification de texte.
         with col1:
             plt_matrix = res.get_fig_confusion_matrix(
                 option_selected, model_label=res.get_model_label(option_selected))
+
             st.pyplot(plt_matrix, use_container_width=True)
 
             st.markdown("""
@@ -976,6 +978,7 @@ multimodale simple de type transformer **(F1-score = 0.911)**
         #     figsize=figsize
         # )
         fig = res.build_fig_f1_scores(filter_package=['fusion'])
+        fig.update_xaxes(range=[0.8, 0.92])
 
         st.plotly_chart(fig, use_container_width=True)
 

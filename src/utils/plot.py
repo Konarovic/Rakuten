@@ -105,7 +105,7 @@ def get_fig_benchs_results(data, x_column, y_column, x_label, y_label, color_col
 
     for i, row in data.iterrows():
         fig.add_annotation(
-            x=row[y_column]+0.05,
+            x=row[y_column]+0.01,
             y=row[x_column],
             text=str(round(row[y_column], 3)),
             showarrow=False,
