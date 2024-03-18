@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from PIL import Image
 import os
+import cv2
 
 from importlib import reload
 from sklearn.metrics import f1_score
@@ -31,9 +32,10 @@ ytrain = pd.read_csv("../data/raw/Y_train.csv")
 # chargement images
 schema_dataframe = "images/schema_dataframe.png"
 schema_image = "images/schema_images.png"
-schema_dataframe_Y = "images/schema_dataframe_Y.png"
+schema_dataframe_Y = ("images/schema_dataframe_Y.png")
 schema_prepro_txt = "images/schema_prepro_txt.jpg"
 schema_prepro_img = "images/schema_prepro_img.jpg"
+schema_objectifs= ("images/schema_objectifs.jpg")
 graf_isnaPrdt = "images/graf_isnaPrdtypecode.png"
 graf_txtLong = "images/graf_boxplot.png"
 graf_lang = "images/lang.jpg"
@@ -44,6 +46,7 @@ corr = 'images/corr_cat.jpg'
 
 # dossier images
 wc_folder = "Images/wc_visuels"
+
 
 
 # css custom pour les typo / les bocs etc
@@ -114,11 +117,11 @@ custom_css = """
     }
     
     .expander-content {
-        font-size: 30px; /* Taille de police pour le contenu de l'expander */
+        font-size: 10px; /* Taille de police pour le contenu de l'expander */
     }
 
     .stTabs [data-baseweb="tab-list"] {
-		gap: 12px;
+		gap: 8px;
     }
 
     .stTabs [data-baseweb="tab"] {
@@ -131,6 +134,7 @@ custom_css = """
 		padding-bottom: 10px;
         padding-left: 20px;
         padding-right: 20px;
+        font-size: 10px;
     }
 
 	.stTabs [aria-selected="true"] {
@@ -138,9 +142,20 @@ custom_css = """
         color: white;
 	}
 
+    .stTabs-content {
+        font-size: 10px;
+    }
+    
+    .streamlit-tabs {
+        font-size: 20px;
+    }
+    
     div.st-emotion-cache-16txtl3 {
         padding: 2rem 2rem;
     }
+    
+    
+   
 </style>
 """
 st.set_page_config(layout="wide")
@@ -321,20 +336,22 @@ if page == pages[0]:
 
 # page 1 ##########################################################################################################################
 if page == pages[1]:
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
-        st.write("")
-    with col2:
-        st.markdown("""
-            <div style="text-align:center;">
-                <h1>EXPLORATION</h1>
-            </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.write("\n")
+    tab1, tab2 = st.tabs(["Dataframes", "Images",])
+    with tab1:
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            st.write("")
+        with col2:
+            st.markdown("""
+                <div style="text-align:center;">
+                    <h1>EXPLORATION</h1>
+                </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.write("\n")
 
-    with st.expander("Dataframes"):
-        col1, col2 = st.columns([1, 3])
+        
+        col1, col2, col3 = st.columns([2, 4, 1])
         with col1:
             # Problématique
             st.header("Ressources fournies : dataframes")
@@ -347,34 +364,36 @@ if page == pages[1]:
             
             - 1 dossier d'images train avec 84916 images
             - 1 dossier d'images test avec 13812 images
+            
+            - 27 codes produits
             """
             )
         with col2:
             container = st.container()
             with st.container():
-                st.image(schema_dataframe, width=1000,
-                         output_format='auto', use_column_width=True)
+                st.image(schema_dataframe,
+                        output_format='auto', use_column_width=True)
+        
+        with col3:
+            st.image(schema_dataframe_Y, use_column_width=True,
+                    caption="", output_format='auto')
 
-        col1, col2 = st.columns([1, 3])
+    
+
+        
+        col1, col2, col3 = st.columns([1, 7, 1])
         with col1:
-            # Problématique
-
-            st.markdown(
-                """
-            27 codes produits au total
-            """
-            )
+            st.write('')
         with col2:
-            st.image(schema_dataframe_Y, use_column_width=False,
-                     caption="", output_format='auto')
-
-        st.markdown("""
-                    Sur les données concernant les dataframes nous avons de nombreux NaN dans la colonnes description, 
-                    plusieurs langues, des balises HTML, des mauvais encodings
-                    """
-                    )
-
-    with st.expander("Images"):
+            st.markdown("""
+                        Sur les données concernant les dataframes nous avons de nombreux NaN dans la colonnes description, 
+                        plusieurs langues, des balises HTML, des mauvais encodings
+                        """
+                        )
+        with col3:
+            st.write("")
+    with tab2:
+        
         col1, col2 = st.columns([1, 3])
         with col1:
             st.header("Ressources fournies : images")
@@ -388,30 +407,22 @@ if page == pages[1]:
             """
             )
         with col2:
-            st.image(schema_image, use_column_width=False,
-                     caption="", output_format='auto')
+            st.image(schema_image, width=600, use_column_width=False,
+                    caption="", output_format='auto')
 
     # Objectifs
-    col1, col2, col3 = st.columns([1, 3, 1])
+    
+    
+    
+    st.header("Etapes suivantes")
+    col1, col2, col3 = st.columns([1, 7, 1])
     with col1:
-        st.write()
+        st.write("")
     with col2:
-        st.header("Etapes suivantes")
-        st.markdown(
-            """ 
-            **0. Exploration de la data**
-            
-            **1. Nettoyer les données pour les rendre exploitables** 
-            
-            **2. Entraîner différents modèles de machine learning et deep learning sur les données textes et images**
-            
-            **3. Créer un modèle fusion à partir de nos résultats pour valider une généralisation du modèle**
-            
-            **4. Développer une API pour importer des textes et images et tester la classification avec notre modèle fusion** 
-            """
-        )
+        st.image(schema_objectifs, caption="")
     with col3:
         st.write("")
+
 
  # page 2 ##########################################################################################################################
 if page == pages[2]:
@@ -430,6 +441,9 @@ if page == pages[2]:
         jusqu'à plusieurs milliers d’articles pour des catégories comme le mobilier ou les accessoires de piscine
         """
         )
+        
+        
+        
 
         df_train_clean['categorie'] = df_train_clean['prdtypefull'].str.split(
             ' - ').str[1]
@@ -448,6 +462,8 @@ if page == pages[2]:
         fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
         st.plotly_chart(fig)
 
+        
+
     with tab2:
         st.header("Articles sans descriptions par catégories")
 
@@ -457,38 +473,34 @@ if page == pages[2]:
         """
         )
 
-        col1, col2, col3 = st.columns([1, 6, 1])
-        with col1:
-            st.write("")
-        with col2:
+        
 
-            # Compter le nombre de produits par catégorie
-            cat_count = df_train_clean["prdtypefull"].value_counts()
-            df = df_train_clean.loc[df_train_clean['description'].isna()]
-            df['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
-                ' - ').str[1]
-            df_count = df['prdtypefull'].value_counts().sort_values()
+        # Compter le nombre de produits par catégorie
+        cat_count = df_train_clean["prdtypefull"].value_counts()
+        df = df_train_clean.loc[df_train_clean['description'].isna()]
+        df['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
+            ' - ').str[1]
+        df_count = df['prdtypefull'].value_counts().sort_values()
 
-            # Créer un graphique à barres avec plotly express
-            fig = px.bar(
-                x=df_count.index,
-                y=df_count.values,
-                title="Categories avec le plus de valeurs manquantes en description",
-                labels={"x": "Catégories", "y": "Nombre de produits"},
-                color=df_count.values,
-                color_continuous_scale='viridis',
-                width=1400,
-                height=600,
-            )
+        # Créer un graphique à barres avec plotly express
+        fig = px.bar(
+            x=df_count.index,
+            y=df_count.values,
+            title="Categories avec le plus de valeurs manquantes en description",
+            labels={"x": "Catégories", "y": "Nombre de produits"},
+            color=df_count.values,
+            color_continuous_scale='viridis',
+            width=1400,
+            height=600,
+        )
 
-            # Mettre à jour les étiquettes de l'axe x
-            fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
+        # Mettre à jour les étiquettes de l'axe x
+        fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
 
-            # Afficher le graphique
-            st.plotly_chart(fig)
+        # Afficher le graphique
+        st.plotly_chart(fig)
 
-        with col3:
-            st.write("")
+        
 
     with tab3:
         st.header("Longeur des textes par catégories")
@@ -502,38 +514,36 @@ if page == pages[2]:
         """
         )
 
-        col1, col2, col3 = st.columns([1, 6, 1])
-        with col1:
-            st.write("")
-        with col2:
+        
+        
+       
 
-            df_train_clean['longeur'] = (
-                df_train_clean["designation_translated"] + df_train_clean["description_translated"]).astype(str)
-            df_train_clean['longeur_val'] = df_train_clean['longeur'].apply(
-                lambda x: len(x))
-            df_train_clean['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
-                ' - ').str[1]
+        df_train_clean['longeur'] = (
+            df_train_clean["designation_translated"] + df_train_clean["description_translated"]).astype(str)
+        df_train_clean['longeur_val'] = df_train_clean['longeur'].apply(
+            lambda x: len(x))
+        df_train_clean['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
+            ' - ').str[1]
 
-            # Créer un graphique à barres avec plotly express
-            fig = px.box(df_train_clean,
-                         x='prdtypefull',
-                         y='longeur_val',
-                         title="Longeur des textes par catégories",
-                         labels={'prdtypefull': "Catégories",
-                                 'longeur_val': "Nombre de mots"},
+        # Créer un graphique à barres avec plotly express
+        fig = px.box(df_train_clean,
+                        x='prdtypefull',
+                        y='longeur_val',
+                        title="Longeur des textes par catégories",
+                        labels={'prdtypefull': "Catégories",
+                                'longeur_val': "Nombre de mots"},
 
-                         width=1400,
-                         height=600,
-                         )
+                        width=1400,
+                        height=600,
+                        )
 
-            # Mettre à jour les étiquettes de l'axe x
-            fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
+        # Mettre à jour les étiquettes de l'axe x
+        fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
 
-            # Afficher le graphique
-            st.plotly_chart(fig)
+        # Afficher le graphique
+        st.plotly_chart(fig)
 
-        with col3:
-            st.write("")
+        
 
     with tab4:
         st.header("Langues par catégories")
@@ -545,43 +555,40 @@ if page == pages[2]:
         """
         )
 
-        col1, col2, col3 = st.columns([1, 6, 1])
-        with col1:
-            st.write("")
+        
 
-        with col2:
+        
 
-            # Compter le nombre de fois que chaque produit apparaît pour chaque langue
-            counts = df.groupby(['prdtypefull', 'language']
-                                ).size().reset_index(name='Nombre')
+        # Compter le nombre de fois que chaque produit apparaît pour chaque langue
+        counts = df.groupby(['prdtypefull', 'language']
+                            ).size().reset_index(name='Nombre')
 
-            # Création du graphique
-            fig = go.Figure()
+        # Création du graphique
+        fig = go.Figure()
 
-            for langue in counts['language'].unique():
-                df_langue = counts[counts['language'] == langue]
-                fig.add_trace(go.Bar(
-                    x=df_langue['prdtypefull'],
-                    y=df_langue['Nombre'].sort_values().to_numpy(),
-                    name=langue
-                ))
+        for langue in counts['language'].unique():
+            df_langue = counts[counts['language'] == langue]
+            fig.add_trace(go.Bar(
+                x=df_langue['prdtypefull'],
+                y=df_langue['Nombre'].sort_values().to_numpy(),
+                name=langue
+            ))
 
-            # Mise en forme du graphique
-            fig.update_layout(
-                title='Nombre de propositions par type de produit et par langue',
-                xaxis=dict(title='Catégories'),
-                yaxis=dict(title='Nombre de produits'),
-                barmode='stack',  # Barres superposées
+        # Mise en forme du graphique
+        fig.update_layout(
+            title='Nombre de propositions par type de produit et par langue',
+            xaxis=dict(title='Catégories'),
+            yaxis=dict(title='Nombre de produits'),
+            barmode='stack',  # Barres superposées
 
-                width=1400,
-                height=600
-            )
+            width=1400,
+            height=600
+        )
 
-            # Affichage du graphique
-            st.plotly_chart(fig)
+        # Affichage du graphique
+        st.plotly_chart(fig)
 
-        with col3:
-            st.write("")
+        
 
         st.header("Langues présentes")
         st.markdown(
@@ -1196,3 +1203,27 @@ if page == pages[7]:
                 classe_reelle), unsafe_allow_html=True)
             st.write("<p style='text-align:center;'><strong>Estimation: {:.2f}</p>".format(
                 estimation), unsafe_allow_html=True)
+
+# Page8 ############################################################################################################################################
+if page == pages[8]:
+    st.title("Conclusion")
+    st.header("Résumé")
+    st.markdown("""
+                
+                Dans ce projet, nous avons évalué l'efficacité de différentes méthodes de classification pour prédire les catégories de produits à partir de données textuelles et visuelles. 
+                Nous avons d'abord établi des benchmarks pour des modèles spécialisés dans le traitement des données textuelles et des images, puis fusionné les modèles les plus performants pour former des classificateurs hybrides. 
+
+                En combinant plusieurs modèles spécialisés (**BERT, XGBoost, ViT et ResNet**) avec un modèle hybride, nous avons atteint un score de **0.911** après un entraînement sur 80 % des données. 
+                
+                """)
+    st.markdown("""
+    <p style='font-size:12px;'><i>Les performances de nos modèles ont été évaluées par le calcul du f1-score pondéré (weighted F1-score), i.e. le F1-score calculé par catégorie puis moyenné selon la proportion de chaque classe dans le jeu de données. Ce score a été systématiquement calculé grâce à la fonction sklearn.metrics.f1_score de sklearn afin d'éviter toute ambiguïté. Pour analyser plus en détails les performances, nous avons également calculé les matrices de confusion, exprimées en pourcentage du nombre d'articles par catégorie (normalisation par colonne).</i></p>
+""", unsafe_allow_html=True)
+    st.header("Pistes d'amélioration")
+    st.markdown("""
+                * Exploration de l'impact des stop words et des hyperparamètres des réseaux de neurones
+                * Gestion du déséquilibre des classes. 
+                * Autres modéles images.
+                * Exploration de différentes architectures pour le modèle hybride.
+                """)
+   
