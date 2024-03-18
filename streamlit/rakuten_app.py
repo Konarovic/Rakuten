@@ -989,13 +989,23 @@ enfants"
 if page == pages[7]:
     st.title("TEST du modele")
     st.header("Classification à partir d'images ou de texte")
-    options = ["html", "data"]
+    options = ["html", "data", 'Démo "poussette"',
+               'Démo "livre Dune"', 'Démo "jeu Dune"']
     option_selected = st.selectbox("Page rakuten ou données :", options)
 
     if option_selected == "html":
 
         input_html = st.text_area(
             "Collez ici le contenu html de la page produit de Rakuten", value="")
+    elif option_selected == 'Démo "poussette"':
+        with open(config.path_to_project + '/data/demo/demo_poussette.html', 'r') as file:
+            input_html = file.read()
+    elif option_selected == 'Démo "livre Dune"':
+        with open(config.path_to_project + '/data/demo/demo_dune_livre.html', 'r') as file:
+            input_html = file.read()
+    elif option_selected == 'Démo "jeu Dune"':
+        with open(config.path_to_project + '/data/demo/demo_dune_jeu.html', 'r') as file:
+            input_html = file.read()
     else:
         input_image_url = st.text_input(
             "URL de l'image", value="")
@@ -1009,7 +1019,10 @@ if page == pages[7]:
             scrap = scrapper.RakutenScrapper()
             des, desc, img, true_cat = scrap.get_rakuten_product_infos(
                 input_html)
-            designation = des + ' ' + desc
+            if desc != 'not found':
+                designation = des + ' ' + desc
+            else:
+                designation = des
             image_url = img
         else:
             designation = input_designation
