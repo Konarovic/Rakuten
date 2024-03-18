@@ -22,8 +22,8 @@ from src.utils.visualize import plot_weighted_text
 
 # chargement des Ressources
 # DATAFRAMES
-df = pd.read_csv("../data/raw/X_train.csv")
-df_train_clean = pd.read_csv("../data/clean/df_train_index.csv")
+df = pd.read_csv("../data/raw/X_train.csv", index_col=0)
+df_train_clean = pd.read_csv("../data/clean/df_train_index.csv", index_col=0)
 ytrain = pd.read_csv("../data/raw/Y_train.csv")
 
 
@@ -464,7 +464,7 @@ if page == pages[2]:
             labels={"x": "Catégories", "y": "Nombre de produits"},
             color=nb_categories_sorted,
             color_discrete_sequence=px.colors.sequential.Viridis,
-            width=1400,  # spécifier la largeur du graphique
+            width=1200,  # spécifier la largeur du graphique
             height=600,  # spécifier la hauteur du graphique
         )
         fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
@@ -576,7 +576,7 @@ if page == pages[2]:
             yaxis=dict(title='Pourcentage de produits'),
             barmode='stack',  # Barres superposées
 
-            width=1400,
+            width=1200,
             height=600
         )
         fig.update_xaxes(tickangle=45, tickfont=dict(size=14))
@@ -635,53 +635,42 @@ if page == pages[2]:
 if page == pages[3]:
     st.title("PREPROCESSING")
     tab1, tab2 = st.tabs(
-        ['Traitement sur le texte', 'Traitement sur les images'])
+        ['**Texte**', '**Images**'])
 
     with tab1:
 
-        st.header("Traitement sur le texte")
         st.markdown(
             """
-        Pour reprendre les objectifs par rapport au texte nous allons nettoyer nos colones 
-        Voici un schéma explicatif de la procédure :
+        **Pipeline de pre-processing du texte**:
         """
+        )
+        st.image(schema_prepro_txt, use_column_width=True)
+        
+        options = df_train_clean.loc[~df_train_clean['description'].isna(), 'productid'].to_list()
+        
+        idx_selected = st.selectbox("Selectionnez un produit :", options)
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.markdown("""
+            **Texte orginal**            
+            """)
+            st.write('. '.join([df.loc[df['productid'] == idx_selected, 'designation'].values[0], df.loc[df['productid'] == idx_selected, 'description'].values[0]]))
+
+        with col2:
+            st.markdown("""
+            **Texte preprocessé**            
+            """)
+            st.write('. '.join([df_train_clean['designation_translated'][df_train_clean['productid'] == idx_selected].values[0], 
+                                df_train_clean['description_translated'][df_train_clean['productid'] == idx_selected].values[0]]))
+
+    with tab2:
+        st.markdown(
+            """
+            Redimensionnement des images pour optimizer le padding, en conservant le rapport d'asspect.
+            """
         )
 
         col1, col2, col3 = st.columns([1, 2, 1])
-
-        with col1:
-            st.write("")
-
-        with col2:
-
-            st.image(schema_prepro_txt, use_column_width=True)
-
-        with col3:
-            st.write("")
-
-        col1, col2 = st.columns([1, 1])
-
-        with col1:
-            st.markdown("""
-            dataframe orginal            
-            """)
-            st.write(df.head())
-
-        with col2:
-            st.markdown("""
-            dataframe preprocessé            
-            """)
-            st.write(df_train_clean.head())
-
-    with tab2:
-        st.header("Traitement sur les images")
-        st.markdown(
-            """
-            Concernant les images le padding est ajusté pour n'avoir que de l'information utile dans notre image
-            """
-        )
-
-        col1, col2, col3 = st.columns([1, 1, 1])
 
         with col1:
             st.write("")
