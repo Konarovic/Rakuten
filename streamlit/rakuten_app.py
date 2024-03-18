@@ -18,8 +18,6 @@ from importlib import reload
 from src.utils import results
 from src.utils import scrapper
 from src.utils.visualize import plot_weighted_text
-reload(results)
-reload(scrapper)
 
 
 # chargement des Ressources
@@ -35,7 +33,7 @@ schema_image = "images/schema_images.png"
 schema_dataframe_Y = ("images/schema_dataframe_Y.png")
 schema_prepro_txt = "images/schema_prepro_txt.jpg"
 schema_prepro_img = "images/schema_prepro_img.jpg"
-schema_objectifs= ("images/schema_objectifs.jpg")
+schema_objectifs = ("images/schema_objectifs.jpg")
 graf_isnaPrdt = "images/graf_isnaPrdtypecode.png"
 graf_txtLong = "images/graf_boxplot.png"
 graf_lang = "images/lang.jpg"
@@ -194,20 +192,25 @@ st.sidebar.markdown("[Julien Fournier](link)")
 st.sidebar.markdown("[Alexandre Mangwa](link)")
 
 
+@st.cache_resource
 def get_results_manager():
-    res = results.ResultsManager(config)
-    res.add_result_file(config.path_to_results +
-                        '/results_benchmark_sklearn.csv', 'text')
-    res.add_result_file(config.path_to_results +
-                        '/results_benchmark_sklearn_tfidf.csv', 'text')
-    res.add_result_file(config.path_to_results +
-                        '/results_benchmark_bert.csv', 'bert')
-    res.add_result_file(config.path_to_results +
-                        '/results_benchmark_img.csv', 'img')
-    res.add_result_file(
-        config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
-    res.add_result_file(
-        config.path_to_results+'/results_benchmark_fusion_meta.csv', 'fusion')
+    try:
+        if res:
+            print('res already loaded')
+    except NameError:
+        res = results.ResultsManager(config)
+        res.add_result_file(config.path_to_results +
+                            '/results_benchmark_sklearn.csv', 'text')
+        res.add_result_file(config.path_to_results +
+                            '/results_benchmark_sklearn_tfidf.csv', 'text')
+        res.add_result_file(config.path_to_results +
+                            '/results_benchmark_bert.csv', 'bert')
+        res.add_result_file(config.path_to_results +
+                            '/results_benchmark_img.csv', 'img')
+        res.add_result_file(
+            config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
+        res.add_result_file(
+            config.path_to_results+'/results_benchmark_fusion_meta.csv', 'fusion')
     return res
 
 
@@ -335,7 +338,7 @@ if page == pages[0]:
 
 # page 1 ##########################################################################################################################
 if page == pages[1]:
-    tab1, tab2 = st.tabs(["Dataframes", "Images",])
+    tab1, tab2, tab3 = st.tabs(["Dataframes", "Images", "Catégories"])
     with tab1:
         col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
@@ -349,37 +352,29 @@ if page == pages[1]:
         with col3:
             st.write("\n")
 
-        
-        col1, col2, col3 = st.columns([2, 4, 1])
+        col1, col2 = st.columns([2, 1])
         with col1:
             # Problématique
-            st.header("Ressources fournies : dataframes")
+            st.header("Ressources fournies :")
             st.markdown(
                 """
-            Nous avons plusieurs elements fournis pour le test :
             - 1 dataframe X_train composé de 84916 produits
             - 1 dataframe X_test composé de 13812 produits
             - 1 dataframe y_train : avec les code produits
-            
-            - 1 dossier d'images train avec 84916 images
-            - 1 dossier d'images test avec 13812 images
-            
-            - 27 codes produits
+  
             """
             )
         with col2:
-            container = st.container()
-            with st.container():
-                st.image(schema_dataframe,
-                        output_format='auto', use_column_width=True)
-        
-        with col3:
             st.image(schema_dataframe_Y, use_column_width=True,
-                    caption="", output_format='auto')
+                     caption="", output_format='auto')
 
-    
+        container = st.container()
+        with st.container():
+            st.image(schema_dataframe,
+                     output_format='auto', use_column_width=True)
 
-        
+        # with col2:
+
         col1, col2, col3 = st.columns([1, 7, 1])
         with col1:
             st.write('')
@@ -392,7 +387,7 @@ if page == pages[1]:
         with col3:
             st.write("")
     with tab2:
-        
+
         col1, col2 = st.columns([1, 3])
         with col1:
             st.header("Ressources fournies : images")
@@ -407,12 +402,31 @@ if page == pages[1]:
             )
         with col2:
             st.image(schema_image, width=600, use_column_width=False,
-                    caption="", output_format='auto')
+                     caption="", output_format='auto')
+    with tab3:
+        # Chemin du dossier contenant les images
+        images_folder = 'images/wc_visuels/'
 
+        image_files = os.listdir(images_folder)
+
+        col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
+
+        def display_image_with_text(image_path, text):
+            with st.container():
+                st.image(image_path, use_column_width=True)
+                st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
+
+        for i, col in enumerate([col2, col4]):
+            image_path = os.path.join(images_folder, image_files[i])
+            with col:
+                display_image_with_text(image_path, f"{image_files[i][:-4]}")
+
+        for i, col in enumerate([col2, col4]):
+            image_path = os.path.join(images_folder, image_files[i+2])
+            with col:
+                display_image_with_text(image_path, f"{image_files[i+2][:-4]}")
     # Objectifs
-    
-    
-    
+
     st.header("Etapes suivantes")
     col1, col2, col3 = st.columns([1, 7, 1])
     with col1:
@@ -422,14 +436,13 @@ if page == pages[1]:
     with col3:
         st.write("")
 
-
  # page 2 ##########################################################################################################################
 if page == pages[2]:
     # Dataviz
     st.title("DATAVIZ")
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Produits par catégories", "Articles sans descriptions par catégories",
-                                                 "Longeur des textes par catégories", "Langues par catégories", 'Corrélation entre catégories', 'Wordclouds'])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Produits par catégories", "Articles sans descriptions par catégories",
+                                            "Longeur des textes par catégories", "Langues par catégories", 'Corrélation entre catégories'])
 
     with tab1:
         st.header("Produits par catégories")
@@ -440,9 +453,6 @@ if page == pages[2]:
         jusqu'à plusieurs milliers d’articles pour des catégories comme le mobilier ou les accessoires de piscine
         """
         )
-        
-        
-        
 
         df_train_clean['categorie'] = df_train_clean['prdtypefull'].str.split(
             ' - ').str[1]
@@ -461,8 +471,6 @@ if page == pages[2]:
         fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
         st.plotly_chart(fig)
 
-        
-
     with tab2:
         st.header("Articles sans descriptions par catégories")
 
@@ -471,8 +479,6 @@ if page == pages[2]:
         **Déséquilibre de classes** : Certaines produits n'ont pas de descriptions, on retrouve ici majoritairement les livres BD, les magazines d'occasion, les cartes de jeux.
         """
         )
-
-        
 
         # Compter le nombre de produits par catégorie
         cat_count = df_train_clean["prdtypefull"].value_counts()
@@ -499,8 +505,6 @@ if page == pages[2]:
         # Afficher le graphique
         st.plotly_chart(fig)
 
-        
-
     with tab3:
         st.header("Longeur des textes par catégories")
 
@@ -513,10 +517,6 @@ if page == pages[2]:
         """
         )
 
-        
-        
-       
-
         df_train_clean['longeur'] = (
             df_train_clean["designation_translated"] + df_train_clean["description_translated"]).astype(str)
         df_train_clean['longeur_val'] = df_train_clean['longeur'].apply(
@@ -526,23 +526,21 @@ if page == pages[2]:
 
         # Créer un graphique à barres avec plotly express
         fig = px.box(df_train_clean,
-                        x='prdtypefull',
-                        y='longeur_val',
-                        title="Longeur des textes par catégories",
-                        labels={'prdtypefull': "Catégories",
-                                'longeur_val': "Nombre de mots"},
+                     x='prdtypefull',
+                     y='longeur_val',
+                     title="Longeur des textes par catégories",
+                     labels={'prdtypefull': "Catégories",
+                             'longeur_val': "Nombre de mots"},
 
-                        width=1400,
-                        height=600,
-                        )
+                     width=1400,
+                     height=600,
+                     )
 
         # Mettre à jour les étiquettes de l'axe x
         fig.update_xaxes(tickangle=45, tickfont=dict(size=15))
 
         # Afficher le graphique
         st.plotly_chart(fig)
-
-        
 
     with tab4:
         st.header("Langues par catégories")
@@ -553,10 +551,6 @@ if page == pages[2]:
         (francais), on remarque que la langue varie significativement selon la catégorie de produit. 
         """
         )
-
-        
-
-        
 
         # Compter le nombre de fois que chaque produit apparaît pour chaque langue
         counts = df.groupby(['prdtypefull', 'language']
@@ -587,8 +581,6 @@ if page == pages[2]:
         # Affichage du graphique
         st.plotly_chart(fig)
 
-        
-
         st.header("Langues présentes")
         st.markdown(
             """
@@ -616,35 +608,35 @@ if page == pages[2]:
         with col3:
             st.write("")
 
-    with tab6:
-        st.header("Wordclouds")
-        st.markdown(
-            """
-            Quelques représentations visuelles de wordclouds. Les worldcloud servent avant tout a représenter les mots les plus fréquents des catégories. Plus un mot est présent plus il est grand
-            """
-        )
+    # with tab6:
+    #     st.header("Wordclouds")
+    #     st.markdown(
+    #         """
+    #         Quelques représentations visuelles de wordclouds. Les worldcloud servent avant tout a représenter les mots les plus fréquents des catégories. Plus un mot est présent plus il est grand
+    #         """
+    #     )
 
-        # Chemin du dossier contenant les images
-        images_folder = 'images/wc_visuels/'
+    #     # Chemin du dossier contenant les images
+    #     images_folder = 'images/wc_visuels/'
 
-        image_files = os.listdir(images_folder)
+    #     image_files = os.listdir(images_folder)
 
-        col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
+    #     col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
 
-        def display_image_with_text(image_path, text):
-            with st.container():
-                st.image(image_path, use_column_width=True)
-                st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
+    #     def display_image_with_text(image_path, text):
+    #         with st.container():
+    #             st.image(image_path, use_column_width=True)
+    #             st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
 
-        for i, col in enumerate([col2, col4]):
-            image_path = os.path.join(images_folder, image_files[i])
-            with col:
-                display_image_with_text(image_path, f"{image_files[i][:-4]}")
+    #     for i, col in enumerate([col2, col4]):
+    #         image_path = os.path.join(images_folder, image_files[i])
+    #         with col:
+    #             display_image_with_text(image_path, f"{image_files[i][:-4]}")
 
-        for i, col in enumerate([col2, col4]):
-            image_path = os.path.join(images_folder, image_files[i+2])
-            with col:
-                display_image_with_text(image_path, f"{image_files[i+2][:-4]}")
+    #     for i, col in enumerate([col2, col4]):
+    #         image_path = os.path.join(images_folder, image_files[i+2])
+    #         with col:
+    #             display_image_with_text(image_path, f"{image_files[i+2][:-4]}")
 
 
 # page 3  #############################################################################################################################################################################
@@ -716,7 +708,7 @@ if page == pages[4]:
     st.title("Modélisation : texte")
 
     tab1, tab2, tab3 = st.tabs(
-        ["Synthèse", "Benchmark des modèles", "Détail des performances par modèle"])
+        ["Approche", "Benchmark des modèles", "Détail des performances par modèle"])
 
     with tab1:
 
@@ -734,32 +726,6 @@ Plusieurs versions de transformers pré-entraînés sur divers corpus français 
                     
 ## Meilleurs résultats par modèle
                     """)
-
-        col11, col12 = st.columns([1, 1])
-        with col11:
-            st.markdown("""
-### Modèles standards
-| Modèle  | f1 score | Durée fit (s) |
-| :--------------- |---------------:| -----:|
-| Linear SVC  |   0.824 |  6 |
-| XGBoost  | 0.819 |   3 840 |
-| Logistic Regression  | 0.813 |    179 |
-| SVC  | 0.784 |    2 993 |
-| Random Forest  | 0.776 |    2 344 |
-| Multinomial NB  | 0.771 |    0.45 |
-                    
-""")
-
-        with col12:
-            st.markdown("""
-### Modèles transformers
-| Modèle  | f1 score | Durée fit (s) |
-| :--------------- |---------------:| -----:|
-| CamemBERT  |   0.886 |  16 955 |
-| XGBoost  |   0.885 |  17 225 |
-| Logistic Regression  |   0.878 |  15 138 |
-
-                        """)
 
         st.markdown("""
 ## Vectorisation
@@ -787,6 +753,32 @@ Pour les modèles 'standards', nous avons comparé les performances de la vector
         fig = res.build_fig_f1_scores(filter_package=['bert', 'text'])
         fig.update_xaxes(range=[0.6, 0.9])
         st.plotly_chart(fig, use_container_width=True)
+
+        col11, col12 = st.columns([1, 1])
+        with col11:
+            st.markdown("""
+### Modèles standards
+| Modèle  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| Linear SVC  |   0.824 |  6 |
+| XGBoost  | 0.819 |   3 840 |
+| Logistic Regression  | 0.813 |    179 |
+| SVC  | 0.784 |    2 993 |
+| Random Forest  | 0.776 |    2 344 |
+| Multinomial NB  | 0.771 |    0.45 |
+                    
+""")
+
+        with col12:
+            st.markdown("""
+### Modèles transformers
+| Modèle  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| CamemBERT  |   0.886 |  16 955 |
+| XGBoost  |   0.885 |  17 225 |
+| Logistic Regression  |   0.878 |  15 138 |
+
+                        """)
 
     with tab3:
         res = get_results_manager()
@@ -1048,7 +1040,7 @@ enfants"
 # Page7 ############################################################################################################################################
 if page == pages[7]:
     st.header("Classification à partir d'images ou de texte")
-    options = ["html", "data", 'Démo "poussette"',
+    options = ["html", "data", 'Démo "poussette"', 'Démo "hameçons"',
                'Démo "livre Dune"', 'Démo "jeu Dune"']
     option_selected = st.selectbox("Page rakuten ou données :", options)
 
@@ -1058,6 +1050,9 @@ if page == pages[7]:
             "Collez ici le contenu html de la page produit de Rakuten", value="")
     elif option_selected == 'Démo "poussette"':
         with open(config.path_to_project + '/data/demo/demo_poussette.html', 'r') as file:
+            input_html = file.read()
+    elif option_selected == 'Démo "hameçons"':
+        with open(config.path_to_project + '/data/demo/demo_hamecon.html', 'r') as file:
             input_html = file.read()
     elif option_selected == 'Démo "livre Dune"':
         with open(config.path_to_project + '/data/demo/demo_dune_livre.html', 'r') as file:
@@ -1094,30 +1089,9 @@ if page == pages[7]:
             img_url=image_url
         )
 
-        col1, col2 = st.columns([2, 4])
-        with col1:
-            tab11, tab12 = st.tabs(["Données brutes", "GradCam"])
-            with tab11:
-                st.write(designation)
-                st.image(image_url, use_column_width=True)
-            with tab12:
-                icam = pred['icam']
-                fig, ax = plt.subplots(1, 2)
-                ax[0].imshow(icam.image)
-                ax[0].axis('off')
-                ax[0].set_title('original')
-                ax[1].imshow(icam.image_masked)
-                ax[1].axis('off')
-                ax[1].set_title('deepCAM')
-                st.pyplot(fig)
-
-                fig, ax = plt.subplots()
-                plot_weighted_text(0, 0.7, icam.text, icam.text_masked*0+0.4, base_font_size=80,
-                                   char_per_line=80, title='Original', title_color='blue', title_fontsize=100, ax=ax)
-                plot_weighted_text(0, ax.get_ylim()[0], icam.text, icam.text_masked*5, base_font_size=60,
-                                   char_per_line=100, title='deepCAM', title_color='purple', title_fontsize=100, ax=ax)
-                st.pyplot(fig)
-        with col2:
+        tab11, tab12 = st.tabs(
+            ["Résultats", "Données / Gradcam"])
+        with tab11:
             st.write("<p>Classe prédite : <strong>{}</strong></p>".format(
                 pred['pred_labels'][0]), unsafe_allow_html=True)
             st.write("<p>Classe réelle : <strong>{}</strong></p>".format(
@@ -1147,61 +1121,27 @@ if page == pages[7]:
 
             # Afficher le graphique dans Streamlit
             st.plotly_chart(fig, use_container_width=True)
+        with tab12:
+            icam = pred['icam']
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                st.header('Texte original')
+                st.write(designation)
+                st.header('DeepCAM')
+                fig, ax = plt.subplots()
+                plot_weighted_text(0, 0.7, icam.text, icam.text_masked*5, base_font_size=60,
+                                   char_per_line=100, title='', title_color='purple', title_fontsize=100, ax=ax)
+                st.pyplot(fig)
+            with col2:
+                fig, ax = plt.subplots(1, 2)
+                ax[0].imshow(icam.image)
+                ax[0].axis('off')
+                ax[0].set_title('original')
+                ax[1].imshow(icam.image_masked)
+                ax[1].axis('off')
+                ax[1].set_title('deepCAM')
+                st.pyplot(fig)
 
-    elif option_selected == "Texte":
-        col1, col2 = st.columns([2, 4])
-        with col1:
-
-            import requests
-
-            # Champ pour saisir l'URL à scrapper
-            url_input = st.text_input("Entrez l'URL à scrapper :")
-
-            # Bouton pour lancer le scrapping
-            if st.button("Scrapper"):
-                # Vérifier si une URL a été saisie
-                if url_input:
-                    # Récupérer le contenu HTML de l'URL
-                    response = requests.get(url_input)
-                    # Vérifier si la requête a réussi
-                    if response.status_code == 200:
-                        # Afficher le texte récupéré
-                        st.write(response.text)
-            else:
-                st.error("Erreur lors de la récupération du contenu de l'URL")
-
-        with col2:
-            # Créer les données pour le graphique
-            categories = ['Catégorie 1', 'Catégorie 2',
-                          'Catégorie 3', 'Catégorie 4', 'Catégorie 5']
-            prediction = [0.78, 0.21]
-
-            # Créer le graphique à barres
-            fig = go.Figure(data=[
-                go.Bar(name='Prédiction 1', x=categories, y=prediction),
-
-            ])
-
-            # Personnaliser le layout
-            fig.update_layout(
-                title='Prédictions pour chaque catégorie',
-                xaxis=dict(title='Catégorie'),
-                yaxis=dict(title='Probabilité de prédiction'),
-                barmode='group'
-            )
-
-            # Afficher le graphique dans Streamlit
-            st.plotly_chart(fig, use_container_width=True)
-
-            classe_predite = "Classe A"
-            classe_reelle = "Classe B"
-            estimation = 0.78
-            st.write("<p style='text-align:center;'><strong>Classe prédite: {}</p>".format(
-                classe_predite), unsafe_allow_html=True)
-            st.write("<p style='text-align:center;'><strong>Classe réelle: {}</p>".format(
-                classe_reelle), unsafe_allow_html=True)
-            st.write("<p style='text-align:center;'><strong>Estimation: {:.2f}</p>".format(
-                estimation), unsafe_allow_html=True)
 
 # Page8 ############################################################################################################################################
 if page == pages[8]:
@@ -1225,4 +1165,3 @@ if page == pages[8]:
                 * Autres modéles images.
                 * Exploration de différentes architectures pour le modèle hybride.
                 """)
-   

@@ -15,7 +15,6 @@ from PIL import Image
 from io import BytesIO
 from src.utils.visualize import deepCAM, plot_weighted_text
 import time
-reload(uplot)
 
 
 class ResultsManager():
@@ -48,6 +47,8 @@ class ResultsManager():
         self.df_results = None
         self.le = None
         self.X_test = None
+        self.deepCam = None
+        self.loaded_classifiers = {}
         pass
 
     def add_result_file(self, file_path, package):
@@ -429,6 +430,14 @@ class ResultsManager():
 
         return ast.literal_eval(pred)
 
+    def get_deepCam(self):
+        if self.deepCam is None:
+            print('reload deepCam')
+            clf_fusion = load_classifier('fusion/camembert-base-vit_b16_TF6')
+            self.deepCam = deepCAM(clf_fusion)
+
+        return self.deepCam
+
     def predict(self, models_paths, text=None, img_url=None):
 
         probas = []
@@ -456,8 +465,6 @@ class ResultsManager():
         labels = self.get_label_encoder().inverse_transform(pred)
 
         # gradcam
-        clf_fusion = load_classifier('fusion/camembert-base-vit_b16_TF6')
-        icam = deepCAM(clf_fusion)
 
         # Pick some data
         # idx = 0
@@ -468,11 +475,26 @@ class ResultsManager():
         X = {'text': text, 'image': img_array}
 
         # Compute masks and masked inputs
+        icam = self.get_deepCam()
         icam.computeMaskedInput(X, min_factor=0.0)
         return {'pred_labels': labels, 'pred_probas': probas_weighted.tolist(), 'labels': self.get_cat_labels(), 'icam': icam, 'time': end_time - start_time}
 
+    def load_classifier(self, model_path):
+        """
+        Load a classifier from a model path.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            Classifier: the classifier
+        """
+        if model_path not in self.loaded_classifiers.keys():
+            self.loaded_classifiers[model_path] = load_classifier(model_path)
+        return self.loaded_classifiers[model_path]
+
     def predict_proba(self, model_path, text, img):
-        clf = load_classifier(model_path)
+        clf = self.load_classifier(model_path)
 
         model_type = model_path.split('/')[0]
         if (model_type == 'text' or model_type == 'bert') and text:
@@ -504,7 +526,7 @@ class ResultsManager():
             np.array: the probabilities
         """
         if pd.isna(self.df_results[self.df_results.model_path == model_path].probs_test.values[0]):
-            clf = load_classifier(model_path)
+            clf = self.load_classifier(model_path)
 
             if hasattr(clf, 'predict_proba'):
                 probas = clf.predict_proba(self.get_X_test())
