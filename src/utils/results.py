@@ -1,3 +1,4 @@
+from importlib import reload
 import pandas as pd
 import src.utils.plot as uplot
 import numpy as np
@@ -9,6 +10,11 @@ import re
 from src.utils.load import load_classifier
 from sklearn.metrics import classification_report, f1_score
 from tabulate import tabulate
+import requests
+from PIL import Image
+from io import BytesIO
+from src.utils.visualize import deepCAM, plot_weighted_text
+import time
 
 
 class ResultsManager():
@@ -41,6 +47,8 @@ class ResultsManager():
         self.df_results = None
         self.le = None
         self.X_test = None
+        self.deepCam = None
+        self.loaded_classifiers = {}
         pass
 
     def add_result_file(self, file_path, package):
@@ -98,6 +106,30 @@ class ResultsManager():
             ResultsManager: the results manager
         """
 
+        fig = self.build_fig_f1_scores(
+            filter_package=filter_package,
+            filter_model=filter_model,
+            figsize=figsize,
+            title=title
+        )
+        fig.show()
+
+        return self
+
+    def build_fig_f1_scores(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
+        """
+        Instantiate fig object of the f1 scores of the models on an horizontal bar plot.
+
+        Args:
+            filter_package (list, optional): a list of packages to filter the results. Defaults to None.
+            filter_model (list, optional): a list of model paths to filter the results. Defaults to None.
+            figsize (tuple, optional): the size of the plot. Defaults to (1200, 600).
+            title (str, optional): the title of the plot. Defaults to None.
+
+        Returns:
+            ResultsManager: the results manager
+        """
+
         # filtre des doublons
         scores = self.df_results[[
             'model_path',
@@ -119,9 +151,10 @@ class ResultsManager():
             ].reset_index(drop=True)
 
         # ajout des colonnes pour le plot
-        scores['serie_name'] = scores.apply(lambda row: row.classifier if pd.isna(
+
+        scores['serie_name'] = scores.apply(lambda row: row.model_path.split('/')[-1] if pd.isna(
             row.vectorization) else row.classifier + ' - ' + row.vectorization, axis=1)
-        scores['vectorizer'] = scores.apply(lambda row: row.classifier if pd.isna(
+        scores['vectorizer'] = scores.apply(lambda row: row.model_path.split('/')[-1] if pd.isna(
             row.vectorization) else row.vectorization, axis=1)
 
         # tri par score décroissant
@@ -132,7 +165,7 @@ class ResultsManager():
         # plot
         if title is None:
             title = 'Benchmark des f1 scores'
-        uplot.plot_bench_results(
+        fig = uplot.get_fig_benchs_results(
             sorted_scores,
             'serie_name',
             'score_test',
@@ -143,7 +176,7 @@ class ResultsManager():
             figsize=figsize
         )
 
-        return self
+        return fig
 
     def plot_f1_scores_by_prdtype(self, filter_package=None, filter_model=None, figsize=(1200, 600), title=None):
         """
@@ -293,16 +326,45 @@ class ResultsManager():
         Returns:
             ResultsManager: the results manager
         """
+        fig = self.get_fig_confusion_matrix(model_path, model_label)
+        fig.show()
+
+        return self
+
+    def get_fig_confusion_matrix(self, model_path, model_label=None):
+        """
+        Build the figure of the confusion matrix of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+
+        Returns:
+            figure to plot
+        """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
 
-        uplot.plot_confusion_matrix(
+        return uplot.get_fig_confusion_matrix(
             y_test,
             y_pred,
             index=self.get_cat_labels(),
             model_label=model_label
         )
-        return self
+
+    def get_fig_compare_confusion_matrix(self, model_path1, model_path2, model_label1=None, model_label2=None):
+        y_pred1 = self.get_y_pred(model_path1)
+        y_pred2 = self.get_y_pred(model_path2)
+        y_test = self.get_y_test(model_path1)
+
+        return uplot.get_fig_compare_confusion_matrix(
+            y_test,
+            y_pred1,
+            y_pred2,
+            index=self.get_cat_labels(),
+            model_label1=model_label1,
+            model_label2=model_label2
+        )
 
     def plot_f1_scores_report(self, model_path, model_label=None):
         """
@@ -319,6 +381,20 @@ class ResultsManager():
               target_names=self.get_cat_labels()))
 
         return self
+
+    def get_f1_scores_report(self, model_path, model_label=None):
+        """
+        Display the classification report of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+        """
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+
+        return classification_report(y_test, y_pred,
+                                     target_names=self.get_cat_labels(), output_dict=True)
 
     def plot_classification_report_merged(self, model_paths):
         """
@@ -368,6 +444,89 @@ class ResultsManager():
 
         return ast.literal_eval(pred)
 
+    def get_deepCam(self):
+        if self.deepCam is None:
+            print('reload deepCam')
+            clf_fusion = load_classifier('fusion/camembert-base-vit_b16_TF6')
+            self.deepCam = deepCAM(clf_fusion)
+
+        return self.deepCam
+
+    def predict(self, models_paths, text=None, img_url=None):
+
+        probas = []
+        weight_set = []
+        img_array = None
+        icam = None
+
+        if img_url:
+            img_res = requests.get(img_url, stream=True)
+            if img_res.status_code == 200:
+                img = Image.open(BytesIO(img_res.content))
+                img_array = np.array(img)
+        start_time = time.time()
+        for basename in models_paths:
+            probas.append(
+                np.array(self.predict_proba(basename, text, img_array)))
+            weight_set.append(self.get_f1_score(basename))
+
+        probas_weighted = np.sum([probas[i] * weight_set[i]
+                                  for i in range(len(probas))], axis=0)
+        end_time = time.time()
+
+        pred = np.argmax(probas_weighted, axis=1)
+
+        labels = self.get_label_encoder().inverse_transform(pred)
+
+        # gradcam
+
+        # Pick some data
+        # idx = 0
+        # image = cv2.imread(data['img_path'][idx])
+        # text = data['tokens'][idx]
+
+        # Format it as a dictionnary since here we've got a fusion model
+        X = {'text': text, 'image': img_array}
+
+        # Compute masks and masked inputs
+        icam = self.get_deepCam()
+        icam.computeMaskedInput(X, min_factor=0.0)
+        return {'pred_labels': labels, 'pred_probas': probas_weighted.tolist(), 'labels': self.get_cat_labels(), 'icam': icam, 'time': end_time - start_time}
+
+    def load_classifier(self, model_path):
+        """
+        Load a classifier from a model path.
+
+        Args:
+            model_path (str): the path to the model file
+
+        Returns:
+            Classifier: the classifier
+        """
+        if model_path not in self.loaded_classifiers.keys():
+            self.loaded_classifiers[model_path] = load_classifier(model_path)
+        return self.loaded_classifiers[model_path]
+
+    def predict_proba(self, model_path, text, img):
+        clf = self.load_classifier(model_path)
+
+        model_type = model_path.split('/')[0]
+        if (model_type == 'text' or model_type == 'bert') and text:
+            if hasattr(clf, 'predict_proba'):
+                probas = clf.predict_proba(text)
+            else:
+                probas = np.zeros(
+                    (1, self.get_num_classes()))
+                pred = clf.predict(text)
+                probas[0, pred] = 1
+        elif model_type == 'img' and img:
+            probas = clf.predict_proba(img)
+        else:
+            probas = clf.predict_proba(
+                {'text': text, 'image': img})
+
+        return probas
+
     def get_y_pred_probas(self, model_path):
         """
         Get the probabilities of the predictions of a model.
@@ -381,7 +540,7 @@ class ResultsManager():
             np.array: the probabilities
         """
         if pd.isna(self.df_results[self.df_results.model_path == model_path].probs_test.values[0]):
-            clf = load_classifier(model_path)
+            clf = self.load_classifier(model_path)
 
             if hasattr(clf, 'predict_proba'):
                 probas = clf.predict_proba(self.get_X_test())
@@ -437,13 +596,16 @@ class ResultsManager():
             self.X_test = df[['tokens', 'img_path']]
         return self.X_test
 
-    def get_model_paths(self):
+    def get_model_paths(self, filter_package=None):
         """
         Get all the model paths loaded in the results manager.
 
         Returns:
             list: the model paths
         """
+        if filter_package is not None:
+            return self.df_results[self.df_results.package.isin(filter_package)].model_path.unique()
+
         return self.df_results.model_path.unique()
 
     def get_model_label(self, model_path):
@@ -562,3 +724,52 @@ class ResultsManager():
               'model / fold', 'f1 score']))
 
         return np.mean(f_score_cv)
+
+    def get_voting_confusion_matrix(self, models_paths, model_label=None):
+        y_pred = self.voting_pred(models_paths)
+        y_test = self.get_y_test(models_paths[0])
+
+        return uplot.get_fig_confusion_matrix(
+            y_test,
+            y_pred,
+            index=self.get_cat_labels(),
+            model_label=model_label
+        )
+
+    def get_voting_f1_scores_report(self, models_paths, model_label=None):
+        """
+        Display the classification report of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+        """
+        y_pred = self.voting_pred(models_paths)
+        y_test = self.get_y_test(models_paths[0])
+
+        return classification_report(y_test, y_pred,
+                                     target_names=self.get_cat_labels(), output_dict=True)
+
+    def get_false_samples(self, model_path, n_samples=5):
+        """
+        Build the figure of the confusion matrix of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+
+        Returns:
+            figure to plot
+        """
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+
+        y_pred = self.get_label_encoder().inverse_transform(y_pred)
+        y_test = self.get_label_encoder().inverse_transform(y_test)
+
+        false_samples = np.equal(y_pred, y_test)
+        X_test = self.get_X_test()
+        X_test['pred'] = y_pred
+        X_test['true'] = y_test
+        X_false = X_test[false_samples == False]
+        return X_false.head(n_samples)

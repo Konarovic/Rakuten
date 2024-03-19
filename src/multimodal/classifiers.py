@@ -83,6 +83,7 @@ from vit_keras import vit
 
 import numpy as np
 import pandas as pd
+import cv2
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import VotingClassifier, StackingClassifier, BaggingClassifier, AdaBoostClassifier
@@ -497,7 +498,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                                                                                        include_top=False, pretrained_top=False)
             img_base_model = Model(
                 inputs=vit_model.input, outputs=vit_model.layers[-3].output)
-            preprocessing_function = None
+            preprocessing_function = lambda x: (x / 255.0 - np.mean(x / 255.0, keepdims=True)) / np.std(x / 255.0, keepdims=True)
 
         model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                   from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,
@@ -596,14 +597,30 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         Predicts the class labels for the given input data.
 
         Arguments:
-        * X: The image and text data for prediction. Should be a dataframe with columns
-          "tokens" containing the text and column "img_path" containing the full paths 
-          to the images
+        * X: The image and text data for prediction. For batches, this should be 
+          a dataframe with columns "tokens" containing the text and column 
+          "img_path" containing the full paths to the images. For single prediction,
+          it should be a dictionnary with keys "text" and "image" containing the text
+          as a string and the image as a numpy array
 
         Returns:
         An array of predicted class labels.
         """
-        dataset = self._getdataset(X, training=False)
+        
+        #if X is not a dictionnary, it should be a dataframe
+        #if it is a dictionnary, it should provide 'text' as a string
+        # and 'image' as a numpy array
+        if not isinstance(X, dict):
+            dataset = self._getdataset(X, training=False)
+        else:
+            X_tokenized = self.tokenizer(X['text'], 
+                                         padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            X_image = cv2.resize(X['image'], self.img_size[:2])
+            X_image = self.preprocessing_function(X_image)
+            X_image = X_image.reshape((1,) + X_image.shape)
+            image_processed = self.preprocessing_function(X_image)
+            dataset = [{"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, image_processed]
+            
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
 
@@ -612,14 +629,30 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         Predicts class probabilities for the given input data.
 
         Arguments:
-        * X: The image and text data for prediction. Should be a dataframe with columns
-          "tokens" containing the text and column "img_path" containing the full paths 
-          to the images
+        * X: The image and text data for prediction. For batches, this should be 
+          a dataframe with columns "tokens" containing the text and column 
+          "img_path" containing the full paths to the images. For single prediction,
+          it should be a dictionnary with keys "text" and "image" containing the text
+          as a string and the image as a numpy array
 
         Returns:
         An array of class probabilities for each input instance.
         """
-        dataset = self._getdataset(X, training=False)
+        
+        #if X is not a dictionnary, it should be a dataframe
+        #if it is a dictionnary, it should provide 'text' as a string
+        # and 'image' as a numpy array
+        if not isinstance(X, dict):
+            dataset = self._getdataset(X, training=False)
+        else:
+            X_tokenized = self.tokenizer(X['text'], 
+                                         padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            X_image = cv2.resize(X['image'], self.img_size[:2])
+            X_image = self.preprocessing_function(X_image)
+            X_image = X_image.reshape((1,) + X_image.shape)
+            image_processed = self.preprocessing_function(X_image)
+            dataset = [{"input_ids": X_tokenized['input_ids'], "attention_mask": X_tokenized['attention_mask']}, image_processed]
+            
         probs = self.model.predict(dataset)
 
         return probs
@@ -644,7 +677,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                           fill_mode='constant', cval=255)
 
         # Data generator for the train and test sets
-        img_generator = ImageDataGenerator(rescale=1./255, samplewise_center=True, samplewise_std_normalization=True,
+        img_generator = ImageDataGenerator(preprocessing_function=self.preprocessing_function,
                                            rotation_range=params['rotation_range'],
                                            width_shift_range=params['width_shift_range'],
                                            height_shift_range=params['height_shift_range'],

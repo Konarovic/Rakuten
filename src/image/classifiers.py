@@ -56,6 +56,7 @@ from vit_keras import vit
 
 import numpy as np
 import pandas as pd
+import cv2
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, f1_score, confusion_matrix
@@ -242,7 +243,7 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                                                                                        include_top=False, pretrained_top=False)
                 base_model = Model(inputs=vit_model.input,
                                    outputs=vit_model.layers[-3].output)
-                preprocessing_function = None
+                preprocessing_function = lambda x: (x / 255.0 - np.mean(x / 255.0, keepdims=True)) / np.std(x / 255.0, keepdims=True)
                 model_class = None
             elif 'efficientnet' in self.base_name.lower():
                 model_class = getattr(
@@ -366,7 +367,14 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
         Returns:
         An array of predicted class labels.
         """
-        dataset = self._getdataset(X, training=False)
+        #checking if X is an image
+        if not isinstance(X, np.ndarray):
+            dataset = self._getdataset(X, training=False)
+        else:
+            X = cv2.resize(X, self.img_size[:2])
+            X = self.preprocessing_function(X)
+            dataset = X.reshape((1,) + X.shape)
+            
         preds = self.model.predict(dataset)
         return np.argmax(preds, axis=1)
 
@@ -376,12 +384,21 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
 
         Arguments:
         * X: The image data for prediction. Can be an array like a pandas series, 
-          or a dataframe with column "img_path" containing the full path to the images
+          a dataframe with column "img_path" containing the full path to the images
+          or a single image provided as a numpy array
 
         Returns:
         An array of class probabilities for each input instance.
         """
-        dataset = self._getdataset(X, training=False)
+        
+        #checking if X is an image
+        if not isinstance(X, np.ndarray):
+            dataset = self._getdataset(X, training=False)
+        else:
+            X = cv2.resize(X, self.img_size[:2])
+            X = self.preprocessing_function(X)
+            dataset = X.reshape((1,) + X.shape)
+            
         probs = self.model.predict(dataset)
         return probs
 
@@ -410,22 +427,22 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                           fill_mode='constant', cval=255)
 
         # Data generator for the train and test sets
-        if 'vit' in self.base_name.lower():
-            data_generator = ImageDataGenerator(rescale=1./255, samplewise_center=True, samplewise_std_normalization=True,
-                                                rotation_range=params['rotation_range'],
-                                                width_shift_range=params['width_shift_range'],
-                                                height_shift_range=params['height_shift_range'],
-                                                horizontal_flip=params['horizontal_flip'],
-                                                fill_mode=params['fill_mode'],
-                                                cval=params['cval'])
-        else:
-            data_generator = ImageDataGenerator(preprocessing_function=self.preprocessing_function,
-                                                rotation_range=params['rotation_range'],
-                                                width_shift_range=params['width_shift_range'],
-                                                height_shift_range=params['height_shift_range'],
-                                                horizontal_flip=params['horizontal_flip'],
-                                                fill_mode=params['fill_mode'],
-                                                cval=params['cval'])
+        # if 'vit' in self.base_name.lower():
+        #     data_generator = ImageDataGenerator(rescale=1./255, samplewise_center=True, samplewise_std_normalization=True,
+        #                                         rotation_range=params['rotation_range'],
+        #                                         width_shift_range=params['width_shift_range'],
+        #                                         height_shift_range=params['height_shift_range'],
+        #                                         horizontal_flip=params['horizontal_flip'],
+        #                                         fill_mode=params['fill_mode'],
+        #                                         cval=params['cval'])
+        # else:
+        data_generator = ImageDataGenerator(preprocessing_function=self.preprocessing_function,
+                                            rotation_range=params['rotation_range'],
+                                            width_shift_range=params['width_shift_range'],
+                                            height_shift_range=params['height_shift_range'],
+                                            horizontal_flip=params['horizontal_flip'],
+                                            fill_mode=params['fill_mode'],
+                                            cval=params['cval'])
 
         dataset = data_generator.flow_from_dataframe(dataframe=df, x_col='img_path', y_col='labels',
                                                      class_mode='raw', target_size=self.img_size[:2],
