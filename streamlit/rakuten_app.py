@@ -239,32 +239,33 @@ if page == pages[0]:
     tab1, tab2, tab3 = st.tabs(["Contexte", "Objectifs", "Résultats"])
 
     with tab1:
-        st.image("images/rakuten.png", width=200)
-        st.markdown(
-            """
- La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
-""")
-
-        st.markdown("""
-                    Un des enjeux majeurs de la marketplace est de permettre aux **acheteurs de trouver facilement les produits qu’ils recherchent.**
-
-                    Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
-                    
-                    Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
-""")
-        col1, col2 = st.columns([1, 10])
+        col1, col2, col3 = st.columns([3, 1, 2])
         with col1:
+            st.image("images/rakuten.png", width=200)
+            st.markdown(
+                """
+    La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
+    """)
+
+            st.markdown("""
+                        Un des enjeux majeurs de la marketplace est de permettre aux **acheteurs de trouver facilement les produits qu’ils recherchent.**
+
+                        Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
+                        
+                        Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
+    """)
+
             st.markdown("""
                     ####      - 80 000 produits
                     ####      - 27 catégories à distinguer
                     ####      - Description textuelle multilangue
                         """)
 
-        with col2:
+        with col3:
             st.header("> Puériculture")
             st.write("Porte bébé Violet et rouge Trois-en-un mère multifonctions Kangourou fermeture à glissière Hoodie Taille: XL Poitrine: 104-109 cm 84-88 cm Hanche: 110-116 cm clair + 1. Marque nouvelle et de haute qualité. 2. Détachable conception pratique et attentionnée. 3. Parfait pour les mères qui allaitent. 4. Anti-vent chaud et style kangourou multifonctionnel haut de gamme. 5. Sac de couchage multifonction amovible de la mère européenne. Spécification: Les types Fermez Buste104-109cm Encolure Sweat à capuche Les hanches110-116cm Tailles disponiblesXLMatériel Coton")
             st.divider()
-            st.image("images/image_sample.jpg", use_column_width=True)
+            st.image("images/image_sample.jpg", width=300)
 
     with tab2:
         st.markdown(
@@ -586,6 +587,7 @@ if page == pages[3]:
         translated_text = translator.fit_transform(corrected_text)
         options = raw_df.loc[~raw_df['description'].isna(
         ), 'productid'].to_list()
+        # options = raw_df['productid'].to_list()
 
         idx_selected = st.selectbox("Selectionnez un produit :", options)
         col1, col2 = st.columns([1, 1])
@@ -602,21 +604,21 @@ if page == pages[3]:
             """)
             st.write(translated_text[raw_df['productid']
                      == idx_selected].values[0])
-        col3, col4 = st.columns([1, 1])
-        with col3:
-            st.markdown("""
-            **Texte nettoyé**            
-            """)
-            # st.dataframe(cleaned_text)
-            st.write(cleaned_text[raw_df['productid']
-                     == idx_selected].values[0])
+        # col3, col4 = st.columns([1, 1])
+        # with col3:
+        #     st.markdown("""
+        #     **Texte nettoyé**
+        #     """)
+        #     # st.dataframe(cleaned_text)
+        #     st.write(cleaned_text[raw_df['productid']
+        #              == idx_selected].values[0])
 
-        with col4:
-            st.markdown("""
-            **Texte corrigé**            
-            """)
-            st.write(corrected_text['corrected_text'][raw_df['productid']
-                     == idx_selected].values[0])
+        # with col4:
+        #     st.markdown("""
+        #     **Texte corrigé**
+        #     """)
+        #     st.write(corrected_text['corrected_text'][raw_df['productid']
+        #              == idx_selected].values[0])
 
     # with tab2:
     #     st.markdown(
