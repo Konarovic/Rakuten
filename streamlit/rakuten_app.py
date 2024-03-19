@@ -28,10 +28,10 @@ from src.features.text.pipelines.corrector import CleanEncodingPipeline
 df = pd.read_csv("../data/raw/X_train.csv")
 df_train_clean = pd.read_csv("../data/clean/df_train_index.csv")
 index_column = "Unnamed: 0"
-df_train_raw = pd.read_csv("../data/x_train_update.csv")
+df_train_raw = pd.read_csv("../data/raw/X_train.csv")
 df_train_raw.set_index(index_column, inplace=True)
-df_train_prepro = pd.read_csv("../data/df_preprocessed.csv")
-df_train_prepro.set_index(index_column, inplace=True)
+# df_train_prepro = pd.read_csv("../data/df_preprocessed.csv")
+# df_train_prepro.set_index(index_column, inplace=True)
 ytrain = pd.read_csv("../data/raw/Y_train.csv")
 
 
@@ -343,16 +343,12 @@ if page == pages[1]:
         st.header("Catégories cibles")
         # Chemin du dossier contenant les images
         images_folder = 'images/wc_visuels/'
+        image_files = os.listdir(images_folder)
 
-    # Objectifs  
-    # st.header("Etapes suivantes")
-    # col1, col2, col3 = st.columns([1, 7, 1])
-    # with col1:
-    #     st.write("")
-    # with col2:
-    #     st.image(schema_objectifs, caption="")
-    # with col3:
-    #     st.write("")
+        def display_image_with_text(image_path, text):
+            with st.container():
+                st.image(image_path, use_column_width=True)
+                st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
 
         col1, col2, col3, col4, col5 = st.columns([2, 1, 2, 1, 2])
         with col1:
@@ -364,11 +360,6 @@ if page == pages[1]:
                 use_container_width=True,
                 height=1000
             )
-
-        def display_image_with_text(image_path, text):
-            with st.container():
-                st.image(image_path, use_column_width=True)
-                st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
 
         for i, col in enumerate([col3, col5]):
             image_path = os.path.join(images_folder, image_files[i])
@@ -492,12 +483,9 @@ if page == pages[2]:
         """
         )
 
-    
-
-       
         counts = df.groupby(['prdtypefull', 'language']
                             ).size().reset_index(name='Nombre')
-        
+
         # Création du graphique
         fig = go.Figure()
 
@@ -509,7 +497,6 @@ if page == pages[2]:
                 name=langue
             ))
 
-        
         # Mise en forme du graphique
         fig.update_layout(
             title='Pourcentage des langues par categorie',
@@ -635,38 +622,38 @@ if page == pages[3]:
             st.write(corrected_text['corrected_text'][raw_df['productid']
                      == idx_selected].values[0])
 
-    with tab2:
-        st.markdown(
-            """
-            Redimensionnement des images pour optimizer le padding, en conservant le rapport d'asspect.
-            """
-        )
+    # with tab2:
+    #     st.markdown(
+    #         """
+    #         Redimensionnement des images pour optimizer le padding, en conservant le rapport d'asspect.
+    #         """
+    #     )
 
-        col1, col2, col3 = st.columns([1, 2, 1])
+    #     col1, col2, col3 = st.columns([1, 2, 1])
 
-        with col1:
-            st.write("")
+    #     with col1:
+    #         st.write("")
 
-        with col2:
+    #     with col2:
 
-            st.image(schema_prepro_txt, use_column_width=True)
+    #         st.image(schema_prepro_txt, use_column_width=True)
 
-        with col3:
-            st.write("")
+    #     with col3:
+    #         st.write("")
 
-        col1, col2 = st.columns([1, 1])
+    #     col1, col2 = st.columns([1, 1])
 
-        with col1:
-            st.markdown("""
-            dataframe orginal            
-            """)
-            st.write(df_train_raw.head())
+    #     with col1:
+    #         st.markdown("""
+    #         dataframe orginal
+    #         """)
+    #         st.write(df_train_raw.head())
 
-        with col2:
-            st.markdown("""
-            dataframe preprocessé (jusqu'à l'étape fix encoding exceptions)           
-            """)
-            st.write(df_train_prepro.head())
+    #     with col2:
+    #         st.markdown("""
+    #         dataframe preprocessé (jusqu'à l'étape fix encoding exceptions)
+    #         """)
+    #         st.write(df_train_prepro.head())
 
     with tab2:
         st.header("Traitement sur les images")
@@ -987,7 +974,7 @@ de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 cou
                 st.image(image_metaVoting, use_column_width=True)
             with col3:
                 st.write("")
-                
+
             st.markdown("""
     Le **poids** attribué a chaque modèle est défini par le **rapport des F1-scores** (poids du
 modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **cross-validées sur l'ensemble de test** (5 folds)
