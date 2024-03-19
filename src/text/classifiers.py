@@ -477,7 +477,6 @@ class TFbertClassifier(BaseEstimator, ClassifierMixin):
         else:
             X_txt = X
 
-        print('xtxt', type(X_txt))
         # Tokenizing the text with the bert tokenizer
         X_tokenized = self.tokenizer(
             X_txt,
@@ -802,6 +801,8 @@ class MLClassifier(BaseEstimator, ClassifierMixin):
         # Fetching text data if X is a dataframe
         if isinstance(X, pd.DataFrame):
             X_txt = X['tokens']
+        elif isinstance(X, str):
+            X_txt = [X]
         else:
             X_txt = X
 

@@ -60,7 +60,6 @@ class RakutenScrapper():
             true_cat = ''
             for item in soup.select(".prdBreadcrumbItem"):
                 true_cat = " > ".join([true_cat, item.get_text().strip()])
-            print(true_cat)
         else:
             true_cat = 'not found'
 
