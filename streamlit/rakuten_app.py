@@ -153,6 +153,10 @@ custom_css = """
     div.st-emotion-cache-16txtl3 {
         padding: 2rem 2rem;
     }
+
+    .block-container {
+        padding-top: 1rem;
+    }
     
     
    
@@ -219,6 +223,7 @@ def get_results_manager():
 
 # page 0############################################################################################################################################
 if page == pages[0]:
+    st.title("PRÉSENTATION DU PROJET")
     tab1, tab2, tab3 = st.tabs(["Contexte", "Objectifs", "Résultats"])
 
     with tab1:
@@ -282,74 +287,14 @@ if page == pages[0]:
         with col2:
             st.image('images/models.jpg', width=1200,
                      caption="f1 scores des modèles combinés")
-    # col1, col2, col3 = st.columns([1, 1, 1])
-    # with col1:
-    #     st.write("")
-    # with col2:
-    #     st.markdown("""
-    #         <div style="text-align:center;">
-    #             <h1>PRESENTATION</h1>
-    #         </div>
-    #     """, unsafe_allow_html=True)
-    # with col3:
-    #     st.write("\n")
-
-    # st.header("Contexte :")
-    # st.markdown(
-    #     """
-    # Le concept fondamental d’une marketplace réside dans sa capacité à mettre en relation vendeurs et acheteurs par le biais
-    # d’une plateforme en ligne unique, simplifiant ainsi le processus d’achat et de vente d’une vaste gamme de produits.
-    # Pour qu’elle soit efficace, il est crucial que les produits soient aisément identifiables, que les utilisateurs bénéficient
-    # d’une navigation fluide tout au long de leur parcours d’achat et que la plateforme offre des recommandations personnalisées alignées
-    # sur le comportement des utilisateurs.
-    # Un aspect essentiel du bon fonctionnement d’une marketplace est donc l’organisation méthodique des produits dans des catégories précises,
-    # facilitant la recherche et la découvrabilité des produits.
-    # """)
-    # col1, col2, col3 = st.columns([1, 1, 1])
-    # with col1:
-    #     st.write("")
-    # with col2:
-    #     st.image(img_rakuten_website)
-    # with col3:
-    #     st.write("\n")
-
-    # st.markdown(
-    #     """
-
-    # Ce processus de classification des produits requiert l’application de techniques de machine learning (ML) pour plusieurs raisons essentielles :
-    # les vendeurs pourraient (pour diverses raisons) ne pas assigner les nouveaux produits aux catégories pertinentes,
-    # introduisant des erreurs dans l’organisation du catalogue
-    # le classement manuel des produits peut s'avérer particulièrement fastidieux et inefficace lors de l’ajout massif d’articles.
-    # les catégories peuvent être amenées à être modifiées pour améliorer l'expérience d’achat des utilisateurs,
-    # impliquant une mise à jour sur l’ensemble du catalogue.
-
-    # L’utilisation de technique de machine learning permet de surmonter ces problèmes éventuels
-    # en automatisant tout ou partie de la catégorisation des produits sur la base des descriptions et images fournies par les vendeurs.
-
-    # Le dataset utilisé dans ce projet est issu d’un challenge proposé par le groupe Rakuten, l’un des acteurs majeurs du marketplace B2B2C.
-    # Il se compose d’un catalogue d’environ 80.000 produits, répartis selon 27 catégories distinctes, accompagnés de leurs descriptions textuelles
-    # et images correspondantes. Voici le lien du concours [lien vers concours](https://challengedata.ens.fr/challenges/59)
-    #     """
-    # )
-    # st.header("Objectifs :")
-    # st.markdown(
-    #     """
-    # L’objectif principal est de développer le **meilleur modèle capable de classifier précisément (au sens du f1-score)**
-    # chacun des produits en se basant sur les descriptions et images fournies.
-    # Cela induit de développer plusieurs modèles et de les benchmarker afin de sélectionner le modèle le plus performant et le plus robuste.
-
-    # L’ensemble des membres du groupe projet étant débutant dans le domaine du **NLP (Natural Language Processing)** et de la **CV (Computer Vision)**.
-    # Nous avons à comprendre et appliquer ces techniques au projet.
-
-    #     """
-    # )
 
 
 # page 1 ##########################################################################################################################
 if page == pages[1]:
+    st.title("EXPLORATION DES DONNÉES")
     tab1, tab2, tab3 = st.tabs(["Dataframes", "Images", "Catégories"])
     with tab1:
-        st.header("Exploration des données texte")
+        st.header("Données texte")
         st.markdown("""
             ### - `X_train.csv` composé de 84916 produits
             ### - `X_test.csv` composé de 13812 produits
@@ -366,7 +311,7 @@ if page == pages[1]:
             st.image(schema_dataframe_Y, width=None)
 
     with tab2:
-        st.header("Exploration des données images")
+        st.header("Données images")
 
         col1, col2 = st.columns([1, 3])
         with col1:
@@ -383,6 +328,7 @@ if page == pages[1]:
             st.image(schema_image, width=600, use_column_width=True,
                      caption="", output_format='auto')
     with tab3:
+        st.header("Catégories cibles")
         # Chemin du dossier contenant les images
         images_folder = 'images/wc_visuels/'
 
