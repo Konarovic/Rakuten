@@ -42,6 +42,8 @@ graf_WC = "images/maskWC.png"
 img_rakuten_website = "images/rakuten_website.png"
 corr = 'images/corr_cat.jpg'
 image_BERT = 'images/image_BERT.png'
+image_ResNet152 = 'images/image_ResNet152.png'
+image_ViT = 'images/image_ViT.png'
 
 # dossier images
 wc_folder = "Images/wc_visuels"
@@ -690,7 +692,7 @@ if page == pages[4]:
     st.title("Modélisation : texte")
 
     tab1, tab2, tab3 = st.tabs(
-        ["**Approche**", "**Benchmark des modèles**", "**Détail des performances par modèle**"])
+        ["**Approches**", "**Benchmark des modèles**", "**Détail des performances par modèle**"])
 
     with tab1:
         st.markdown("""
@@ -715,7 +717,7 @@ if page == pages[4]:
 
     > _A noter que l'ajustement des hyper-paramètres de Word2Vec dépend de la modélisation appliquée ensuite, d'où la nécessité de faire des GridSearchCV combinés si on souhaite optimiser ces paramètres._
 
-       Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation.                         """)
+       """)
         
         with tab1_2:
             st.markdown("""
@@ -737,16 +739,30 @@ if page == pages[4]:
     ## Méthodologie et benchmark
     - Entrainement sur 80% des donnéees
     - Evaluation des performances sur les 20% restants
-    - Optimisation des hyper-paramètres via **GridSearchCV** avec validation croisée à 5 folds sur l'ensemble d'entraînement""")
+    - Optimisation des hyper-paramètres via **GridSearchCV** avec validation croisée à 5 folds sur l'ensemble d'entraînement
+    - Transformers fine-tuned sur 8 epoques, learning rate de 5e-5, decroissant de 20% a chaque epoque""")
 
     with tab2:
-        res = get_results_manager()
-        fig = res.build_fig_f1_scores(filter_package=['bert', 'text'])
-        fig.update_xaxes(range=[0.6, 0.9])
-        st.plotly_chart(fig, use_container_width=True)
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            res = get_results_manager()
+            fig = res.build_fig_f1_scores(filter_package=['bert', 'text'])
+            fig.update_xaxes(range=[0.6, 0.9])
+            st.plotly_chart(fig, use_container_width=True)
 
-        col11, col12 = st.columns([1, 1])
-        with col11:
+        
+        with col2:
+            st.markdown("""
+### Modèles transformers
+| Modèle  | f1 score | Durée fit (s) |
+| :--------------- |---------------:| -----:|
+| CamemBERT  |   0.886 |  16 955 |
+| XGBoost  |   0.885 |  17 225 |
+| Logistic Regression  |   0.878 |  15 138 |
+
+                        """)
+            
             st.markdown("""
 ### Modèles standards
 | Modèle  | f1 score | Durée fit (s) |
@@ -759,17 +775,7 @@ if page == pages[4]:
 | Multinomial NB  | 0.771 |    0.45 |
                     
 """)
-
-        with col12:
-            st.markdown("""
-### Modèles transformers
-| Modèle  | f1 score | Durée fit (s) |
-| :--------------- |---------------:| -----:|
-| CamemBERT  |   0.886 |  16 955 |
-| XGBoost  |   0.885 |  17 225 |
-| Logistic Regression  |   0.878 |  15 138 |
-
-                        """)
+            
 
     with tab3:
         res = get_results_manager()
@@ -806,51 +812,83 @@ enfants"
 if page == pages[5]:
     st.title("Modélisation : images")
     tab1, tab2, tab3 = st.tabs(
-        ["**Approche**", "**Benchmark des modèles**", "**Détail des performances par modèle**"])
+        ["**Approches**", "**Benchmark des modèles**", "**Détail des performances par modèle**"])
 
     with tab1:
 
         st.markdown("""
-                    
-Dans le domaine de la classification d'images, l'adoption de réseaux de deep learning est incontournable.
-Les réseaux de **neurones convolutifs (CNN)** sont particulièrement performants mais plus récemment, les
-modèles basés sur des architectures de transformer, comme le modèle **Vision Transformer (ViT)** se sont
-aussi révélés efficaces.
-Pour classifier les produits sur la base des images associées, nous avons donc utilisé différents réseaux
-convolutifs **(ResNet, EfficientNet et VGG)** ainsi que le transformer **ViT (Vision Transformer)**, tous
-pré-entraînés sur la base de données ImageNet.
-                    
-## Meilleurs résultats par modèle
+Classification de produits sur la base des images seules par deux approches: 
+- Convolutional Neural Networks (**CNN**).
+- Vision transformers **ViT**.
                     """)
-
-        st.markdown("""
-
-| Modèle  | f1 score | Durée fit (s) |
-| :--------------- |---------------:| -----:|
-| ViT_b16  |   0.675 |  10 572 |
-| ResNet152  | 0.658 |   6 894 |
-| ResNet101  | 0.656 |   6 754 |
-| EfficientNetB1  | 0.655 |    6 657 |
-| Random Forest  | 0.653 |    6 720 |
-| Multinomial NB  | 0.620 |    6 054 |
-                    
-
-> Les F1-scores mesurés sur l'ensemble de test révèlent une supériorité marquée du modèle Vision
-Transformer **(ViT, F1-score = 0.675)** comparativement au meilleur modèle CNN testé **(ResNet152,
-F1-score = 0.658)**. Ces modèles image restent cependant beaucoup moins performants que les
-modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive
-d'images. Néanmoins, il est intéressant de noter que les catégories les plus fréquemment confondues par
-les modèles dédiés aux images correspondent presque exactement à celles posant des difficultés dans la
-classification de texte.
-""")
+        
+        tab1_1, tab1_2, tab1_3 = st.tabs(["CNN", "ViT", "Methode"])
+        with tab1_1:        
+            st.markdown("""
+    ### CNN
+    **VGG16**, **ResNet** (ResNet50, ResNet101, ResNet152), **EfficientNet** (EfficientNetB1), tous pré-entrainés sur ImageNet
+    ### Exemple d'architecture CNN (ResNet152)
+                        """)
+            st.image(image_ResNet152, use_column_width=True)
+            
+        with tab1_2:
+            st.markdown("""
+    Vision transformer **ViT**, pré-entraînés sur ImageNet""")    
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                st.write("")
+            with col2:
+                st.image(image_ViT, use_column_width=True)
+            with col3:
+                st.write("")
+            
+                
+            st.markdown("""
+    _Les Vision transformers ont une architecture similaire aux BERT, si ce n'est l'etape d'embedding wui s'effectue
+    a partir d'une segmentation de l'image en patches qui sont ensuite traités par l'encodeur comme une sequence de tokens._""") 
+            
+        with tab1_3:        
+            st.markdown("""
+    ## Méthodologie et benchmark similaire a celle utilisée pour le texte
+    - Entrainement sur 80% des donnéees
+    - Evaluation des performances sur les 20% restants
+    - Transformers fine-tuned sur 8 epoques, learning rate de 5e-5, decroissant de 20% a chaque epoque""")
+            
 
     with tab2:
-        res = get_results_manager()
-        fig = res.build_fig_f1_scores(filter_package=['img'])
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            res = get_results_manager()
+            fig = res.build_fig_f1_scores(filter_package=['img'])
 
-        fig.update_xaxes(range=[0.5, 0.8])
-        st.plotly_chart(fig, use_container_width=True)
+            fig.update_xaxes(range=[0.5, 0.8])
+            st.plotly_chart(fig, use_container_width=True)
 
+        with col2:
+            st.markdown("""
+                        """)
+            st.markdown("""
+
+    | Modèle  | f1 score | Durée fit (s) |
+    | :--------------- |---------------:| -----:|
+    | ViT_b16  |   0.675 |  10 572 |
+    | ResNet152  | 0.658 |   6 894 |
+    | ResNet101  | 0.656 |   6 754 |
+    | EfficientNetB1  | 0.655 |    6 657 |
+    | Random Forest  | 0.653 |    6 720 |
+    | Multinomial NB  | 0.620 |    6 054 |
+                        """)
+            
+        st.markdown("""
+    > Supériorité marquée du modèle Vision
+    Transformer **(ViT, 0.675)** comparativement au meilleur modèle CNN testé **(ResNet152, 0.658)**. 
+    
+    > Ces modèles image restent cependant beaucoup moins performants que les
+    modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive
+    d'images.
+                    """)
+        
     with tab3:
         res = get_results_manager()
         models_paths = res.get_model_paths(filter_package=['img'])
@@ -889,39 +927,98 @@ if page == pages[6]:
     st.title("Modélisation : fusion")
 
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["Synthèse", "Benchmark des modèles", "Détail des performances par modèle", "Simulateur de fusion"])
+        ["**Approches**", "**Benchmark des modèles**", "**Détail des performances par modèle**", "**Simulateur de fusion**"])
 
     with tab1:
 
         st.markdown("""
                     
-Nous avons retenu les deux meilleurs architectures obtenues sur le texte et les images
-(i.e. camemBERT et ViT). Plusieurs architectures de modèles effectuant la fusion entre ces deux
-transformers ont ensuite été testées et comparées:
-- Approches d’ensemble: classifiers de type voting ou stacking (par régression logistique) opérant sur
-les logits de sortie des modèles spécialisés pré-entraînés. _Le poids attribué à chaque modèle dans le
-voting classifier est défini par le rapport des F1-scores des modèles spécialisés (par exemple:
-camemBERT: F1-scoreBERT / (F1-scoreBERT + F1-scoreViT) = 0.57; ViT: F1-scoreViT / (F1-scoreBERT +
-F1-scoreViT) = 0.43)_.                   
-Pour éviter tout leakage des F1-scores utilisés comme poids du modèle, la
-performance du voting classifier est estimée par validation croisée à 5 folds sur l’ensemble de test.
-- Approche transformer (TF): fusion des sorties des derniers blocs de transformer de camemBERT et
-ViT par l'intermédiaire d’un bloc transformer cross-attentionnel, suivi d’un nombre variable de blocs
-de transformer classiques avec self-attention (TF: 1, 3 ou 6 blocs).
-
-Après analyse approfondie des résultats obtenus, une troisième approche de fusion a été testée : **l'approche hybride**.
-Cette approche consiste à intégrer dans un modèle voting classifier une combinaison de plusieurs modèles.
-Le meilleur de ces modèles hybrides combine les classifiers suivants: TF6 (hybride),
-camembert-base-ccnet (texte), flaubert-base-uncased (texte), xgboost_tfidf (texte), vit_b16 (image),
-ResNet152 (image). Ce modèle permet de gagner plus d’un point de F1-score par rapport au modèle
-multimodale simple de type transformer **(F1-score = 0.911)**
-## Meilleurs résultats par modèle
+Comparaison de differentes approches pour la classification sur la base du texte et des images:
+- Classifiers d’ensemble simples de type voting ou stacking opérant sur
+les logits de sortie des modèles spécialisés pré-entraînés.    
+- Modele hybride de type transformer (TF).
+- Meta-ensemble combinant modeles hybrides et specialises par voting
                     """)
-        col11, col12 = st.columns([1, 1])
+        
+        tab1_1, tab1_2, tab1_3, tab1_4 = st.tabs(["Ensembles simples", "Transformer hybride", "Meta Voting", "Methodologie"])
+        with tab1_1:        
+            st.markdown("""
+    **Voting** ou **Stacking** opérant sur les logits de sortie des meilleurs modèles spécialisés pré-entraînés (**camemBERT** + **ViT**).
+                        """)
+            st.write("")#st.image(image_simpleVoting, use_column_width=True)
+            
+        with tab1_2:
+            st.markdown("""
+    Transformer fusionnant les sorties des derniers blocs de transformer de **camemBERT** et
+**ViT** par l'intermédiaire d’un bloc transformer **cross-attentionnel** (*query*: texte; *key*, *value*: image), suivi d’un nombre variable de blocs
+de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 couches par bloc""")    
+            
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                st.write("")
+            with col2:
+                st.write("")#st.image(image_fusionTF, use_column_width=True)
+            with col3:
+                st.write("")
+            
+        with tab1_3:
+            st.markdown("""
+    Meta ensemble combinant differents modeles hybrides et spécialisés dans un Voting classifier (ex: **TF6** (hybride),
+**camembert-base-ccnet** (texte), **flaubert-base-uncased** (texte), **xgboost_tfidf** (texte), **vit_b16** (image),
+**ResNet152** (image)).
+> Le **poids** attribué a chaque modèle est défini par le **rapport des F1-scores** (poids du
+modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **cross-validées sur l'ensemble de test** (5 folds)
+                        """)    
+            
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                st.write("")
+            with col2:
+                st.write("")#st.image(image_metaVoting, use_column_width=True)
+            with col3:
+                st.write("")
+            
+        with tab1_4:        
+            st.markdown("""
+- Entrainement sur 80% des donnéees
+- Evaluation des performances sur les 20% restants
+- Transformers fine-tuned sur 8 epoques, learning rate de 5e-5, decroissant de 20% a chaque epoque
+- **Poids des voting classifiers cross-validées sur l'ensemble de test (5 folds)**""")
+        
+    with tab2:
+        
+        col11, col12 = st.columns([2, 1])
         with col11:
+            res = get_results_manager()
+
+            # scores = scores[['serie_name', 'score_test',
+            #                  'vectorizer']].reset_index()
+            # sorted_scores = scores.sort_values(by='score_test', ascending=False)
+
+            # # plot
+            # if title is None:
+            #     title = 'Benchmark des f1 scores'
+            # fig = uplot.get_fig_benchs_results(
+            #     sorted_scores,
+            #     'serie_name',
+            #     'score_test',
+            #     'model',
+            #     'f1 score',
+            #     color_column='vectorizer',
+            #     title=title,
+            #     figsize=figsize
+            # )
+            fig = res.build_fig_f1_scores(filter_package=['fusion'])
+            fig.update_xaxes(range=[0.8, 0.92])
+            fig.update_yaxes(showticklabels=False)
+
+            st.plotly_chart(fig, use_container_width=True)
+        
+        
+        with col12:
             st.markdown("""
 
-### Modèles fusion basés sur CamemBERT-ccnet et ViT 
+#### Modèles fusion basés sur CamemBERT-ccnet et ViT 
 | Modèle  | f1 score | Durée fit (s) |
 | :--------------- |---------------:| -----:|
 | TF6  |   0.899 |  28 874 |
@@ -931,45 +1028,6 @@ multimodale simple de type transformer **(F1-score = 0.911)**
 | Stacking  | 0.891 |    1 311 |
 
 """)
-        with col12:
-            st.markdown("""
-### Modèles fusion hybrides
-                        
-| Modèle  | f1 score |
-| :--------------- |---------------:|
-| **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.911** |
-| TF6, CamemBERT, ViT | 0.909 |
-| TF6, FlauBERT, ResNet152  | 0.907 |
-| CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
-| CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
-| SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
-
-
-                        """)
-    with tab2:
-        res = get_results_manager()
-
-        # scores = scores[['serie_name', 'score_test',
-        #                  'vectorizer']].reset_index()
-        # sorted_scores = scores.sort_values(by='score_test', ascending=False)
-
-        # # plot
-        # if title is None:
-        #     title = 'Benchmark des f1 scores'
-        # fig = uplot.get_fig_benchs_results(
-        #     sorted_scores,
-        #     'serie_name',
-        #     'score_test',
-        #     'model',
-        #     'f1 score',
-        #     color_column='vectorizer',
-        #     title=title,
-        #     figsize=figsize
-        # )
-        fig = res.build_fig_f1_scores(filter_package=['fusion'])
-        fig.update_xaxes(range=[0.8, 0.92])
-
-        st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
         res = get_results_manager()
@@ -1007,20 +1065,19 @@ enfants"
         models_paths = res.get_model_paths()
         models_paths = np.sort(models_paths)
 
-        options_selected = st.multiselect(
-            "Choisissez plusieurs modèles pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
-
         col1, col2 = st.columns([1, 1])
 
         with col1:
+            options_selected = st.multiselect(
+            "Choisissez plusieurs modèles pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
+            
             if len(options_selected) > 1:
                 plt_matrix = res.get_voting_confusion_matrix(
                     options_selected, model_label="fusion personnalisée")
                 st.pyplot(plt_matrix, use_container_width=True)
             else:
                 st.write("Sélectionnez au moins deux modèles")
-
-        with col2:
+            
             if len(options_selected) > 1:
                 st.dataframe(
                     pd.DataFrame(res.get_voting_f1_scores_report(
@@ -1028,6 +1085,21 @@ enfants"
                     use_container_width=True,
                     height=1200
                 )
+        with col2:
+            st.markdown("""
+### Benchmark des modèles fusion hybrides
+                        
+| Modèle  | f1 score |
+| :--------------- |---------------:|
+| **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.911** |
+| TF6, CamemBERT, ViT | 0.909 |
+| TF6, FlauBERT, ResNet152  | 0.907 |
+| CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
+| CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
+| SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
+                        """)
+            
+            
 # Page7 ############################################################################################################################################
 if page == pages[7]:
     st.header("Classification à partir d'images ou de texte")
