@@ -22,8 +22,13 @@ from src.utils.visualize import plot_weighted_text
 
 # chargement des Ressources
 # DATAFRAMES
-df = pd.read_csv("../data/raw/X_train.csv", index_col=0)
-df_train_clean = pd.read_csv("../data/clean/df_train_index.csv", index_col=0)
+df = pd.read_csv("../data/raw/X_train.csv")
+df_train_clean = pd.read_csv("../data/clean/df_train_index.csv")
+index_column = "Unnamed: 0"
+df_train_raw = pd.read_csv("../data/x_train_update.csv")
+df_train_raw.set_index(index_column, inplace=True)
+df_train_prepro = pd.read_csv("../data/df_preprocessed.csv")
+df_train_prepro.set_index(index_column, inplace=True)
 ytrain = pd.read_csv("../data/raw/Y_train.csv")
 
 
@@ -46,8 +51,7 @@ image_ResNet152 = 'images/image_ResNet152.png'
 image_ViT = 'images/image_ViT.png'
 
 # dossier images
-wc_folder = "Images/wc_visuels"
-
+wc_folder = "images/wc_visuels"
 
 # css custom pour les typo / les bocs etc
 custom_css = """
@@ -229,25 +233,25 @@ if page == pages[0]:
     tab1, tab2, tab3 = st.tabs(["Contexte", "Objectifs", "Résultats"])
 
     with tab1:
-        col1, col2, col3 = st.columns([4, 1, 2])
-        with col1:
-            st.image("images/rakuten.png", width=200)
-            st.markdown(
-                """
-    ### La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
-    """)
+        st.image("images/rakuten.png", width=200)
+        st.markdown(
+            """
+ La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
+""")
 
-            st.markdown("""
-                        ### Un des enjeux majeurs de la marketplace est de permettre aux acheteurs de trouver facilement les produits qu’ils recherchent.
+        st.markdown("""
+                    Un des enjeux majeurs de la marketplace est de permettre aux **acheteurs de trouver facilement les produits qu’ils recherchent.**
 
-                        ### Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
-                        
-                        ### Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
-    """)
+                    Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
+                    
+                    Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
+""")
+        col1, col2 = st.columns([1, 10])
+        with col2:
             st.markdown("""
-                    ####      80 000 produits
-                    ####      27 catégories à distinguer
-                    ####      Description textuelle multilangue
+                    ####      - 80 000 produits
+                    ####      - 27 catégories à distinguer
+                    ####      - Description textuelle multilangue
                         """)
 
         with col3:
@@ -259,11 +263,11 @@ if page == pages[0]:
     with tab2:
         st.markdown(
             """
-            ###
-            ### - Produire un modèle capable de classifier précisément (au sens du weighted f1-score) chacun des produits.
-            ### - Produire un modèle robuste
-            ### - Produire un modèle multi-modal (texte + image).
-            ###
+            
+             - **Produire un modèle capable de classifier précisément (au sens du weighted f1-score) chacun des produits.**
+             - **Produire un modèle robuste**
+            - **Produire un modèle multi-modal (texte + image).**
+            
             """)
         st.image("images/process.jpg",
                  caption="Processus de classification multi-modale des produits")
@@ -334,7 +338,15 @@ if page == pages[1]:
         # Chemin du dossier contenant les images
         images_folder = 'images/wc_visuels/'
 
-        image_files = os.listdir(images_folder)
+    # Objectifs  
+    # st.header("Etapes suivantes")
+    # col1, col2, col3 = st.columns([1, 7, 1])
+    # with col1:
+    #     st.write("")
+    # with col2:
+    #     st.image(schema_objectifs, caption="")
+    # with col3:
+    #     st.write("")
 
         col1, col2, col3, col4, col5 = st.columns([2, 1, 2, 1, 2])
         with col1:
@@ -474,26 +486,24 @@ if page == pages[2]:
         """
         )
 
-        counts = pd.crosstab(df['language'], df['prdtypefull'],
-                             normalize='columns').sort_values('fr', axis=1, ascending=False)
-        # counts = pd.crosstab(['prdtypefull', 'language']
-        #                     ).size().reset_index(name='Nombre')
+    
 
+       
+        counts = df.groupby(['prdtypefull', 'language']
+                            ).size().reset_index(name='Nombre')
+        
         # Création du graphique
         fig = go.Figure()
 
-        # for langue in counts['language'].unique():
-        #     df_langue = counts[counts['language'] == langue]
-        #     fig.add_trace(go.Bar(
-        #         x=df_langue['prdtypefull'],
-        #         y=df_langue['Nombre'].sort_values().to_numpy(),
-        #         name=langue
-        #     ))
+        for langue in counts['language'].unique():
+            df_langue = counts[counts['language'] == langue]
+            fig.add_trace(go.Bar(
+                x=df_langue['prdtypefull'],
+                y=df_langue['Nombre'].sort_values(),
+                name=langue
+            ))
 
-        for lang in counts.index:
-            fig.add_trace(go.Bar(x=counts.columns,  y=counts.loc[lang, :]*100,
-                                 name=lang))
-
+        
         # Mise en forme du graphique
         fig.update_layout(
             title='Pourcentage des langues par categorie',
@@ -598,6 +608,40 @@ if page == pages[3]:
         )
 
         col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col1:
+            st.write("")
+
+        with col2:
+
+            st.image(schema_prepro_txt, use_column_width=True)
+
+        with col3:
+            st.write("")
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            st.markdown("""
+            dataframe orginal            
+            """)
+            st.write(df_train_raw.head())
+
+        with col2:
+            st.markdown("""
+            dataframe preprocessé (jusqu'à l'étape fix encoding exceptions)           
+            """)
+            st.write(df_train_prepro.head())
+
+    with tab2:
+        st.header("Traitement sur les images")
+        st.markdown(
+            """
+            Concernant les images le padding est ajusté pour n'avoir que de l'information utile dans notre image
+            """
+        )
+
+        col1, col2, col3 = st.columns([1, 1, 1])
 
         with col1:
             st.write("")
