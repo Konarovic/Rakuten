@@ -56,6 +56,9 @@ image_simpleVoting = 'images/image_simpleVoting.png'
 image_fusionTF = 'images/image_fusionTF.png'
 image_metaVoting = 'images/image_metaVoting.png'
 image_bestmetaVoting = 'images/fusion-contribs.jpg'
+image_yanniv = 'images/yanniv.jpg'
+image_axalia = 'images/axalia.jpg'
+image_aida = 'images/aida.jpg'
 
 # dossier images
 wc_folder = "images/wc_visuels"
@@ -1230,22 +1233,43 @@ if page == pages[7]:
 # Page8 ############################################################################################################################################
 if page == pages[8]:
     st.title("Conclusion")
-    st.header("Résumé")
-    st.markdown("""
-                
-                Dans ce projet, nous avons évalué l'efficacité de différentes méthodes de classification pour prédire les catégories de produits à partir de données textuelles et visuelles. 
-                Nous avons d'abord établi des benchmarks pour des modèles spécialisés dans le traitement des données textuelles et des images, puis fusionné les modèles les plus performants pour former des classificateurs hybrides. 
-
-                En combinant plusieurs modèles spécialisés (**BERT, XGBoost, ViT et ResNet**) avec un modèle hybride, nous avons atteint un score de **0.911** après un entraînement sur 80 % des données. 
-                
-                """)
-    st.markdown("""
-    <p style='font-size:12px;'><i>Les performances de nos modèles ont été évaluées par le calcul du f1-score pondéré (weighted F1-score), i.e. le F1-score calculé par catégorie puis moyenné selon la proportion de chaque classe dans le jeu de données. Ce score a été systématiquement calculé grâce à la fonction sklearn.metrics.f1_score de sklearn afin d'éviter toute ambiguïté. Pour analyser plus en détails les performances, nous avons également calculé les matrices de confusion, exprimées en pourcentage du nombre d'articles par catégorie (normalisation par colonne).</i></p>
-""", unsafe_allow_html=True)
-    st.header("Pistes d'amélioration")
-    st.markdown("""
-                * Exploration de l'impact des stop words et des hyperparamètres des réseaux de neurones
-                * Gestion du déséquilibre des classes. 
-                * Autres modéles images.
-                * Exploration de différentes architectures pour le modèle hybride.
-                """)
+    
+    tab1, tab2, tab3 = st.tabs(
+        ["**Résumé**", "**Perspectives**", "**Remerciements**"])
+    
+    with tab1:
+        st.markdown("""
+                    
+                    Dans ce projet, nous avons évalué l'efficacité de différentes méthodes de classification pour prédire les catégories de produits à partir de données textuelles et visuelles. 
+                    En combinant plusieurs modèles spécialisés (**BERT, XGBoost, ViT et ResNet**) avec un modèle hybride, nous avons atteint un score de **0.911** après un entraînement sur 80 % des données. 
+                    
+                    """)
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            st.image(image_bestmetaVoting, use_column_width=True)
+    
+    with tab2:
+        st.markdown("""
+* Exploration de l'**impact des étapes du pipeline de preprocessing** sur les performances des transformers
+* Impact du **déséquilibre des classes** sur les performances des reseaux de neurones. 
+* Test d'autres **modèles image**.
+* Exploration de différentes **architectures pour le modèle transformer hybride**.
+                    """)
+        
+    with tab3:
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            st.markdown("""
+                    **Yanniv**
+                    """)
+            st.image(image_yanniv, use_column_width=True)
+        with col2:
+            st.markdown("""
+                    **Axalia**
+                    """)
+            st.image(image_axalia, use_column_width=True)
+        with col3:
+            st.markdown("""
+                    **Aida**
+                    """)
+            st.image(image_aida, use_column_width=True)
