@@ -49,6 +49,9 @@ corr = 'images/corr_cat.jpg'
 image_BERT = 'images/image_BERT.png'
 image_ResNet152 = 'images/image_ResNet152.png'
 image_ViT = 'images/image_ViT.png'
+image_simpleVoting = 'images/image_simpleVoting.png'
+image_fusionTF = 'images/image_fusionTF.png'
+image_metaVoting = 'images/fusion-contribs.jpg'
 
 # dossier images
 wc_folder = "images/wc_visuels"
@@ -916,7 +919,13 @@ les logits de sortie des modèles spécialisés pré-entraînés.
             st.markdown("""
     **Voting** ou **Stacking** opérant sur les logits de sortie des meilleurs modèles spécialisés pré-entraînés (**camemBERT** + **ViT**).
                         """)
-            st.write("")  # st.image(image_simpleVoting, use_column_width=True)
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                st.write("")
+            with col2:
+                st.image(image_simpleVoting, use_column_width=True)
+            with col3:
+                st.write("")
 
         with tab1_2:
             st.markdown("""
@@ -924,11 +933,11 @@ les logits de sortie des modèles spécialisés pré-entraînés.
 **ViT** par l'intermédiaire d’un bloc transformer **cross-attentionnel** (*query*: texte; *key*, *value*: image), suivi d’un nombre variable de blocs
 de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 couches par bloc""")
 
-            col1, col2, col3 = st.columns([1, 1, 1])
+            col1, col2, col3 = st.columns([1, 3, 1])
             with col1:
                 st.write("")
             with col2:
-                st.write("")  # st.image(image_fusionTF, use_column_width=True)
+                st.image(image_fusionTF, use_column_width=True)
             with col3:
                 st.write("")
 
@@ -937,25 +946,27 @@ de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 cou
     Meta ensemble combinant differents modeles hybrides et spécialisés dans un Voting classifier (ex: **TF6** (hybride),
 **camembert-base-ccnet** (texte), **flaubert-base-uncased** (texte), **xgboost_tfidf** (texte), **vit_b16** (image),
 **ResNet152** (image)).
-> Le **poids** attribué a chaque modèle est défini par le **rapport des F1-scores** (poids du
-modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **cross-validées sur l'ensemble de test** (5 folds)
                         """)
 
-            col1, col2, col3 = st.columns([1, 1, 1])
+            col1, col2, col3 = st.columns([1, 3, 1])
             with col1:
                 st.write("")
             with col2:
-                # st.image(image_metaVoting, use_column_width=True)
-                st.write("")
+                st.image(image_metaVoting, use_column_width=True)
             with col3:
                 st.write("")
+                
+            st.markdown("""
+    Le **poids** attribué a chaque modèle est défini par le **rapport des F1-scores** (poids du
+modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **cross-validées sur l'ensemble de test** (5 folds)
+                        """)
 
         with tab1_4:
             st.markdown("""
 - Entrainement sur 80% des donnéees
 - Evaluation des performances sur les 20% restants
 - Transformers fine-tuned sur 8 epoques, learning rate de 5e-5, decroissant de 20% a chaque epoque
-- **Poids des voting classifiers cross-validées sur l'ensemble de test (5 folds)**""")
+- **Poids des voting classifiers cross-validés sur l'ensemble de test (5 folds)**""")
 
     with tab2:
 
