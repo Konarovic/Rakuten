@@ -352,6 +352,20 @@ class ResultsManager():
             model_label=model_label
         )
 
+    def get_fig_compare_confusion_matrix(self, model_path1, model_path2, model_label1=None, model_label2=None):
+        y_pred1 = self.get_y_pred(model_path1)
+        y_pred2 = self.get_y_pred(model_path2)
+        y_test = self.get_y_test(model_path1)
+
+        return uplot.get_fig_compare_confusion_matrix(
+            y_test,
+            y_pred1,
+            y_pred2,
+            index=self.get_cat_labels(),
+            model_label1=model_label1,
+            model_label2=model_label2
+        )
+
     def plot_f1_scores_report(self, model_path, model_label=None):
         """
         Display the classification report of a model.

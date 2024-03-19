@@ -234,9 +234,22 @@ def get_results_manager():
             config.path_to_results+'/results_benchmark_fusion_TF.csv', 'fusion')
         res.add_result_file(
             config.path_to_results+'/results_benchmark_fusion_meta.csv', 'fusion')
+
+        # initialisation des modèles principaux
+        preload = [
+            'fusion/camembert-base-vit_b16_TF6',
+            'text/xgboost_tfidf',
+            'text/camembert-base-ccnet',
+            'image/vit_b16',
+            'text/flaubert_base_uncased',
+            'image/ResNet152'
+        ]
+        for model in preload:
+            res.load_classifier(model)
     return res
 
 
+res = get_results_manager()
 # page 0############################################################################################################################################
 if page == pages[0]:
     st.title("PRÉSENTATION DU PROJET")
@@ -922,7 +935,7 @@ if page == pages[6]:
     st.title("Modélisation : fusion")
 
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["**Approches**", "**Benchmark des modèles**", "**Détail des modèles de fusion simple**", "**Simulateur de fusion hybride**"])
+        ["**Approches**", "**Benchmark des modèles**", "**Détail des performances par modèle**", "**Méta fusion**"])
 
     with tab1:
 
@@ -1076,52 +1089,77 @@ enfants"
             'text/flaubert_base_uncased',
             'image/ResNet152'
         ]
-        col1, col2 = st.columns([1, 1])
+        tab41, tab42, tab43 = st.tabs(
+            ["Complémentarité des modèles", "Schéma optimal", "Simulateur de fusion"])
 
-        with col1:
-            options_selected = st.multiselect(
-                "Choisissez plusieurs modèles pour afficher la matrice de confusion  :",
-                models_paths,
-                default=default_models,
+        with tab41:
+            compare_models = res.get_model_paths()
+            compare_selected = st.selectbox(
+                "Choisir un modèle à comparer avec le modèle fusion TF6",
+                compare_models,
                 format_func=lambda model_path: res.get_model_label(
                     model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
-
             )
-
-            if len(options_selected) > 1:
-                plt_matrix = res.get_voting_confusion_matrix(
-                    options_selected, model_label="fusion personnalisée")
-                st.pyplot(plt_matrix, use_container_width=True)
-            else:
-                st.write("Sélectionnez au moins deux modèles")
-
-            if len(options_selected) > 1:
-                st.dataframe(
-                    pd.DataFrame(res.get_voting_f1_scores_report(
-                        options_selected)).T,
-                    use_container_width=True,
-                    height=1200
+            col411, col412 = st.columns([2, 1])
+            # with col411:
+            #     st.header("Matrice de confusion du modèle")
+            #     plt_matrix = res.get_fig_confusion_matrix(
+            #         compare_selected, model_label=res.get_model_label(
+            #             compare_selected)
+            #     )
+            #     st.pyplot(plt_matrix, use_container_width=True)
+            with col411:
+                st.header("Comparaison des performances")
+                plt_matrix = res.get_fig_compare_confusion_matrix(
+                    compare_selected,
+                    'fusion/camembert-base-vit_b16_TF6',
+                    model_label1=res.get_model_label(compare_selected),
+                    model_label2="Fusion TF6"
                 )
-        with col2:
-            st.markdown("""
-### Meilleur modele fusion hybride
-                        """)
-            col1, col2 = st.columns([9, 1])
+                st.pyplot(plt_matrix, use_container_width=True)
+
+        with tab42:
+            st.image('images/fusion-contribs.jpg', use_column_width=True)
+        with tab43:
+            col1, col2 = st.columns([1, 1])
+
             with col1:
-                st.image(image_bestmetaVoting, use_column_width=True)
-            
-            st.markdown("""
-### Benchmark des modèles fusion hybrides
-                        
-| Modèle  | f1 score |
-| :--------------- |---------------:|
-| **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.911** |
-| TF6, CamemBERT, ViT | 0.909 |
-| TF6, FlauBERT, ResNet152  | 0.907 |
-| CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
-| CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
-| SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
-                        """)
+                options_selected = st.multiselect(
+                    "Choisissez plusieurs modèles pour afficher la matrice de confusion  :",
+                    models_paths,
+                    default=default_models,
+                    format_func=lambda model_path: res.get_model_label(
+                        model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
+
+                )
+
+                if len(options_selected) > 1:
+                    plt_matrix = res.get_voting_confusion_matrix(
+                        options_selected, model_label="fusion personnalisée")
+                    st.pyplot(plt_matrix, use_container_width=True)
+                else:
+                    st.write("Sélectionnez au moins deux modèles")
+
+                if len(options_selected) > 1:
+                    st.dataframe(
+                        pd.DataFrame(res.get_voting_f1_scores_report(
+                            options_selected)).T,
+                        use_container_width=True,
+                        height=1200
+                    )
+            with col2:
+                st.markdown("""
+    ### Benchmark des modèles fusion hybrides
+                            
+    | Modèle  | f1 score |
+    | :--------------- |---------------:|
+    | **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.911** |
+    | TF6, CamemBERT, ViT | 0.909 |
+    | TF6, FlauBERT, ResNet152  | 0.907 |
+    | CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
+    | CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
+    | SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
+                            """)
 
 
 # Page7 ############################################################################################################################################
