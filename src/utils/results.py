@@ -735,3 +735,17 @@ class ResultsManager():
 
         return classification_report(y_test, y_pred,
                                      target_names=self.get_cat_labels(), output_dict=True)
+
+    def get_false_samples(self, model_path, n_samples=5):
+        """
+        Build the figure of the confusion matrix of a model.
+
+        Args:
+            model_path (str): the path to the model file
+            model_label (str, optional): the label of the model displayed on the report. Defaults to None.
+
+        Returns:
+            figure to plot
+        """
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
