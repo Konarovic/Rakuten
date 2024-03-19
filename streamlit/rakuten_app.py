@@ -349,57 +349,27 @@ if page == pages[0]:
 if page == pages[1]:
     tab1, tab2, tab3 = st.tabs(["Dataframes", "Images", "Catégories"])
     with tab1:
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            st.write("")
-        with col2:
-            st.markdown("""
-                <div style="text-align:center;">
-                    <h1>EXPLORATION</h1>
-                </div>
-            """, unsafe_allow_html=True)
-        with col3:
-            st.write("\n")
+        st.header("Exploration des données texte")
+        st.markdown("""
+            ### - `X_train.csv` composé de 84916 produits
+            ### - `X_test.csv` composé de 13812 produits
+            ### - `y_train.csv` : avec les codes produits
+""")
 
         col1, col2 = st.columns([2, 1])
         with col1:
-            # Problématique
-            st.header("Ressources fournies :")
-            st.markdown(
-                """
-            - 1 dataframe X_train composé de 84916 produits
-            - 1 dataframe X_test composé de 13812 produits
-            - 1 dataframe y_train : avec les code produits
-  
-            """
-            )
+            container = st.container()
+            with st.container():
+                st.image(schema_dataframe,
+                         output_format='auto', use_column_width=True)
         with col2:
-            st.image(schema_dataframe_Y, use_column_width=True,
-                     caption="", output_format='auto')
+            st.image(schema_dataframe_Y, width=None)
 
-        container = st.container()
-        with st.container():
-            st.image(schema_dataframe,
-                     output_format='auto', use_column_width=True)
-
-        # with col2:
-
-        col1, col2, col3 = st.columns([1, 7, 1])
-        with col1:
-            st.write('')
-        with col2:
-            st.markdown("""
-                        Sur les données concernant les dataframes nous avons de nombreux NaN dans la colonnes description, 
-                        plusieurs langues, des balises HTML, des mauvais encodings
-                        """
-                        )
-        with col3:
-            st.write("")
     with tab2:
+        st.header("Exploration des données images")
 
         col1, col2 = st.columns([1, 3])
         with col1:
-            st.header("Ressources fournies : images")
             st.markdown(
                 """
             Pour les images :
@@ -410,7 +380,7 @@ if page == pages[1]:
             """
             )
         with col2:
-            st.image(schema_image, width=600, use_column_width=False,
+            st.image(schema_image, width=600, use_column_width=True,
                      caption="", output_format='auto')
     with tab3:
         # Chemin du dossier contenant les images
@@ -418,32 +388,31 @@ if page == pages[1]:
 
         image_files = os.listdir(images_folder)
 
-        col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
+        col1, col2, col3, col4, col5 = st.columns([2, 1, 2, 1, 2])
+        with col1:
+            df_produits = pd.read_csv(
+                config.path_to_project + '/data/prdtype.csv')
+            df_produits.prdtypecode = df_produits.prdtypecode.astype(str)
+            st.dataframe(
+                df_produits,
+                use_container_width=True,
+                height=1000
+            )
 
         def display_image_with_text(image_path, text):
             with st.container():
                 st.image(image_path, use_column_width=True)
                 st.markdown(f"<center>{text}</center>", unsafe_allow_html=True)
 
-        for i, col in enumerate([col2, col4]):
+        for i, col in enumerate([col3, col5]):
             image_path = os.path.join(images_folder, image_files[i])
             with col:
                 display_image_with_text(image_path, f"{image_files[i][:-4]}")
 
-        for i, col in enumerate([col2, col4]):
+        for i, col in enumerate([col3, col5]):
             image_path = os.path.join(images_folder, image_files[i+2])
             with col:
                 display_image_with_text(image_path, f"{image_files[i+2][:-4]}")
-    # Objectifs
-
-    st.header("Etapes suivantes")
-    col1, col2, col3 = st.columns([1, 7, 1])
-    with col1:
-        st.write("")
-    with col2:
-        st.image(schema_objectifs, caption="")
-    with col3:
-        st.write("")
 
  # page 2 ##########################################################################################################################
 if page == pages[2]:
