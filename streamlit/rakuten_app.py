@@ -310,7 +310,6 @@ if page == pages[1]:
         st.header("Données texte")
         st.markdown("""
             ### - `X_train.csv` composé de 84916 produits
-            ### - `X_test.csv` composé de 13812 produits
             ### - `y_train.csv` : avec les codes produits
 """)
 
@@ -322,7 +321,9 @@ if page == pages[1]:
                          output_format='auto', use_column_width=True)
         with col2:
             st.image(schema_dataframe_Y, width=None)
-
+        st.markdown("""
+                    ### Près de 2% des produits sont des réplicats classés dans différentes catégories
+        """)
     with tab2:
         st.header("Données images")
 
