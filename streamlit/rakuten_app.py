@@ -18,7 +18,10 @@ from importlib import reload
 from src.utils import results
 from src.utils import scrapper
 from src.utils.visualize import plot_weighted_text
-
+from src.features.text.transformers.text_merger import TextMerger
+from src.features.text.transformers.translators import TextTranslator
+from src.features.text.pipelines.cleaner import CleanTextPipeline
+from src.features.text.pipelines.corrector import CleanEncodingPipeline
 
 # chargement des Ressources
 # DATAFRAMES
@@ -584,7 +587,21 @@ if page == pages[3]:
         )
         st.image(schema_prepro_txt, use_column_width=True)
 
-        options = df_train_clean.loc[~df_train_clean['description'].isna(
+        merger = TextMerger(description_column="description",
+                            designation_column="designation", merged_column="merged_text")
+        cleaner = CleanTextPipeline()
+        corrector = CleanEncodingPipeline()
+        translator = TextTranslator(
+            text_column="corrected_text", target_lang="fr")
+
+        raw_df = pd.read_csv(config.path_to_project +
+                             '/data/raw/X_train.csv').head(10)
+        merged_text = merger.fit_transform(raw_df)
+        cleaned_text = cleaner.fit_transform(merged_text)
+        corrected_text = corrector.fit_transform(cleaned_text)
+        corrected_text = pd.DataFrame(corrected_text.rename("corrected_text"))
+        translated_text = translator.fit_transform(corrected_text)
+        options = raw_df.loc[~raw_df['description'].isna(
         ), 'productid'].to_list()
 
         idx_selected = st.selectbox("Selectionnez un produit :", options)
@@ -593,15 +610,30 @@ if page == pages[3]:
             st.markdown("""
             **Texte orginal**            
             """)
-            st.write('. '.join([df.loc[df['productid'] == idx_selected, 'designation'].values[0],
-                     df.loc[df['productid'] == idx_selected, 'description'].values[0]]))
+            st.write('. '.join([raw_df.loc[raw_df['productid'] == idx_selected, 'designation'].values[0],
+                     raw_df.loc[raw_df['productid'] == idx_selected, 'description'].values[0]]))
 
         with col2:
             st.markdown("""
             **Texte preprocessé**            
             """)
-            st.write('. '.join([df_train_clean['designation_translated'][df_train_clean['productid'] == idx_selected].values[0],
-                                df_train_clean['description_translated'][df_train_clean['productid'] == idx_selected].values[0]]))
+            st.write(translated_text[raw_df['productid']
+                     == idx_selected].values[0])
+        col3, col4 = st.columns([1, 1])
+        with col3:
+            st.markdown("""
+            **Texte nettoyé**            
+            """)
+            # st.dataframe(cleaned_text)
+            st.write(cleaned_text[raw_df['productid']
+                     == idx_selected].values[0])
+
+        with col4:
+            st.markdown("""
+            **Texte corrigé**            
+            """)
+            st.write(corrected_text['corrected_text'][raw_df['productid']
+                     == idx_selected].values[0])
 
     with tab2:
         st.markdown(
