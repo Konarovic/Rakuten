@@ -207,9 +207,11 @@ def get_results_manager():
     except NameError:
         res = results.ResultsManager(config)
         res.add_result_file(config.path_to_results +
-                            '/results_benchmark_sklearn.csv', 'text')
+                            '/results_benchmark_cbow.csv', 'text')
         res.add_result_file(config.path_to_results +
-                            '/results_benchmark_sklearn_tfidf.csv', 'text')
+                            '/results_benchmark_skipgram.csv', 'text')
+        res.add_result_file(config.path_to_results +
+                            '/results_benchmark_tfidf.csv', 'text')
         res.add_result_file(config.path_to_results +
                             '/results_benchmark_bert.csv', 'bert')
         res.add_result_file(config.path_to_results +
