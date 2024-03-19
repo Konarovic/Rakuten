@@ -749,3 +749,13 @@ class ResultsManager():
         """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
+
+        y_pred = self.get_label_encoder().inverse_transform(y_pred)
+        y_test = self.get_label_encoder().inverse_transform(y_test)
+
+        false_samples = np.equal(y_pred, y_test)
+        X_test = self.get_X_test()
+        X_test['pred'] = y_pred
+        X_test['true'] = y_test
+        X_false = X_test[false_samples == False]
+        return X_false.head(n_samples)

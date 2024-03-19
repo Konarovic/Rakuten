@@ -758,9 +758,15 @@ if page == pages[4]:
                 option_selected, model_label=res.get_model_label(option_selected))
             st.pyplot(plt_matrix, use_container_width=True)
 
+            st.header("Exemples d'erreurs de classification")
+            df_errors = res.get_false_samples(option_selected)
+            for idx, row in df_errors.iterrows():
+                st.write(
+                    f"- {row['tokens']} : **{row['pred']}** (prédiction) - **{row['true']}** (réel)")
+
             st.markdown("""
-Les matrices de confusion révèlent la difficulté de ces modèles à différencier des catégories
-sémantiquement proches, telles que :
+_Les matrices de confusion révèlent la difficulté de ces modèles à différencier des catégories
+sémantiquement proches, telles que_ :
 - "Livres d'occasion", "Livres neufs", "Magazines d'occasion", "Bandes dessinées et magazines"
 - "Maison Décoration", "Mobilier de jardin", "Mobilier", "Outillage de jardin", "Puériculture"
 - "Figurines et jeux de rôle", "Figurines et objets pop culture", "Jouets enfants", "Jeux de société pour
@@ -1029,12 +1035,25 @@ enfants"
         res = get_results_manager()
         models_paths = res.get_model_paths()
         models_paths = np.sort(models_paths)
-
+        default_models = [
+            'fusion/camembert-base-vit_b16_TF6_att12',
+            'text/xgboost_tfidf',
+            'text/camembert-base-ccnet',
+            'image/vit_b16',
+            'text/flaubert_base_uncased',
+            'image/ResNet152'
+        ]
         col1, col2 = st.columns([1, 1])
 
         with col1:
             options_selected = st.multiselect(
-                "Choisissez plusieurs modèles pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
+                "Choisissez plusieurs modèles pour afficher la matrice de confusion  :",
+                models_paths,
+                default=default_models,
+                format_func=lambda model_path: res.get_model_label(
+                    model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
+
+            )
 
             if len(options_selected) > 1:
                 plt_matrix = res.get_voting_confusion_matrix(
