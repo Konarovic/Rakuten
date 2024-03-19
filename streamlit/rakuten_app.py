@@ -222,26 +222,32 @@ if page == pages[0]:
     tab1, tab2, tab3 = st.tabs(["Contexte", "Objectifs", "Résultats"])
 
     with tab1:
-        st.image("images/rakuten.png", width=200)
-        st.markdown(
-            """
- ### La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
-""")
+        col1, col2, col3 = st.columns([4, 1, 2])
+        with col1:
+            st.image("images/rakuten.png", width=200)
+            st.markdown(
+                """
+    ### La marketplace Rakuten est une plateforme de vente en ligne ouverte à de nombreux vendeurs.
+    """)
 
-        st.markdown("""
-                    ### Un des enjeux majeurs de la marketplace est de permettre aux acheteurs de trouver facilement les produits qu’ils recherchent.
-
-                    ### Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
-                    
-                    ### Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
-""")
-        col1, col2 = st.columns([1, 10])
-        with col2:
             st.markdown("""
-                    ###      - 80 000 produits
-                    ###      - 27 catégories à distinguer
-                    ###      - Description textuelle multilangue
+                        ### Un des enjeux majeurs de la marketplace est de permettre aux acheteurs de trouver facilement les produits qu’ils recherchent.
+
+                        ### Pour cela, il est essentiel que les produits soient bien classés dans des catégories pertinentes.
+                        
+                        ### Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
+    """)
+            st.markdown("""
+                    ####      80 000 produits
+                    ####      27 catégories à distinguer
+                    ####      Description textuelle multilangue
                         """)
+
+        with col3:
+
+            st.write("Porte bébé Violet et rouge Trois-en-un mère multifonctions Kangourou fermeture à glissière Hoodie Taille: XL Poitrine: 104-109 cm 84-88 cm Hanche: 110-116 cm clair + 1. Marque nouvelle et de haute qualité. 2. Détachable conception pratique et attentionnée. 3. Parfait pour les mères qui allaitent. 4. Anti-vent chaud et style kangourou multifonctionnel haut de gamme. 5. Sac de couchage multifonction amovible de la mère européenne. Spécification: Les types Fermez Buste104-109cm Encolure Sweat à capuche Les hanches110-116cm Tailles disponiblesXLMatériel Coton")
+            st.divider()
+            st.image("images/image_sample.jpg", use_column_width=True)
 
     with tab2:
         st.markdown(
@@ -445,7 +451,7 @@ if page == pages[2]:
     st.title("DATAVIZ")
 
     tab1, tab2, tab3, tab4 = st.tabs(["**Déséquilibre de classes**", "**Déséquilibre de texte**",
-                                            "**Langues par catégories**", '**Corrélation entre catégories**'])
+                                      "**Langues par catégories**", '**Corrélation entre catégories**'])
 
     with tab1:
         st.markdown(
@@ -483,9 +489,9 @@ if page == pages[2]:
         s'étendent souvent sur plusieurs centaines de mots.
         """
         )
-        
+
         col1, col2 = st.columns([1, 1])
-        
+
         with col1:
             # Compter le nombre de produits par catégorie
             df = df_train_clean.loc[df_train_clean['description'].isna()]
@@ -510,10 +516,10 @@ if page == pages[2]:
 
             # Afficher le graphique
             st.plotly_chart(fig)
-            
+
         with col2:
             df_train_clean['longeur'] = (
-            df_train_clean["designation_translated"] + df_train_clean["description_translated"]).astype(str)
+                df_train_clean["designation_translated"] + df_train_clean["description_translated"]).astype(str)
             df_train_clean['longeur_val'] = df_train_clean['longeur'].apply(
                 lambda x: len(x))
             df_train_clean['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
@@ -523,18 +529,17 @@ if page == pages[2]:
             all_cat = df_train_clean['prdtypefull'].unique()
             missing_cat = [idx for idx in all_cat if idx not in idx_order]
             idx_order = missing_cat + idx_order
-            
-            
+
             # Créer un graphique à barres avec plotly express
             fig = px.box(df_train_clean,
-                        x='prdtypefull',
-                        y='longeur_val',
-                        title="Longeur des textes",
-                        labels={'prdtypefull': "Catégories",
-                                'longeur_val': "Nombre de mots"},
-                        width=700,
-                        height=600,
-                        )
+                         x='prdtypefull',
+                         y='longeur_val',
+                         title="Longeur des textes",
+                         labels={'prdtypefull': "Catégories",
+                                 'longeur_val': "Nombre de mots"},
+                         width=700,
+                         height=600,
+                         )
 
             # Mettre à jour les étiquettes de l'axe x
             fig.update_xaxes(tickangle=45, tickfont=dict(size=14),
@@ -552,7 +557,7 @@ if page == pages[2]:
         """
         )
 
-        counts = pd.crosstab(df['language'],df['prdtypefull'],
+        counts = pd.crosstab(df['language'], df['prdtypefull'],
                              normalize='columns').sort_values('fr', axis=1, ascending=False)
         # counts = pd.crosstab(['prdtypefull', 'language']
         #                     ).size().reset_index(name='Nombre')
@@ -567,10 +572,10 @@ if page == pages[2]:
         #         y=df_langue['Nombre'].sort_values().to_numpy(),
         #         name=langue
         #     ))
-        
+
         for lang in counts.index:
-            fig.add_trace(go.Bar(x=counts.columns,  y=counts.loc[lang,:]*100,
-                            name=lang))
+            fig.add_trace(go.Bar(x=counts.columns,  y=counts.loc[lang, :]*100,
+                                 name=lang))
 
         # Mise en forme du graphique
         fig.update_layout(
@@ -583,7 +588,7 @@ if page == pages[2]:
             height=600
         )
         fig.update_xaxes(tickangle=45, tickfont=dict(size=14))
-                         
+
         # Affichage du graphique
         st.plotly_chart(fig)
 
@@ -648,22 +653,24 @@ if page == pages[3]:
         """
         )
         st.image(schema_prepro_txt, use_column_width=True)
-        
-        options = df_train_clean.loc[~df_train_clean['description'].isna(), 'productid'].to_list()
-        
+
+        options = df_train_clean.loc[~df_train_clean['description'].isna(
+        ), 'productid'].to_list()
+
         idx_selected = st.selectbox("Selectionnez un produit :", options)
         col1, col2 = st.columns([1, 1])
         with col1:
             st.markdown("""
             **Texte orginal**            
             """)
-            st.write('. '.join([df.loc[df['productid'] == idx_selected, 'designation'].values[0], df.loc[df['productid'] == idx_selected, 'description'].values[0]]))
+            st.write('. '.join([df.loc[df['productid'] == idx_selected, 'designation'].values[0],
+                     df.loc[df['productid'] == idx_selected, 'description'].values[0]]))
 
         with col2:
             st.markdown("""
             **Texte preprocessé**            
             """)
-            st.write('. '.join([df_train_clean['designation_translated'][df_train_clean['productid'] == idx_selected].values[0], 
+            st.write('. '.join([df_train_clean['designation_translated'][df_train_clean['productid'] == idx_selected].values[0],
                                 df_train_clean['description_translated'][df_train_clean['productid'] == idx_selected].values[0]]))
 
     with tab2:
@@ -703,7 +710,7 @@ if page == pages[4]:
     - transformers de type **BERT (Bidirectional Encoder Representations from Transformers**).
                         """)
         tab1_1, tab1_2, tab1_3 = st.tabs(["ML standard", "BERT", "Methode"])
-        with tab1_1:        
+        with tab1_1:
             st.markdown("""
     ### Classifieurs
     **SVM** (LinearSVC), **boosted trees** (xgboost), **regression logistique**, **bayesien** (MultinomialNB), etc
@@ -718,11 +725,11 @@ if page == pages[4]:
     > _A noter que l'ajustement des hyper-paramètres de Word2Vec dépend de la modélisation appliquée ensuite, d'où la nécessité de faire des GridSearchCV combinés si on souhaite optimiser ces paramètres._
 
        """)
-        
+
         with tab1_2:
             st.markdown("""
-    Different transformers, pré-entraînés sur divers corpus français, ont été comparés (**CamemBERT-base**, **CamemBERT-ccnet** et **FlauBERT**)""")    
-            
+    Different transformers, pré-entraînés sur divers corpus français, ont été comparés (**CamemBERT-base**, **CamemBERT-ccnet** et **FlauBERT**)""")
+
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
                 st.write("")
@@ -730,11 +737,11 @@ if page == pages[4]:
                 st.image(image_BERT, use_column_width=True)
             with col3:
                 st.write("")
-                
+
             st.markdown("""
-    _Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation._""") 
-            
-        with tab1_3:        
+    _Les modèles transformers (BERT) embarquent leur propres mécanismes de tokenisation et de vectorisation._""")
+
+        with tab1_3:
             st.markdown("""
     ## Méthodologie et benchmark
     - Entrainement sur 80% des donnéees
@@ -744,14 +751,13 @@ if page == pages[4]:
 
     with tab2:
         col1, col2 = st.columns([3, 1])
-        
+
         with col1:
             res = get_results_manager()
             fig = res.build_fig_f1_scores(filter_package=['bert', 'text'])
             fig.update_xaxes(range=[0.6, 0.9])
             st.plotly_chart(fig, use_container_width=True)
 
-        
         with col2:
             st.markdown("""
 ### Modèles transformers
@@ -762,7 +768,7 @@ if page == pages[4]:
 | Logistic Regression  |   0.878 |  15 138 |
 
                         """)
-            
+
             st.markdown("""
 ### Modèles standards
 | Modèle  | f1 score | Durée fit (s) |
@@ -775,7 +781,6 @@ if page == pages[4]:
 | Multinomial NB  | 0.771 |    0.45 |
                     
 """)
-            
 
     with tab3:
         res = get_results_manager()
@@ -821,19 +826,19 @@ Classification de produits sur la base des images seules par deux approches:
 - Convolutional Neural Networks (**CNN**).
 - Vision transformers **ViT**.
                     """)
-        
+
         tab1_1, tab1_2, tab1_3 = st.tabs(["CNN", "ViT", "Methode"])
-        with tab1_1:        
+        with tab1_1:
             st.markdown("""
     ### CNN
     **VGG16**, **ResNet** (ResNet50, ResNet101, ResNet152), **EfficientNet** (EfficientNetB1), tous pré-entrainés sur ImageNet
     ### Exemple d'architecture CNN (ResNet152)
                         """)
             st.image(image_ResNet152, use_column_width=True)
-            
+
         with tab1_2:
             st.markdown("""
-    Vision transformer **ViT**, pré-entraînés sur ImageNet""")    
+    Vision transformer **ViT**, pré-entraînés sur ImageNet""")
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
                 st.write("")
@@ -841,23 +846,21 @@ Classification de produits sur la base des images seules par deux approches:
                 st.image(image_ViT, use_column_width=True)
             with col3:
                 st.write("")
-            
-                
+
             st.markdown("""
     _Les Vision transformers ont une architecture similaire aux BERT, si ce n'est l'etape d'embedding wui s'effectue
-    a partir d'une segmentation de l'image en patches qui sont ensuite traités par l'encodeur comme une sequence de tokens._""") 
-            
-        with tab1_3:        
+    a partir d'une segmentation de l'image en patches qui sont ensuite traités par l'encodeur comme une sequence de tokens._""")
+
+        with tab1_3:
             st.markdown("""
     ## Méthodologie et benchmark similaire a celle utilisée pour le texte
     - Entrainement sur 80% des donnéees
     - Evaluation des performances sur les 20% restants
     - Transformers fine-tuned sur 8 epoques, learning rate de 5e-5, decroissant de 20% a chaque epoque""")
-            
 
     with tab2:
         col1, col2 = st.columns([3, 1])
-        
+
         with col1:
             res = get_results_manager()
             fig = res.build_fig_f1_scores(filter_package=['img'])
@@ -879,7 +882,7 @@ Classification de produits sur la base des images seules par deux approches:
     | Random Forest  | 0.653 |    6 720 |
     | Multinomial NB  | 0.620 |    6 054 |
                         """)
-            
+
         st.markdown("""
     > Supériorité marquée du modèle Vision
     Transformer **(ViT, 0.675)** comparativement au meilleur modèle CNN testé **(ResNet152, 0.658)**. 
@@ -888,7 +891,7 @@ Classification de produits sur la base des images seules par deux approches:
     modèles texte, illustrant la complexité inhérente à la classification de produits sur la base exclusive
     d'images.
                     """)
-        
+
     with tab3:
         res = get_results_manager()
         models_paths = res.get_model_paths(filter_package=['img'])
@@ -939,28 +942,29 @@ les logits de sortie des modèles spécialisés pré-entraînés.
 - Modele hybride de type transformer (TF).
 - Meta-ensemble combinant modeles hybrides et specialises par voting
                     """)
-        
-        tab1_1, tab1_2, tab1_3, tab1_4 = st.tabs(["Ensembles simples", "Transformer hybride", "Meta Voting", "Methodologie"])
-        with tab1_1:        
+
+        tab1_1, tab1_2, tab1_3, tab1_4 = st.tabs(
+            ["Ensembles simples", "Transformer hybride", "Meta Voting", "Methodologie"])
+        with tab1_1:
             st.markdown("""
     **Voting** ou **Stacking** opérant sur les logits de sortie des meilleurs modèles spécialisés pré-entraînés (**camemBERT** + **ViT**).
                         """)
-            st.write("")#st.image(image_simpleVoting, use_column_width=True)
-            
+            st.write("")  # st.image(image_simpleVoting, use_column_width=True)
+
         with tab1_2:
             st.markdown("""
     Transformer fusionnant les sorties des derniers blocs de transformer de **camemBERT** et
 **ViT** par l'intermédiaire d’un bloc transformer **cross-attentionnel** (*query*: texte; *key*, *value*: image), suivi d’un nombre variable de blocs
-de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 couches par bloc""")    
-            
+de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 couches par bloc""")
+
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
                 st.write("")
             with col2:
-                st.write("")#st.image(image_fusionTF, use_column_width=True)
+                st.write("")  # st.image(image_fusionTF, use_column_width=True)
             with col3:
                 st.write("")
-            
+
         with tab1_3:
             st.markdown("""
     Meta ensemble combinant differents modeles hybrides et spécialisés dans un Voting classifier (ex: **TF6** (hybride),
@@ -968,25 +972,26 @@ de transformer classiques (TF: 1, 3 ou 6 blocs). Tetes attentionnelles de 12 cou
 **ResNet152** (image)).
 > Le **poids** attribué a chaque modèle est défini par le **rapport des F1-scores** (poids du
 modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **cross-validées sur l'ensemble de test** (5 folds)
-                        """)    
-            
+                        """)
+
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
                 st.write("")
             with col2:
-                st.write("")#st.image(image_metaVoting, use_column_width=True)
+                # st.image(image_metaVoting, use_column_width=True)
+                st.write("")
             with col3:
                 st.write("")
-            
-        with tab1_4:        
+
+        with tab1_4:
             st.markdown("""
 - Entrainement sur 80% des donnéees
 - Evaluation des performances sur les 20% restants
 - Transformers fine-tuned sur 8 epoques, learning rate de 5e-5, decroissant de 20% a chaque epoque
 - **Poids des voting classifiers cross-validées sur l'ensemble de test (5 folds)**""")
-        
+
     with tab2:
-        
+
         col11, col12 = st.columns([2, 1])
         with col11:
             res = get_results_manager()
@@ -1013,8 +1018,7 @@ modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **
             fig.update_yaxes(showticklabels=False)
 
             st.plotly_chart(fig, use_container_width=True)
-        
-        
+
         with col12:
             st.markdown("""
 
@@ -1069,15 +1073,15 @@ enfants"
 
         with col1:
             options_selected = st.multiselect(
-            "Choisissez plusieurs modèles pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
-            
+                "Choisissez plusieurs modèles pour afficher la matrice de confusion  :", models_paths, format_func=lambda model_path: res.get_model_label(model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)))
+
             if len(options_selected) > 1:
                 plt_matrix = res.get_voting_confusion_matrix(
                     options_selected, model_label="fusion personnalisée")
                 st.pyplot(plt_matrix, use_container_width=True)
             else:
                 st.write("Sélectionnez au moins deux modèles")
-            
+
             if len(options_selected) > 1:
                 st.dataframe(
                     pd.DataFrame(res.get_voting_f1_scores_report(
@@ -1098,8 +1102,8 @@ enfants"
 | CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
 | SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
                         """)
-            
-            
+
+
 # Page7 ############################################################################################################################################
 if page == pages[7]:
     st.header("Classification à partir d'images ou de texte")
