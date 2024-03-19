@@ -64,12 +64,15 @@ wget -O data/images/images.zip https://challengedata.ens.fr/participants/challen
 ```
 
 3- Download the already cleaned data via this link and unzip the three files into `/data/clean`.
-[Lien data](https://drive.google.com/file/d/19m9KGL0YJoQgC1kOm4yhQODdXK9sKxcu/view?usp=sharing)
+[Data](https://drive.google.com/file/d/19m9KGL0YJoQgC1kOm4yhQODdXK9sKxcu/view?usp=sharing)
 
 4- Download the training results using the following link and unzip the .csv files into `/results`.
-[Lien results](https://drive.google.com/file/d/1-jFTy2IIFRvN2gMYnsf7lmwtcrgCrn-z/view?usp=sharing)
+[Results](https://drive.google.com/file/d/1YWTlxLgz3T34OtwSi3p7Q2f4CcYIdDU7/view?usp=sharing)
 
-5- Create or edit the config files located in `notebook/config.py` and `streamlit/config.py` to specify the local paths of the project folder.
+5- Download the trained models to predict new datas (used for streamlit predictions)
+[Models](https://drive.google.com/drive/folders/1-M6AwQJ82Uhwd-T8ljocdvSQBj_i3zwl?usp=sharing)
+
+6- Create or edit the config files located in `notebook/config.py` and `streamlit/config.py` to specify the local paths of the project folder.
 ```python
 import os
 import sys

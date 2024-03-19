@@ -25,6 +25,10 @@ def load_classifier(name, parallel_gpu=False):
     # path to the directory where the model to load was saved
     model_path = os.path.join(config.path_to_models, 'trained_models', name)
 
+    if os.path.isfile(os.path.join(model_path, 'model.joblib')) == False:
+        raise ValueError(
+            f"The model {name} does not exist in {model_path}. Please check the name and the path to the model. See README.md for details to download model.")
+
     # Loading the model from there
     loaded_model = load(os.path.join(model_path, 'model.joblib'))
 
@@ -52,8 +56,9 @@ def load_classifier(name, parallel_gpu=False):
         if hasattr(loaded_model, 'callbacks'):
             if loaded_model.callbacks is not None:
                 callbacks = loaded_model.callbacks
-                loaded_model.callbacks = [callback for callback in callbacks if callback[0] != 'TensorBoard']
-        
+                loaded_model.callbacks = [
+                    callback for callback in callbacks if callback[0] != 'TensorBoard']
+
         # For copies of loaded object to also inherit from name (e.g.
         # for ensemble methods or CV methods), we set from_trained
         # to the model loaded here
@@ -98,9 +103,11 @@ def load_batch_results(filename):
     df_results = pd.read_csv(os.path.join(
         config.path_to_results, filename + '.csv'), index_col=0)
 
-    col_to_convert = ['conf_mat_test', 'probs_test', 'pred_test', 'y_test', 'score_test_cat']
+    col_to_convert = ['conf_mat_test', 'probs_test',
+                      'pred_test', 'y_test', 'score_test_cat']
     for col in col_to_convert:
-        df_results.loc[~df_results[col].isna(), col] = df_results.loc[~df_results[col].isna(), col].apply(ast.literal_eval).apply(np.array)
+        df_results.loc[~df_results[col].isna(), col] = df_results.loc[~df_results[col].isna(
+        ), col].apply(ast.literal_eval).apply(np.array)
 
     return df_results
 

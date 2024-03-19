@@ -436,7 +436,7 @@ class ResultsManager():
             np.array: the predictions
         """
         if pd.isna(self.df_results[self.df_results.model_path == model_path].pred_test.values[0]):
-            clf = load_classifier(model_path)
+            clf = self.load_classifier(model_path)
             y_pred = clf.predict(self.get_X_test())
             return y_pred
         pred = self.df_results[self.df_results.model_path ==
@@ -446,8 +446,8 @@ class ResultsManager():
 
     def get_deepCam(self):
         if self.deepCam is None:
-            print('reload deepCam')
-            clf_fusion = load_classifier('fusion/camembert-base-vit_b16_TF6')
+            clf_fusion = self.load_classifier(
+                'fusion/camembert-base-vit_b16_TF6')
             self.deepCam = deepCAM(clf_fusion)
 
         return self.deepCam
@@ -471,7 +471,7 @@ class ResultsManager():
             weight_set.append(self.get_f1_score(basename))
 
         probas_weighted = np.sum([probas[i] * weight_set[i]
-                                  for i in range(len(probas))], axis=0)
+                                  for i in range(len(probas))], axis=0)/np.sum(weight_set)
         end_time = time.time()
 
         pred = np.argmax(probas_weighted, axis=1)
@@ -505,9 +505,10 @@ class ResultsManager():
         """
         if model_path not in self.loaded_classifiers.keys():
             self.loaded_classifiers[model_path] = load_classifier(model_path)
+
         return self.loaded_classifiers[model_path]
 
-    def predict_proba(self, model_path, text, img):
+    def predict_proba(self, model_path, text=None, img=None):
         clf = self.load_classifier(model_path)
 
         model_type = model_path.split('/')[0]
@@ -519,7 +520,7 @@ class ResultsManager():
                     (1, self.get_num_classes()))
                 pred = clf.predict(text)
                 probas[0, pred] = 1
-        elif model_type == 'img' and img:
+        elif model_type == 'image' and not img is None:
             probas = clf.predict_proba(img)
         else:
             probas = clf.predict_proba(

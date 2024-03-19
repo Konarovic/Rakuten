@@ -60,8 +60,20 @@ image_yanniv = 'images/yanniv.jpg'
 image_axalia = 'images/axalia.jpg'
 image_aida = 'images/aida.jpg'
 
+
 # dossier images
 wc_folder = "images/wc_visuels"
+
+# models specifics
+best_voting_models = [
+    'fusion/camembert-base-vit_b16_TF6',
+    'text/xgboost_tfidf',
+    'text/camembert-base-ccnet',
+    'image/vit_b16',
+    'text/flaubert_base_uncased',
+    'image/ResNet152'
+]
+fusion_model = 'fusion/camembert-base-vit_b16_TF6'
 
 # css custom pour les typo / les bocs etc
 custom_css = """
@@ -180,25 +192,7 @@ st.set_page_config(layout="wide")
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
-# info streamlit
-# pour entrer un graph ou image spécifier use_column_width=True ou container width
-
-
 # DEBUT CODE STREAMLIT************************************************************************************************************
-
-# LOGO RAKUTEN // toutes pages
-# col1, col2, col3 = st.columns([1, 1, 1])
-# with col1:
-#     st.write("")
-# with col2:
-#     print('toto', os.getcwd())
-#     image_path = "images/rakuten.png"  # Example image path
-#     image = Image.open(image_path)
-#     resized_image = image.resize((int(image.width * 1), int(image.height * 1)))
-#     st.image(resized_image)
-# with col3:
-#     st.write("")
-
 
 # SOMMAIRE
 st.sidebar.image("images/rakuten.png", use_column_width=True)
@@ -235,17 +229,6 @@ def get_results_manager():
         res.add_result_file(
             config.path_to_results+'/results_benchmark_fusion_meta.csv', 'fusion')
 
-        # initialisation des modèles principaux
-        # preload = [
-        #     'fusion/camembert-base-vit_b16_TF6',
-        #     'text/xgboost_tfidf',
-        #     'text/camembert-base-ccnet',
-        #     'image/vit_b16',
-        #     'text/flaubert_base_uncased',
-        #     'image/ResNet152'
-        # ]
-        # for model in preload:
-        #     res.load_classifier(model)
     return res
 
 
@@ -443,7 +426,6 @@ if page == pages[2]:
             df['prdtypefull'] = df['prdtypefull'].str.split(
                 ' - ').str[1]
             df_count = df['prdtypefull'].value_counts().sort_values()
-            print(df_count.index)
             # Créer un graphique à barres avec plotly express
             fig = px.bar(
                 x=df_count.index,
@@ -469,7 +451,6 @@ if page == pages[2]:
                 lambda x: len(x))
             df_train_clean['prdtypefull'] = df_train_clean['prdtypefull'].str.split(
                 ' - ').str[1]
-            print(df_train_clean.index)
             idx_order = df_count.index.tolist()
             all_cat = df_train_clean['prdtypefull'].unique()
             missing_cat = [idx for idx in all_cat if idx not in idx_order]
@@ -1007,24 +988,6 @@ modelA: F1-modelA / (F1-modelA + F1-modelB + ...). Les performances ont été **
         col11, col12 = st.columns([2, 1])
         with col11:
             res = get_results_manager()
-
-            # scores = scores[['serie_name', 'score_test',
-            #                  'vectorizer']].reset_index()
-            # sorted_scores = scores.sort_values(by='score_test', ascending=False)
-
-            # # plot
-            # if title is None:
-            #     title = 'Benchmark des f1 scores'
-            # fig = uplot.get_fig_benchs_results(
-            #     sorted_scores,
-            #     'serie_name',
-            #     'score_test',
-            #     'model',
-            #     'f1 score',
-            #     color_column='vectorizer',
-            #     title=title,
-            #     figsize=figsize
-            # )
             fig = res.build_fig_f1_scores(filter_package=['fusion'])
             fig.update_xaxes(range=[0.8, 0.92])
             fig.update_yaxes(showticklabels=False)
@@ -1080,14 +1043,6 @@ enfants"
         res = get_results_manager()
         models_paths = res.get_model_paths()
         models_paths = np.sort(models_paths)
-        default_models = [
-            'fusion/camembert-base-vit_b16_TF6_att12',
-            'text/xgboost_tfidf',
-            'text/camembert-base-ccnet',
-            'image/vit_b16',
-            'text/flaubert_base_uncased',
-            'image/ResNet152'
-        ]
         tab41, tab42, tab43 = st.tabs(
             ["Complémentarité des modèles", "Benchmark des méta fusion", "Simulateur de fusion"])
 
@@ -1107,7 +1062,7 @@ enfants"
                 st.header("Comparaison des performances")
                 plt_matrix = res.get_fig_compare_confusion_matrix(
                     compare_selected,
-                    'fusion/camembert-base-vit_b16_TF6',
+                    fusion_model,
                     model_label1=res.get_model_label(compare_selected),
                     model_label2="Fusion TF6"
                 )
@@ -1134,7 +1089,7 @@ enfants"
             options_selected = st.multiselect(
                 "Choisissez plusieurs modèles pour afficher la matrice de confusion  :",
                 models_paths,
-                default=default_models,
+                default=best_voting_models,
                 format_func=lambda model_path: res.get_model_label(
                     model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
 
@@ -1160,10 +1115,25 @@ enfants"
 
 # Page7 ############################################################################################################################################
 if page == pages[7]:
+    res = get_results_manager()
+    models_paths = res.get_model_paths()
+    models_paths = np.sort(models_paths)
     st.header("Classification à partir d'images ou de texte")
+    models_selected = st.multiselect(
+        "Choisissez un ou plusieurs modèles pour faire une prédiction (les modèles sont assemblés en voting) :",
+        models_paths,
+        default=best_voting_models,
+        format_func=lambda model_path: res.get_model_label(
+            model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
+
+    )
     options = ["html", "data", 'Démo "poussette"', 'Démo "hameçons"',
                'Démo "livre Dune"', 'Démo "jeu Dune"']
-    option_selected = st.selectbox("Page rakuten ou données :", options)
+    option_selected = st.selectbox(
+        "Page rakuten ou données :",
+        options,
+        index=2
+    )
 
     if option_selected == "html":
 
@@ -1202,13 +1172,12 @@ if page == pages[7]:
         else:
             designation = input_designation
             image_url = input_image_url
-
-        pred = res.predict(
-            models_paths=['fusion/camembert-base-vit_b16_TF6'],
-            # model_path='text/camembert-base-ccnet',
-            text=designation,
-            img_url=image_url
-        )
+        with st.spinner('Classification en cours...'):
+            pred = res.predict(
+                models_paths=models_selected,
+                text=designation,
+                img_url=image_url
+            )
 
         col1, col2 = st.columns([1, 1])
         with col2:
