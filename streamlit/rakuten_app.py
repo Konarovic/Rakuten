@@ -339,7 +339,7 @@ if page == pages[1]:
         with col2:
             st.image(schema_dataframe_Y, width=None)
         st.markdown("""
-                    ### Près de 2% des produits sont des réplicats classés dans différentes catégories
+                    ### A partir des réplicats identifiés on a estimé à 2% de la base avec des anomalies de classification
         """)
     with tab2:
         st.header("Données images")
@@ -885,7 +885,6 @@ Classification de produits sur la base des images seules par deux approches:
     | ResNet101  | 0.656 |   6 754 |
     | EfficientNetB1  | 0.655 |    6 657 |
     | Random Forest  | 0.653 |    6 720 |
-    | Multinomial NB  | 0.620 |    6 054 |
                         """)
 
         st.markdown("""
@@ -1204,7 +1203,6 @@ if page == pages[7]:
             designation = input_designation
             image_url = input_image_url
 
-        
         pred = res.predict(
             models_paths=['fusion/camembert-base-vit_b16_TF6'],
             # model_path='text/camembert-base-ccnet',
@@ -1247,7 +1245,7 @@ if page == pages[7]:
             st.plotly_chart(fig, use_container_width=True)
         with col1:
             icam = pred['icam']
-            
+
             col1_1, col1_2, col1_3 = st.columns([1, 1, 1])
             with col1_1:
                 fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -1255,15 +1253,14 @@ if page == pages[7]:
                 ax.imshow(icam.image)
                 ax.axis('off')
                 st.pyplot(fig)
-                
+
             with col1_2:
                 fig, ax = plt.subplots(1, 1, figsize=(5, 5))
                 st.header('FocusCam')
                 ax.imshow(icam.image_masked)
                 ax.axis('off')
                 st.pyplot(fig)
-                
-            
+
             # col1, col2 = st.columns([1, 1])
             # with col1:
             st.header('Texte original')
@@ -1271,9 +1268,8 @@ if page == pages[7]:
             st.header('FocusCAM')
             fig, ax = plt.subplots()
             plot_weighted_text(0, 1, icam.text, icam.text_masked*5, base_font_size=60,
-                                char_per_line=100, title='', title_color='purple', title_fontsize=100, ax=ax)
+                               char_per_line=100, title='', title_color='purple', title_fontsize=100, ax=ax)
             st.pyplot(fig)
-            
 
 
 # Page8 ############################################################################################################################################
