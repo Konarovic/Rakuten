@@ -54,7 +54,8 @@ image_ResNet152 = 'images/image_ResNet152.png'
 image_ViT = 'images/image_ViT.png'
 image_simpleVoting = 'images/image_simpleVoting.png'
 image_fusionTF = 'images/image_fusionTF.png'
-image_metaVoting = 'images/fusion-contribs.jpg'
+image_metaVoting = 'images/image_metaVoting.png'
+image_bestmetaVoting = 'images/fusion-contribs.jpg'
 
 # dossier images
 wc_folder = "images/wc_visuels"
@@ -918,7 +919,7 @@ if page == pages[6]:
     st.title("Modélisation : fusion")
 
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["**Approches**", "**Benchmark des modèles**", "**Détail des performances par modèle**", "**Simulateur de fusion**"])
+        ["**Approches**", "**Benchmark des modèles**", "**Détail des modèles de fusion simple**", "**Simulateur de fusion hybride**"])
 
     with tab1:
 
@@ -941,7 +942,7 @@ les logits de sortie des modèles spécialisés pré-entraînés.
             with col1:
                 st.write("")
             with col2:
-                st.image(image_simpleVoting, use_column_width=True)
+                st.write("")#st.image(image_simpleVoting, use_column_width=True)
             with col3:
                 st.write("")
 
@@ -1099,6 +1100,13 @@ enfants"
                     height=1200
                 )
         with col2:
+            st.markdown("""
+### Meilleur modele fusion hybride
+                        """)
+            col1, col2 = st.columns([9, 1])
+            with col1:
+                st.image(image_bestmetaVoting, use_column_width=True)
+            
             st.markdown("""
 ### Benchmark des modèles fusion hybrides
                         
