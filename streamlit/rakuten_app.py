@@ -1090,24 +1090,20 @@ enfants"
             'image/ResNet152'
         ]
         tab41, tab42, tab43 = st.tabs(
-            ["Complémentarité des modèles", "Schéma optimal", "Simulateur de fusion"])
+            ["Complémentarité des modèles", "Benchmark des méta fusion", "Simulateur de fusion"])
 
         with tab41:
+            st.write(
+                "Certains modèles performent mieux sur des catégories spécifiques que le modèle fusion.")
             compare_models = res.get_model_paths()
             compare_selected = st.selectbox(
                 "Choisir un modèle à comparer avec le modèle fusion TF6",
                 compare_models,
                 format_func=lambda model_path: res.get_model_label(
-                    model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
+                    model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3)),
+                index=14
             )
             col411, col412 = st.columns([2, 1])
-            # with col411:
-            #     st.header("Matrice de confusion du modèle")
-            #     plt_matrix = res.get_fig_confusion_matrix(
-            #         compare_selected, model_label=res.get_model_label(
-            #             compare_selected)
-            #     )
-            #     st.pyplot(plt_matrix, use_container_width=True)
             with col411:
                 st.header("Comparaison des performances")
                 plt_matrix = res.get_fig_compare_confusion_matrix(
@@ -1119,9 +1115,24 @@ enfants"
                 st.pyplot(plt_matrix, use_container_width=True)
 
         with tab42:
-            st.image('images/fusion-contribs.jpg', use_column_width=True)
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.image('images/fusion-contribs.jpg', use_column_width=True)
+            with col2:
+                st.markdown("""
+                    ### Benchmark des modèles fusion hybrides
+                                            
+                    | Modèle  | f1 score |
+                    | :--------------- |---------------:|
+                    | **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.914** |
+                    | TF6, CamemBERT, ViT | 0.910 |
+                    | TF6, FlauBERT, ResNet152  | 0.908 |
+                    | CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
+                    | CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
+                    | SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
+                                            """)
         with tab43:
-            col1, col2 = st.columns([1, 1])
+            col1, col2 = st.columns([2, 1])
 
             with col1:
                 options_selected = st.multiselect(
@@ -1147,19 +1158,6 @@ enfants"
                         use_container_width=True,
                         height=1200
                     )
-            with col2:
-                st.markdown("""
-    ### Benchmark des modèles fusion hybrides
-                            
-    | Modèle  | f1 score |
-    | :--------------- |---------------:|
-    | **TF6, CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT, ResNet152**  |   **0.911** |
-    | TF6, CamemBERT, ViT | 0.909 |
-    | TF6, FlauBERT, ResNet152  | 0.907 |
-    | CamemBERT, FlauBERT, ViT, ResNet152  | 0.902 |
-    | CamemBERT, FlauBERT, XGBoost (TF-IDF), ViT | 0.900 |
-    | SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
-                            """)
 
 
 # Page7 ############################################################################################################################################
