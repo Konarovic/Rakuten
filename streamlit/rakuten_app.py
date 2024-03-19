@@ -1204,6 +1204,7 @@ if page == pages[7]:
             designation = input_designation
             image_url = input_image_url
 
+        
         pred = res.predict(
             models_paths=['fusion/camembert-base-vit_b16_TF6'],
             # model_path='text/camembert-base-ccnet',
@@ -1211,9 +1212,8 @@ if page == pages[7]:
             img_url=image_url
         )
 
-        tab11, tab12 = st.tabs(
-            ["Résultats", "Données / Gradcam"])
-        with tab11:
+        col1, col2 = st.columns([1, 1])
+        with col2:
             st.write("<p>Classe prédite : <strong>{}</strong></p>".format(
                 pred['pred_labels'][0]), unsafe_allow_html=True)
             st.write("<p>Classe réelle : <strong>{}</strong></p>".format(
@@ -1224,8 +1224,10 @@ if page == pages[7]:
                 pred['time']), unsafe_allow_html=True)
 
             # Créer les données pour le graphique
-            categories = pred['labels']
-            prediction = pred['pred_probas'][0]
+            idx_sorted = np.flip(np.argsort(pred['pred_probas'][0]))
+            categories = pred['labels'][idx_sorted[:10]]
+            prediction = np.array(pred['pred_probas'][0])
+            prediction = prediction[idx_sorted[:10]]
 
             # Créer le graphique à barres
             fig = go.Figure(data=[
@@ -1243,26 +1245,35 @@ if page == pages[7]:
 
             # Afficher le graphique dans Streamlit
             st.plotly_chart(fig, use_container_width=True)
-        with tab12:
+        with col1:
             icam = pred['icam']
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                st.header('Texte original')
-                st.write(designation)
-                st.header('DeepCAM')
-                fig, ax = plt.subplots()
-                plot_weighted_text(0, 0.7, icam.text, icam.text_masked*5, base_font_size=60,
-                                   char_per_line=100, title='', title_color='purple', title_fontsize=100, ax=ax)
+            
+            col1_1, col1_2, col1_3 = st.columns([1, 1, 1])
+            with col1_1:
+                fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+                st.header('Image original')
+                ax.imshow(icam.image)
+                ax.axis('off')
                 st.pyplot(fig)
-            with col2:
-                fig, ax = plt.subplots(1, 2)
-                ax[0].imshow(icam.image)
-                ax[0].axis('off')
-                ax[0].set_title('original')
-                ax[1].imshow(icam.image_masked)
-                ax[1].axis('off')
-                ax[1].set_title('deepCAM')
+                
+            with col1_2:
+                fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+                st.header('FocusCam')
+                ax.imshow(icam.image_masked)
+                ax.axis('off')
                 st.pyplot(fig)
+                
+            
+            # col1, col2 = st.columns([1, 1])
+            # with col1:
+            st.header('Texte original')
+            st.write(designation)
+            st.header('FocusCAM')
+            fig, ax = plt.subplots()
+            plot_weighted_text(0, 1, icam.text, icam.text_masked*5, base_font_size=60,
+                                char_per_line=100, title='', title_color='purple', title_fontsize=100, ax=ax)
+            st.pyplot(fig)
+            
 
 
 # Page8 ############################################################################################################################################
