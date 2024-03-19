@@ -247,14 +247,14 @@ if page == pages[0]:
                     Le challenge Rakuten est disponible [en ligne](https://challengedata.ens.fr/participants/challenges/35/)
 """)
         col1, col2 = st.columns([1, 10])
-        with col2:
+        with col1:
             st.markdown("""
                     ####      - 80 000 produits
                     ####      - 27 catégories à distinguer
                     ####      - Description textuelle multilangue
                         """)
 
-        with col3:
+        with col2:
             st.header("> Puériculture")
             st.write("Porte bébé Violet et rouge Trois-en-un mère multifonctions Kangourou fermeture à glissière Hoodie Taille: XL Poitrine: 104-109 cm 84-88 cm Hanche: 110-116 cm clair + 1. Marque nouvelle et de haute qualité. 2. Détachable conception pratique et attentionnée. 3. Parfait pour les mères qui allaitent. 4. Anti-vent chaud et style kangourou multifonctionnel haut de gamme. 5. Sac de couchage multifonction amovible de la mère européenne. Spécification: Les types Fermez Buste104-109cm Encolure Sweat à capuche Les hanches110-116cm Tailles disponiblesXLMatériel Coton")
             st.divider()
