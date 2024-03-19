@@ -1132,25 +1132,24 @@ enfants"
                     | SVC (Skip-gram), LinearSVC (TF-IDF), XGBoost (TF-IDF), ViT | 0.852 |
                                             """)
         with tab43:
-            col1, col2 = st.columns([2, 1])
+            options_selected = st.multiselect(
+                "Choisissez plusieurs modèles pour afficher la matrice de confusion  :",
+                models_paths,
+                default=default_models,
+                format_func=lambda model_path: res.get_model_label(
+                    model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
+
+            )
+            col1, col2 = st.columns([1, 1])
 
             with col1:
-                options_selected = st.multiselect(
-                    "Choisissez plusieurs modèles pour afficher la matrice de confusion  :",
-                    models_paths,
-                    default=default_models,
-                    format_func=lambda model_path: res.get_model_label(
-                        model_path) + ' - ' + str(round(res.get_f1_score(model_path), 3))
-
-                )
-
                 if len(options_selected) > 1:
                     plt_matrix = res.get_voting_confusion_matrix(
                         options_selected, model_label="fusion personnalisée")
                     st.pyplot(plt_matrix, use_container_width=True)
                 else:
                     st.write("Sélectionnez au moins deux modèles")
-
+            with col2:
                 if len(options_selected) > 1:
                     st.dataframe(
                         pd.DataFrame(res.get_voting_f1_scores_report(
@@ -1269,10 +1268,10 @@ if page == pages[7]:
 # Page8 ############################################################################################################################################
 if page == pages[8]:
     st.title("Conclusion")
-    
+
     tab1, tab2, tab3 = st.tabs(
         ["**Résumé**", "**Perspectives**", "**Remerciements**"])
-    
+
     with tab1:
         st.markdown("""
                     
@@ -1283,7 +1282,7 @@ if page == pages[8]:
         col1, col2, col3 = st.columns([1, 3, 1])
         with col2:
             st.image(image_bestmetaVoting, use_column_width=True)
-    
+
     with tab2:
         st.markdown("""
 * Exploration de l'**impact des étapes du pipeline de preprocessing** sur les performances des transformers
@@ -1291,7 +1290,7 @@ if page == pages[8]:
 * Test d'autres **modèles image**.
 * Exploration de différentes **architectures pour le modèle transformer hybride**.
                     """)
-        
+
     with tab3:
         col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
