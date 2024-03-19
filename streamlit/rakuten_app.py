@@ -236,20 +236,20 @@ def get_results_manager():
             config.path_to_results+'/results_benchmark_fusion_meta.csv', 'fusion')
 
         # initialisation des modèles principaux
-        preload = [
-            'fusion/camembert-base-vit_b16_TF6',
-            'text/xgboost_tfidf',
-            'text/camembert-base-ccnet',
-            'image/vit_b16',
-            'text/flaubert_base_uncased',
-            'image/ResNet152'
-        ]
-        for model in preload:
-            res.load_classifier(model)
+        # preload = [
+        #     'fusion/camembert-base-vit_b16_TF6',
+        #     'text/xgboost_tfidf',
+        #     'text/camembert-base-ccnet',
+        #     'image/vit_b16',
+        #     'text/flaubert_base_uncased',
+        #     'image/ResNet152'
+        # ]
+        # for model in preload:
+        #     res.load_classifier(model)
     return res
 
 
-res = get_results_manager()
+# res = get_results_manager()
 # page 0############################################################################################################################################
 if page == pages[0]:
     st.title("PRÉSENTATION DU PROJET")
@@ -762,9 +762,9 @@ if page == pages[4]:
 ### Modèles transformers
 | Modèle  | f1 score | Durée fit (s) |
 | :--------------- |---------------:| -----:|
-| CamemBERT  |   0.886 |  16 955 |
-| XGBoost  |   0.885 |  17 225 |
-| Logistic Regression  |   0.878 |  15 138 |
+| CamemBERT (ccnet)  |   0.886 |  16 955 |
+| CamemBERT (base) |   0.885 |  17 225 |
+| FlauBERT (uncased)  |   0.878 |  15 138 |
 
                         """)
 
@@ -884,7 +884,7 @@ Classification de produits sur la base des images seules par deux approches:
     | ResNet152  | 0.658 |   6 894 |
     | ResNet101  | 0.656 |   6 754 |
     | EfficientNetB1  | 0.655 |    6 657 |
-    | Random Forest  | 0.653 |    6 720 |
+    | ResNet50  | 0.653 |    6 720 |
                         """)
 
         st.markdown("""
