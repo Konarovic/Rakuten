@@ -483,19 +483,15 @@ if page == pages[2]:
         """
         )
 
-        counts = df.groupby(['prdtypefull', 'language']
-                            ).size().reset_index(name='Nombre')
+        counts = pd.crosstab(df['language'], df['prdtypefull'],
+                             normalize='columns').sort_values('fr', axis=1, ascending=False)
 
         # Création du graphique
         fig = go.Figure()
 
-        for langue in counts['language'].unique():
-            df_langue = counts[counts['language'] == langue]
-            fig.add_trace(go.Bar(
-                x=df_langue['prdtypefull'],
-                y=df_langue['Nombre'].sort_values(),
-                name=langue
-            ))
+        for lang in counts.index:
+            fig.add_trace(go.Bar(x=counts.columns,  y=counts.loc[lang, :]*100,
+                                 name=lang))
 
         # Mise en forme du graphique
         fig.update_layout(
