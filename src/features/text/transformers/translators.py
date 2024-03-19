@@ -11,9 +11,9 @@ class TextTranslator(BaseEstimator, TransformerMixin):
     def __init__(self, text_column=None, target_lang="fr", lang_column=None, batch_size=100, wait_time=1, verbose=0) -> None:
         self.langdetector = LangIdDetector()
         self.translators = {
-            "de": GoogleTranslator(source="de"),
-            "en": GoogleTranslator(source="en"),
-            "fr": GoogleTranslator(source="fr")
+            "de": GoogleTranslator(source="de", target=target_lang),
+            "en": GoogleTranslator(source="en", target=target_lang),
+            "fr": GoogleTranslator(source="fr", target=target_lang)
         }
         self.text_column = text_column
         self.lang_column = lang_column
@@ -40,7 +40,7 @@ class TextTranslator(BaseEstimator, TransformerMixin):
         print(nb_lines)
         for k in range(nb_lines // self.batch_size +1):
             batch_indexes = indexes[k*self.batch_size:min((k+1)*self.batch_size, nb_lines)]
-            translations.loc[batch_indexes] = X.loc[batch_indexes].apply(lambda row: self.translate_text(row.loc[self.lang_column], row.loc[self.text_column], self.target_lang), axis=1)
+            translations.loc[batch_indexes] = X.loc[batch_indexes].apply(lambda row: self.translate_text(source_lang=row.loc[self.lang_column], text=row.loc[self.text_column], target_lang=self.target_lang), axis=1)
             if self.verbose:
                 print(f"Traduction de {k*self.batch_size} à {min((k+1)*self.batch_size, nb_lines)} complète")
             time.sleep(self.wait_time)
@@ -57,5 +57,5 @@ class TextTranslator(BaseEstimator, TransformerMixin):
         elif source_lang == target_lang:
             return text
         else:
-            translated = self.translators[source_lang].translate(text, dest=target_lang)
+            translated = self.translators[source_lang].translate(text)
             return translated
