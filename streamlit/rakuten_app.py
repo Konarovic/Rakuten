@@ -942,7 +942,7 @@ les logits de sortie des modèles spécialisés pré-entraînés.
             with col1:
                 st.write("")
             with col2:
-                st.write("")#st.image(image_simpleVoting, use_column_width=True)
+                st.image(image_simpleVoting, use_column_width=True)
             with col3:
                 st.write("")
 
