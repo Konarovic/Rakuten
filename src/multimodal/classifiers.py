@@ -498,7 +498,8 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                                                                                        include_top=False, pretrained_top=False)
             img_base_model = Model(
                 inputs=vit_model.input, outputs=vit_model.layers[-3].output)
-            preprocessing_function = lambda x: (x / 255.0 - np.mean(x / 255.0, keepdims=True)) / np.std(x / 255.0, keepdims=True)
+            eps = 1e-12  # Small constant to prevent division by zero
+            preprocessing_function = lambda x: (x / 255.0 - np.mean(x / 255.0, keepdims=True)) / (np.std(x / 255.0, keepdims=True) + eps)
 
         model = build_multi_model(txt_base_model=txt_base_model, img_base_model=img_base_model,
                                   from_trained=from_trained, max_length=self.max_length, img_size=self.img_size,

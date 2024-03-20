@@ -243,7 +243,8 @@ class ImgClassifier(BaseEstimator, ClassifierMixin):
                                                                                        include_top=False, pretrained_top=False)
                 base_model = Model(inputs=vit_model.input,
                                    outputs=vit_model.layers[-3].output)
-                preprocessing_function = lambda x: (x / 255.0 - np.mean(x / 255.0, keepdims=True)) / np.std(x / 255.0, keepdims=True)
+                eps = 1e-12
+                preprocessing_function = lambda x: (x / 255.0 - np.mean(x / 255.0, keepdims=True)) / (np.std(x / 255.0, keepdims=True) + eps)
                 model_class = None
             elif 'efficientnet' in self.base_name.lower():
                 model_class = getattr(
