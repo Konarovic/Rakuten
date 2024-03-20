@@ -765,6 +765,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         # by joblib
         model_backup = self.model
         tokenizer_backup = self.tokenizer
+        preprocessing_function_backup = self.preprocessing_function
         history_backup = self.history
         strategy_backup = self.strategy
 
@@ -777,6 +778,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
 
         self.model = model_backup
         self.tokenizer = tokenizer_backup
+        self.preprocessing_function = preprocessing_function_backup
         self.history = history_backup
         self.strategy = strategy_backup
 
