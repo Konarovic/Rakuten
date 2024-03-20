@@ -613,8 +613,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         if not isinstance(X, dict):
             dataset = self._getdataset(X, training=False)
         else:
-            X_tokenized = self.tokenizer(X['text'], 
-                                         padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            X_tokenized = self.tokenizer(X['text'], padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
             X_image = cv2.resize(X['image'], self.img_size[:2])
             X_image = self.preprocessing_function(X_image)
             X_image = X_image.reshape((1,) + X_image.shape)
@@ -645,8 +644,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
         if not isinstance(X, dict):
             dataset = self._getdataset(X, training=False)
         else:
-            X_tokenized = self.tokenizer(X['text'], 
-                                         padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+            X_tokenized = self.tokenizer(X['text'], padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
             X_image = cv2.resize(X['image'], self.img_size[:2])
             X_image = self.preprocessing_function(X_image)
             X_image = X_image.reshape((1,) + X_image.shape)
@@ -685,8 +683,7 @@ class TFmultiClassifier(BaseEstimator, ClassifierMixin):
                                            fill_mode=params['fill_mode'],
                                            cval=params['cval'])
 
-        X_tokenized = self.tokenizer(df['tokens'].tolist(
-        ), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
+        X_tokenized = self.tokenizer(df['tokens'].tolist(), padding="max_length", truncation=True, max_length=self.max_length, return_tensors="tf")
 
         dataset = MultimodalDataGenerator(img_generator, df['img_path'], X_tokenized, df['labels'],
                                           batch_size=self.batch_size, target_size=self.img_size[:2], shuffle=shuffle)
