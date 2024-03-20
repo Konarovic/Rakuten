@@ -382,6 +382,25 @@ class ResultsManager():
 
         return self
 
+    def get_f1_scores_by_class(self, model_path):
+
+        try:
+            return ast.literal_eval(self.df_results[self.df_results.model_path ==
+                                                    model_path]['score_test_cat'].values[1])
+        except:
+            return self.compute_f1_scores_by_class(model_path)
+
+    def compute_f1_scores_by_class(self, model_path):
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+        data = classification_report(y_test, y_pred,
+                                     target_names=self.get_cat_labels(), output_dict=True)
+        del data['accuracy']
+        del data['macro avg']
+        del data['weighted avg']
+        df = pd.DataFrame.from_dict(data, orient='index')
+        return df['f1-score'].tolist()
+
     def get_f1_scores_report(self, model_path, model_label=None):
         """
         Display the classification report of a model.
@@ -392,7 +411,6 @@ class ResultsManager():
         """
         y_pred = self.get_y_pred(model_path)
         y_test = self.get_y_test(model_path)
-
         return classification_report(y_test, y_pred,
                                      target_names=self.get_cat_labels(), output_dict=True)
 
@@ -452,7 +470,7 @@ class ResultsManager():
 
         return self.deepCam
 
-    def predict(self, models_paths, text=None, img_url=None):
+    def predict(self, models_paths, text=None, img_url=None, weighted_by='global'):
 
         probas = []
         weight_set = []
@@ -468,7 +486,10 @@ class ResultsManager():
         for basename in models_paths:
             probas.append(
                 np.array(self.predict_proba(basename, text, img_array)))
-            weight_set.append(self.get_f1_score(basename))
+            if weighted_by == 'global':
+                weight_set.append(self.get_f1_score(basename))
+            elif weighted_by == 'class':
+                weight_set.append(self.get_f1_scores_by_class(basename))
 
         probas_weighted = np.sum([probas[i] * weight_set[i]
                                   for i in range(len(probas))], axis=0)/np.sum(weight_set)
@@ -503,6 +524,8 @@ class ResultsManager():
         Returns:
             Classifier: the classifier
         """
+        return load_classifier(model_path)
+        # Lazyloading disabled because out of memory exceptions
         if model_path not in self.loaded_classifiers.keys():
             self.loaded_classifiers[model_path] = load_classifier(model_path)
 
@@ -639,7 +662,7 @@ class ResultsManager():
         """
         return self.df_results[self.df_results.model_path == model_path].score_test.values[0]
 
-    def voting_pred(self, basenames):
+    def voting_pred(self, basenames, weighted_by='global'):
         """
         Get the predictions of a voting model.
         Computes the weighted average of the predictions of the models.
@@ -655,7 +678,10 @@ class ResultsManager():
 
         for basename in basenames:
             probas.append(np.array(self.get_y_pred_probas(basename)))
-            weight_set.append(self.get_f1_score(basename))
+            if weighted_by == 'global':
+                weight_set.append(self.get_f1_score(basename))
+            elif weighted_by == 'class':
+                weight_set.append(self.get_f1_scores_by_class(basename))
 
         probas_weighted = np.sum([probas[i] * weight_set[i]
                                   for i in range(len(probas))], axis=0)
