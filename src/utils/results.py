@@ -48,7 +48,10 @@ class ResultsManager():
         self.le = None
         self.X_test = None
         self.deepCam = None
-        self.loaded_classifiers = {}
+        self.loaded_classifiers = dict()
+        self.cache_f1_scores_by_class = dict()
+        self.cache_recall_scores_by_class = dict()
+        self.cache_y_pred = dict()
         pass
 
     def add_result_file(self, file_path, package):
@@ -384,11 +387,17 @@ class ResultsManager():
 
     def get_f1_scores_by_class(self, model_path):
 
+        if model_path in self.cache_f1_scores_by_class.keys():
+            return self.cache_f1_scores_by_class[model_path]
+
         try:
-            return ast.literal_eval(self.df_results[self.df_results.model_path ==
-                                                    model_path]['score_test_cat'].values[1])
+            self.cache_f1_scores_by_class[model_path] = ast.literal_eval(self.df_results[self.df_results.model_path ==
+                                                                                         model_path]['score_test_cat'].values[1])
         except:
-            return self.compute_f1_scores_by_class(model_path)
+            self.cache_f1_scores_by_class[model_path] = self.compute_f1_scores_by_class(
+                model_path)
+
+        return self.cache_f1_scores_by_class[model_path]
 
     def compute_f1_scores_by_class(self, model_path):
         y_pred = self.get_y_pred(model_path)
@@ -400,6 +409,25 @@ class ResultsManager():
         del data['weighted avg']
         df = pd.DataFrame.from_dict(data, orient='index')
         return df['f1-score'].tolist()
+
+    def get_recall_scores_by_class(self, model_path):
+
+        if model_path not in self.cache_recall_scores_by_class.keys():
+            self.cache_recall_scores_by_class[model_path] = self.compute_recall_scores_by_class(
+                model_path)
+
+        return self.cache_recall_scores_by_class[model_path]
+
+    def compute_recall_scores_by_class(self, model_path):
+        y_pred = self.get_y_pred(model_path)
+        y_test = self.get_y_test(model_path)
+        data = classification_report(y_test, y_pred,
+                                     target_names=self.get_cat_labels(), output_dict=True)
+        del data['accuracy']
+        del data['macro avg']
+        del data['weighted avg']
+        df = pd.DataFrame.from_dict(data, orient='index')
+        return df['recall'].tolist()
 
     def get_f1_scores_report(self, model_path, model_label=None):
         """
@@ -470,7 +498,7 @@ class ResultsManager():
 
         return self.deepCam
 
-    def predict(self, models_paths, text=None, img_url=None, weighted_by='global'):
+    def predict(self, models_paths, text=None, img_url=None, weighted_by='global', recall_threshold=0.6):
 
         probas = []
         weight_set = []
@@ -490,6 +518,13 @@ class ResultsManager():
                 weight_set.append(self.get_f1_score(basename))
             elif weighted_by == 'class':
                 weight_set.append(self.get_f1_scores_by_class(basename))
+            elif weighted_by == 'recall':
+                weight_set.append(self.get_recall_scores_by_class(basename))
+            elif weighted_by == 'recall_threshold':
+                recalls = self.get_recall_scores_by_class(basename)
+                recalls_threshold = [
+                    0 if r < recall_threshold else r for r in recalls]
+                weight_set.append(recalls_threshold)
 
         probas_weighted = np.sum([probas[i] * weight_set[i]
                                   for i in range(len(probas))], axis=0)/np.sum(weight_set)
@@ -563,6 +598,10 @@ class ResultsManager():
         Returns:
             np.array: the probabilities
         """
+
+        if model_path in self.cache_y_pred.keys():
+            return self.cache_y_pred[model_path]
+
         if pd.isna(self.df_results[self.df_results.model_path == model_path].probs_test.values[0]):
             clf = self.load_classifier(model_path)
 
@@ -575,9 +614,11 @@ class ResultsManager():
                 for i, y in enumerate(y_pred):
                     probas[i, y] = 1
 
-            return probas
-        return ast.literal_eval(self.df_results[self.df_results.model_path ==
-                                                model_path].probs_test.values[0])
+            self.cache_y_pred[model_path] = probas
+        else:
+            self.cache_y_pred[model_path] = ast.literal_eval(self.df_results[self.df_results.model_path ==
+                                                                             model_path].probs_test.values[0])
+        return self.cache_y_pred[model_path]
 
     def get_y_test(self, model_path):
         """
@@ -662,7 +703,7 @@ class ResultsManager():
         """
         return self.df_results[self.df_results.model_path == model_path].score_test.values[0]
 
-    def voting_pred(self, basenames, weighted_by='global'):
+    def voting_pred(self, basenames, weighted_by='global', recall_threshold=0.6):
         """
         Get the predictions of a voting model.
         Computes the weighted average of the predictions of the models.
@@ -682,6 +723,13 @@ class ResultsManager():
                 weight_set.append(self.get_f1_score(basename))
             elif weighted_by == 'class':
                 weight_set.append(self.get_f1_scores_by_class(basename))
+            elif weighted_by == 'recall':
+                weight_set.append(self.get_recall_scores_by_class(basename))
+            elif weighted_by == 'recall_threshold':
+                recalls = self.get_recall_scores_by_class(basename)
+                recalls_threshold = [
+                    0 if r < recall_threshold else r for r in recalls]
+                weight_set.append(recalls_threshold)
 
         probas_weighted = np.sum([probas[i] * weight_set[i]
                                   for i in range(len(probas))], axis=0)
