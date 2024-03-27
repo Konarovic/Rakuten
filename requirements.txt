@@ -21,8 +21,8 @@ click==8.1.7
 cloudpathlib==0.16.0
 cloudpickle==3.0.0
 colorama==0.4.4
+comm==0.2.1
 
-command-not-found==0.3
 confection==0.1.4
 contourpy==1.2.0
 cryptography==3.4.8
