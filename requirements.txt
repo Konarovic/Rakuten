@@ -38,7 +38,7 @@ distlib==0.3.4
 distro==1.7.0
 
 docker==7.0.0
-duplicity==0.8.21
+
 EasyNMT==2.0.2
 entrypoints==0.4
 exceptiongroup==1.2.0
