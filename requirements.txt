@@ -144,7 +144,7 @@ ptyprocess==0.7.0
 pure-eval==0.2.2
 pyarrow==15.0.0
 pybind11==2.11.1
-pycairo==1.20.1
+#pycairo==1.20.1
 pycups==2.0.1
 pydantic==2.6.0
 pydantic_core==2.16.1
