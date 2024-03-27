@@ -1,8 +1,8 @@
 import os
 import sys
-dir_root = '/home/thibaud/repos/anaconda/rakuten'
+dir_root = '/dec23_bds_rakuten'
 
-project_dir = '/home/thibaud/repos/anaconda/rakuten'
+project_dir = '/dec23_bds_rakuten'
 if project_dir not in sys.path:
     sys.path.append(project_dir)
     sys.path.append(os.path.join(project_dir, 'src'))
