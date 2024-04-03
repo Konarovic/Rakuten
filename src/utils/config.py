@@ -1,8 +1,11 @@
 import os
 import sys
-dir_root = '/home/julien/Rakuten_project/dec23_bds_rakuten'
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
-project_dir = '/home/julien/Rakuten_project/dec23_bds_rakuten'
+dir_root = 'Rakuten'
+
+project_dir = 'Rakuten'
 if project_dir not in sys.path:
     sys.path.append(project_dir)
     sys.path.append(os.path.join(project_dir, 'src'))
