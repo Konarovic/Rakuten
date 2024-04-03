@@ -17,11 +17,13 @@ from importlib import reload
 
 from src.utils import results
 from src.utils import scrapper
-from src.utils.visualize import plot_weighted_text
+#from src.utils.visualize import plot_weighted_text
 from src.features.text.transformers.text_merger import TextMerger
 from src.features.text.transformers.translators import TextTranslator
 from src.features.text.pipelines.cleaner import CleanTextPipeline
 from src.features.text.pipelines.corrector import CleanEncodingPipeline
+
+
 
 # chargement des Ressources
 # DATAFRAMES

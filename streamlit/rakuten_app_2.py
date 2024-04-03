@@ -30,8 +30,6 @@ df_train_clean = pd.read_csv("../data/clean/df_train_index.csv")
 index_column = "Unnamed: 0"
 df_train_raw = pd.read_csv("../data/raw/X_train.csv")
 df_train_raw.set_index(index_column, inplace=True)
-# df_train_prepro = pd.read_csv("../data/df_preprocessed.csv")
-# df_train_prepro.set_index(index_column, inplace=True)
 ytrain = pd.read_csv("../data/raw/Y_train.csv")
 
 

@@ -2,7 +2,8 @@ import re
 import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-import py3langid as langid
+#import py3langid as langid
+import langid
 from spellchecker import SpellChecker
 from transformers import BertTokenizer
 

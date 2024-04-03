@@ -24,6 +24,8 @@ def load_classifier(name, parallel_gpu=False):
     """
     # path to the directory where the model to load was saved
     model_path = os.path.join(config.path_to_models, 'trained_models', name)
+    model_path = os.path.normpath(model_path)
+    print(model_path)
 
     if os.path.isfile(os.path.join(model_path, 'model.joblib')) == False:
         raise ValueError(
