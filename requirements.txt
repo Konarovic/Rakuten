@@ -21,7 +21,7 @@ Cython==3.0.10
 deep==0.10
 deep-translator==1.11.4
 dm-tree==0.1.8
-etils==1.8.0
+#etils==1.8.0
 fake-useragent==1.5.1
 filelock==3.13.3
 flatbuffers==24.3.25
