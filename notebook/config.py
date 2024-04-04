@@ -1,6 +1,6 @@
 import os
 import sys
-dir_root = 'Rakuten'
+dir_root = 'https://github.com/Koanrovic/Rakuten'
 
 project_dir = 'Rakuten'
 if project_dir not in sys.path:

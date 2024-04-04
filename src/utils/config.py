@@ -1,9 +1,7 @@
 import os
 import sys
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
 
-dir_root = 'Rakuten'
+dir_root = 'https://github.com/Koanrovic/Rakuten'
 
 project_dir = 'Rakuten'
 if project_dir not in sys.path:
