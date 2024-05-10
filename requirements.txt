@@ -191,7 +191,6 @@ watchdog==4.0.0
 webdriver-manager==4.0.1
 webencodings==0.5.1
 websockets==10.4
-Werkzeug==3.0.2
 wordcloud==1.9.3
 wrapt==1.14.1
 wsproto==1.2.0
